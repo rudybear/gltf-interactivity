@@ -7,6 +7,7 @@
   "types": "dist/index.d.ts",
   "dependencies": {
     "@gltfi/emit-cs": "workspace:*",
+    "@gltfi/emit-gd": "workspace:*",
     "@gltfi/emit-lua": "workspace:*",
     "@gltfi/emit-py": "workspace:*",
     "@gltfi/emit-ts": "workspace:*",
@@ -19,6 +20,7 @@
     "@gltfi/parse-ts": "workspace:*",
     "@gltfi/runtime": "workspace:*",
     "@gltfi/runtime-cs": "workspace:*",
+    "@gltfi/runtime-gd": "workspace:*",
     "@gltfi/runtime-lib": "workspace:*",
     "@gltfi/runtime-lua": "workspace:*",
     "@gltfi/runtime-py": "workspace:*",

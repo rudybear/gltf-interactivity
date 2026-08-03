@@ -81,6 +81,9 @@ importers:
       '@gltfi/emit-cs':
         specifier: workspace:*
         version: link:../emit-cs
+      '@gltfi/emit-gd':
+        specifier: workspace:*
+        version: link:../emit-gd
       '@gltfi/emit-lua':
         specifier: workspace:*
         version: link:../emit-lua
@@ -117,6 +120,9 @@ importers:
       '@gltfi/runtime-cs':
         specifier: workspace:*
         version: link:../runtime-cs
+      '@gltfi/runtime-gd':
+        specifier: workspace:*
+        version: link:../runtime-gd
       '@gltfi/runtime-lib':
         specifier: workspace:*
         version: link:../runtime-lib
@@ -138,6 +144,15 @@ importers:
         version: 0.23.1
 
   packages/emit-cs:
+    dependencies:
+      '@gltfi/ir':
+        specifier: workspace:*
+        version: link:../ir
+      '@gltfi/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+
+  packages/emit-gd:
     dependencies:
       '@gltfi/ir':
         specifier: workspace:*
@@ -316,6 +331,8 @@ importers:
         version: link:../kernel
 
   packages/runtime-cs: {}
+
+  packages/runtime-gd: {}
 
   packages/runtime-lib:
     dependencies:

@@ -13,6 +13,7 @@
     { "path": "../emit-lua" },
     { "path": "../emit-py" },
     { "path": "../emit-cs" },
+    { "path": "../emit-gd" },
     { "path": "../parse-ts" },
     { "path": "../parse-lua" },
     { "path": "../parse-py" },
@@ -22,6 +23,7 @@
     { "path": "../runtime-lua" },
     { "path": "../runtime-py" },
     { "path": "../runtime-cs" },
+    { "path": "../runtime-gd" },
     { "path": "../gltf" }
   ]
 }
