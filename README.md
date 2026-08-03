@@ -43,6 +43,22 @@ gltfi conform <interp|compiled|roundtrip> [--filter x]             # thin wrappe
 
 Diagnostics from every stage print to stderr; see `docs/diagnostics.md` for what each code means. Run `gltfi --help` for the full usage summary. `packages/cli/test/cli.test.ts` exercises all five subcommands against real corpus assets by invoking the built `dist/main.js` via `child_process`, so `pnpm build` must run before `pnpm test`.
 
+## Examples
+
+[`examples/`](examples/README.md) has nine worked examples generated straight from the official Khronos conformance corpus (`pnpm gen:examples`) — flow control, math, variable interpolation, object-model pointers, custom events, and animation playback. Each example directory holds the same `KHR_interactivity` behavior graph as `graph.json` (raw extension JSON) *and* as `behavior.ts`/`behavior.lua`/`behavior.py` — all four decompiled from, and behaviorally equivalent to, one another; any of the three scripts round-trips back to an equivalent graph via `gltfi compile`.
+
+A taste — `flow/doN`'s counter loop as emitted to TypeScript (`examples/doN/behavior.ts`):
+
+```ts
+function proc49() {
+  if (rt.doN(doN2, 2)) {
+    V.counter2 = (V.counter2 + 1) | 0;
+  }
+}
+```
+
+See [`examples/README.md`](examples/README.md) for the full index and the same snippet in Lua and Python side by side.
+
 ## Fuzzing
 
 ```bash

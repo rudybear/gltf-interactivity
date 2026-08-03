@@ -1,0 +1,2466 @@
+{
+  "graphs": [
+    {
+      "types": [
+        {
+          "signature": "bool"
+        },
+        {
+          "signature": "int"
+        },
+        {
+          "signature": "float"
+        },
+        {
+          "signature": "float2"
+        },
+        {
+          "signature": "float3"
+        },
+        {
+          "signature": "ref"
+        }
+      ],
+      "variables": [
+        {
+          "id": "varInterpolate_14f3dfe8-bfe3-4e24-b44c-4d23611e2ac5",
+          "type": 2,
+          "value": [
+            0
+          ]
+        },
+        {
+          "id": "TestResult_variable/interpolate_Flow [out]",
+          "type": 0,
+          "value": [
+            false
+          ]
+        },
+        {
+          "id": "TestResult_variable/interpolate_Flow [done]",
+          "type": 0,
+          "value": [
+            false
+          ]
+        },
+        {
+          "id": "TestResult_HasPassed_variable/interpolate_Value at 50%",
+          "type": 0,
+          "value": [
+            false
+          ]
+        },
+        {
+          "id": "TestResult_variable/interpolate_Value at 50%",
+          "type": 2,
+          "value": [
+            -0.0142
+          ]
+        },
+        {
+          "id": "TestResult_HasPassed_variable/interpolate_Value at 100%",
+          "type": 0,
+          "value": [
+            false
+          ]
+        },
+        {
+          "id": "TestResult_variable/interpolate_Value at 100%",
+          "type": 2,
+          "value": [
+            -0.0142
+          ]
+        },
+        {
+          "id": "varInterpolate_70d07005-5cf3-4096-aff1-64784e4f4a05",
+          "type": 2,
+          "value": [
+            0
+          ]
+        },
+        {
+          "id": "TestResult_variable/interpolate_[Err] flow (duration -1f",
+          "type": 0,
+          "value": [
+            false
+          ]
+        },
+        {
+          "id": "varInterpolate_e238c886-965c-4e31-8403-0fb87c761997",
+          "type": 2,
+          "value": [
+            0
+          ]
+        },
+        {
+          "id": "TestResult_variable/interpolate_[Err] flow (duration infinite",
+          "type": 0,
+          "value": [
+            false
+          ]
+        },
+        {
+          "id": "varInterpolate_a863aca9-6cb6-4e45-8c24-98370c20b2a1",
+          "type": 2,
+          "value": [
+            0
+          ]
+        },
+        {
+          "id": "TestResult_variable/interpolate_[Err] flow (p1 NaN)",
+          "type": 0,
+          "value": [
+            false
+          ]
+        },
+        {
+          "id": "varInterpolate_fea34d13-336d-4b2e-89fd-2b31b1cce966",
+          "type": 2,
+          "value": [
+            0
+          ]
+        },
+        {
+          "id": "TestResult_variable/interpolate_[Err] flow (p2 NaN)",
+          "type": 0,
+          "value": [
+            false
+          ]
+        }
+      ],
+      "events": [
+        {
+          "id": "test/onStart",
+          "values": {
+            "expectedDuration": {
+              "type": 2,
+              "value": [
+                5
+              ]
+            }
+          }
+        },
+        {
+          "id": "test/onSuccess",
+          "values": {}
+        },
+        {
+          "id": "test/onFailed",
+          "values": {}
+        }
+      ],
+      "declarations": [
+        {
+          "op": "variable/interpolate"
+        },
+        {
+          "op": "event/onStart"
+        },
+        {
+          "op": "pointer/set"
+        },
+        {
+          "op": "debug/log"
+        },
+        {
+          "op": "variable/set"
+        },
+        {
+          "op": "event/send"
+        },
+        {
+          "op": "variable/get"
+        },
+        {
+          "op": "flow/branch"
+        },
+        {
+          "op": "flow/setDelay"
+        },
+        {
+          "op": "flow/sequence"
+        },
+        {
+          "op": "math/sub"
+        },
+        {
+          "op": "math/abs"
+        },
+        {
+          "op": "math/lt"
+        },
+        {
+          "op": "math/and"
+        },
+        {
+          "op": "math/eq"
+        },
+        {
+          "op": "math/Inf"
+        }
+      ],
+      "nodes": [
+        {
+          "declaration": 0,
+          "configuration": {
+            "variable": {
+              "value": [
+                0
+              ]
+            },
+            "useSlerp": {
+              "value": [
+                false
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 2,
+              "value": [
+                10
+              ]
+            },
+            "duration": {
+              "type": 2,
+              "value": [
+                4
+              ]
+            },
+            "p1": {
+              "type": 3,
+              "value": [
+                0.25,
+                0.1
+              ]
+            },
+            "p2": {
+              "type": 3,
+              "value": [
+                0.25,
+                1
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 2,
+              "socket": "in"
+            },
+            "done": {
+              "node": 67,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 1,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 9,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                5
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 3,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "<variable/interpolate - Flow [out]>: Flow triggered"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 4,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 4,
+          "configuration": {
+            "variables": {
+              "value": [
+                1
+              ]
+            }
+          },
+          "values": {
+            "1": {
+              "type": 0,
+              "value": [
+                true
+              ]
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 5,
+          "configuration": {
+            "event": {
+              "value": [
+                2
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                1
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 7,
+          "configuration": {},
+          "values": {
+            "condition": {
+              "node": 6,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "false": {
+              "node": 8,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "ERROR! <variable/interpolate - Flow [out]>: Flow not triggered! This should not happened!"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 8,
+          "configuration": {},
+          "values": {
+            "duration": {
+              "type": 2,
+              "value": [
+                4.5
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 21,
+              "socket": "in"
+            },
+            "done": {
+              "node": 19,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                17
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 11,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                18
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 12,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "<variable/interpolate - Flow [done]>: Flow triggered"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 13,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 4,
+          "configuration": {
+            "variables": {
+              "value": [
+                2
+              ]
+            }
+          },
+          "values": {
+            "2": {
+              "type": 0,
+              "value": [
+                true
+              ]
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 5,
+          "configuration": {
+            "event": {
+              "value": [
+                1
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                2
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 7,
+          "configuration": {},
+          "values": {
+            "condition": {
+              "node": 15,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "false": {
+              "node": 17,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "ERROR! <variable/interpolate - Flow [done]>: Flow not triggered! This should not happened!"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                18
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 16,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 9,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "001": {
+              "node": 7,
+              "socket": "in"
+            },
+            "002": {
+              "node": 18,
+              "socket": "in"
+            },
+            "003": {
+              "node": 53,
+              "socket": "in"
+            },
+            "004": {
+              "node": 66,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 8,
+          "configuration": {},
+          "values": {
+            "duration": {
+              "type": 2,
+              "value": [
+                2
+              ]
+            }
+          },
+          "flows": {
+            "done": {
+              "node": 29,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 9,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "000": {
+              "node": 0,
+              "socket": "in"
+            },
+            "001": {
+              "node": 20,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 10,
+          "configuration": {},
+          "values": {
+            "a": {
+              "node": 22,
+              "socket": "value"
+            },
+            "b": {
+              "type": 2,
+              "value": [
+                8.024034
+              ]
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 11,
+          "configuration": {},
+          "values": {
+            "a": {
+              "node": 23,
+              "socket": "value"
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 12,
+          "configuration": {},
+          "values": {
+            "a": {
+              "node": 24,
+              "socket": "value"
+            },
+            "b": {
+              "type": 2,
+              "value": [
+                0.1
+              ]
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 7,
+          "configuration": {},
+          "values": {
+            "condition": {
+              "node": 25,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "true": {
+              "node": 27,
+              "socket": "in"
+            },
+            "false": {
+              "node": 30,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                11
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 28,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                12
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 32,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                12
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 26,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "<variable/interpolate - Value at 50%>: Value is {0}, should be {1} (Proximity range: 0,1)"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {
+            "0": {
+              "node": 22,
+              "socket": "value"
+            },
+            "1": {
+              "type": 2,
+              "value": [
+                8.024034
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 33,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "<variable/interpolate - Value at 50%>: Test Successful"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 30,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 4,
+          "configuration": {
+            "variables": {
+              "value": [
+                3
+              ]
+            }
+          },
+          "values": {
+            "3": {
+              "node": 25,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 31,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 4,
+          "configuration": {
+            "variables": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "4": {
+              "node": 22,
+              "socket": "value"
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                1
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                3
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 13,
+          "configuration": {},
+          "values": {
+            "a": {
+              "node": 34,
+              "socket": "value"
+            },
+            "b": {
+              "node": 35,
+              "socket": "value"
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                2
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 13,
+          "configuration": {},
+          "values": {
+            "a": {
+              "node": 36,
+              "socket": "value"
+            },
+            "b": {
+              "node": 37,
+              "socket": "value"
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                5
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 13,
+          "configuration": {},
+          "values": {
+            "a": {
+              "node": 38,
+              "socket": "value"
+            },
+            "b": {
+              "node": 39,
+              "socket": "value"
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                8
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 13,
+          "configuration": {},
+          "values": {
+            "a": {
+              "node": 40,
+              "socket": "value"
+            },
+            "b": {
+              "node": 41,
+              "socket": "value"
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                10
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 13,
+          "configuration": {},
+          "values": {
+            "a": {
+              "node": 42,
+              "socket": "value"
+            },
+            "b": {
+              "node": 43,
+              "socket": "value"
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                12
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 13,
+          "configuration": {},
+          "values": {
+            "a": {
+              "node": 44,
+              "socket": "value"
+            },
+            "b": {
+              "node": 45,
+              "socket": "value"
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                14
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 13,
+          "configuration": {},
+          "values": {
+            "a": {
+              "node": 46,
+              "socket": "value"
+            },
+            "b": {
+              "node": 47,
+              "socket": "value"
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 7,
+          "configuration": {},
+          "values": {
+            "condition": {
+              "node": 48,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "true": {
+              "node": 14,
+              "socket": "in"
+            },
+            "false": {
+              "node": 5,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                3
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 7,
+          "configuration": {},
+          "values": {
+            "condition": {
+              "node": 50,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "false": {
+              "node": 52,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "ERROR! <variable/interpolate - Value at 50%>: Test Failed"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                12
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 51,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 14,
+          "configuration": {},
+          "values": {
+            "a": {
+              "node": 22,
+              "socket": "value"
+            },
+            "b": {
+              "type": 2,
+              "value": [
+                10
+              ]
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 7,
+          "configuration": {},
+          "values": {
+            "condition": {
+              "node": 54,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "true": {
+              "node": 56,
+              "socket": "in"
+            },
+            "false": {
+              "node": 59,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                23
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 57,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                24
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 61,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                24
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 55,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "<variable/interpolate - Value at 100%>: Value is {0}, should be {1} "
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {
+            "0": {
+              "node": 22,
+              "socket": "value"
+            },
+            "1": {
+              "type": 2,
+              "value": [
+                10
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 62,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "<variable/interpolate - Value at 100%>: Test Successful"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 59,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 4,
+          "configuration": {
+            "variables": {
+              "value": [
+                5
+              ]
+            }
+          },
+          "values": {
+            "5": {
+              "node": 54,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 60,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 4,
+          "configuration": {
+            "variables": {
+              "value": [
+                6
+              ]
+            }
+          },
+          "values": {
+            "6": {
+              "node": 22,
+              "socket": "value"
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                5
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 7,
+          "configuration": {},
+          "values": {
+            "condition": {
+              "node": 63,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "false": {
+              "node": 65,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "ERROR! <variable/interpolate - Value at 100%>: Test Failed"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                24
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 64,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 9,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "s000": {
+              "node": 10,
+              "socket": "in"
+            },
+            "s001": {
+              "node": 58,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 1,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 76,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 0,
+          "configuration": {
+            "variable": {
+              "value": [
+                7
+              ]
+            },
+            "useSlerp": {
+              "value": [
+                false
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 2,
+              "value": [
+                14
+              ]
+            },
+            "duration": {
+              "type": 2,
+              "value": [
+                -1
+              ]
+            },
+            "p1": {
+              "type": 3,
+              "value": [
+                1,
+                1
+              ]
+            },
+            "p2": {
+              "type": 3,
+              "value": [
+                1,
+                1
+              ]
+            }
+          },
+          "flows": {
+            "err": {
+              "node": 70,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                29
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 71,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "<variable/interpolate - [Err] flow (duration -1f>: Flow triggered"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 72,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 4,
+          "configuration": {
+            "variables": {
+              "value": [
+                8
+              ]
+            }
+          },
+          "values": {
+            "8": {
+              "type": 0,
+              "value": [
+                true
+              ]
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                8
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 7,
+          "configuration": {},
+          "values": {
+            "condition": {
+              "node": 73,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "false": {
+              "node": 75,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "ERROR! <variable/interpolate - [Err] flow (duration -1f>: Flow not triggered! This should not happened!"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 9,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "001": {
+              "node": 74,
+              "socket": "in"
+            },
+            "000": {
+              "node": 69,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 1,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 86,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 15,
+          "configuration": {},
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 0,
+          "configuration": {
+            "variable": {
+              "value": [
+                9
+              ]
+            },
+            "useSlerp": {
+              "value": [
+                false
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 2,
+              "value": [
+                14
+              ]
+            },
+            "duration": {
+              "node": 78,
+              "socket": "value"
+            },
+            "p1": {
+              "type": 3,
+              "value": [
+                1,
+                1
+              ]
+            },
+            "p2": {
+              "type": 3,
+              "value": [
+                1,
+                1
+              ]
+            }
+          },
+          "flows": {
+            "err": {
+              "node": 80,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                35
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 81,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "<variable/interpolate - [Err] flow (duration infinite>: Flow triggered"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 82,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 4,
+          "configuration": {
+            "variables": {
+              "value": [
+                10
+              ]
+            }
+          },
+          "values": {
+            "10": {
+              "type": 0,
+              "value": [
+                true
+              ]
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                10
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 7,
+          "configuration": {},
+          "values": {
+            "condition": {
+              "node": 83,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "false": {
+              "node": 85,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "ERROR! <variable/interpolate - [Err] flow (duration infinite>: Flow not triggered! This should not happened!"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 9,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "001": {
+              "node": 84,
+              "socket": "in"
+            },
+            "000": {
+              "node": 79,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 1,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 95,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 0,
+          "configuration": {
+            "variable": {
+              "value": [
+                11
+              ]
+            },
+            "useSlerp": {
+              "value": [
+                false
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 2,
+              "value": [
+                14
+              ]
+            },
+            "duration": {
+              "type": 2,
+              "value": [
+                1
+              ]
+            },
+            "p1": {
+              "type": 3,
+              "value": [
+                "NaN",
+                "NaN"
+              ]
+            },
+            "p2": {
+              "type": 3,
+              "value": [
+                1,
+                1
+              ]
+            }
+          },
+          "flows": {
+            "err": {
+              "node": 89,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                41
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 90,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "<variable/interpolate - [Err] flow (p1 NaN)>: Flow triggered"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 91,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 4,
+          "configuration": {
+            "variables": {
+              "value": [
+                12
+              ]
+            }
+          },
+          "values": {
+            "12": {
+              "type": 0,
+              "value": [
+                true
+              ]
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                12
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 7,
+          "configuration": {},
+          "values": {
+            "condition": {
+              "node": 92,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "false": {
+              "node": 94,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "ERROR! <variable/interpolate - [Err] flow (p1 NaN)>: Flow not triggered! This should not happened!"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 9,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "001": {
+              "node": 93,
+              "socket": "in"
+            },
+            "000": {
+              "node": 88,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 1,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 104,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 0,
+          "configuration": {
+            "variable": {
+              "value": [
+                13
+              ]
+            },
+            "useSlerp": {
+              "value": [
+                false
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 2,
+              "value": [
+                14
+              ]
+            },
+            "duration": {
+              "type": 2,
+              "value": [
+                1
+              ]
+            },
+            "p1": {
+              "type": 3,
+              "value": [
+                1,
+                1
+              ]
+            },
+            "p2": {
+              "type": 3,
+              "value": [
+                "NaN",
+                "NaN"
+              ]
+            }
+          },
+          "flows": {
+            "err": {
+              "node": 98,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 4,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                47
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 99,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "<variable/interpolate - [Err] flow (p2 NaN)>: Flow triggered"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 100,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 4,
+          "configuration": {
+            "variables": {
+              "value": [
+                14
+              ]
+            }
+          },
+          "values": {
+            "14": {
+              "type": 0,
+              "value": [
+                true
+              ]
+            }
+          },
+          "flows": {}
+        },
+        {
+          "declaration": 6,
+          "configuration": {
+            "variable": {
+              "value": [
+                14
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 7,
+          "configuration": {},
+          "values": {
+            "condition": {
+              "node": 101,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "false": {
+              "node": 103,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "configuration": {
+            "message": {
+              "value": [
+                "ERROR! <variable/interpolate - [Err] flow (p2 NaN)>: Flow not triggered! This should not happened!"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {},
+          "flows": {}
+        },
+        {
+          "declaration": 9,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "001": {
+              "node": 102,
+              "socket": "in"
+            },
+            "000": {
+              "node": 97,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 1,
+          "configuration": {},
+          "values": {},
+          "flows": {
+            "out": {
+              "node": 106,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 5,
+          "configuration": {
+            "event": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {
+            "expectedDuration": {
+              "type": 2,
+              "value": [
+                5
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 107,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 8,
+          "configuration": {},
+          "values": {
+            "duration": {
+              "type": 2,
+              "value": [
+                5
+              ]
+            }
+          },
+          "flows": {
+            "done": {
+              "node": 49,
+              "socket": "in"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "graph": 0
+}

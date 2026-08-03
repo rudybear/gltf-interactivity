@@ -9,6 +9,7 @@
   },
   "scripts": {
     "fetch:assets": "node scripts/fetch-assets.mjs",
+    "gen:examples": "node scripts/gen-examples.mjs",
     "build": "node packages/runtime-lua/scripts/build-lua-sources.mjs && tsc -b",
     "check:registry": "node packages/kernel/scripts/check-registry.mjs",
     "conf:interp": "node packages/conformance/dist/run-interp.js",
