@@ -27,5 +27,6 @@ jobs:
       - run: pnpm test
       - run: pnpm conf:interp
       - run: pnpm conf:compiled
+      - run: pnpm conf:lua
       - run: pnpm conf:roundtrip
       - run: pnpm fuzz

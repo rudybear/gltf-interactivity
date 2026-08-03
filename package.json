@@ -9,10 +9,11 @@
   },
   "scripts": {
     "fetch:assets": "node scripts/fetch-assets.mjs",
-    "build": "tsc -b",
+    "build": "node packages/runtime-lua/scripts/build-lua-sources.mjs && tsc -b",
     "check:registry": "node packages/kernel/scripts/check-registry.mjs",
     "conf:interp": "node packages/conformance/dist/run-interp.js",
     "conf:compiled": "node packages/conformance/dist/run-compiled.js",
+    "conf:lua": "node packages/conformance/dist/run-compiled-lua.js",
     "conf:roundtrip": "node packages/conformance/dist/run-roundtrip.js",
     "fuzz": "node packages/conformance/dist/fuzz.js",
     "test": "vitest run --passWithNoTests",

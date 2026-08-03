@@ -10,9 +10,11 @@
     { "path": "../ir" },
     { "path": "../kernel" },
     { "path": "../emit-ts" },
+    { "path": "../emit-lua" },
     { "path": "../parse-ts" },
     { "path": "../verify" },
     { "path": "../runtime-lib" },
+    { "path": "../runtime-lua" },
     { "path": "../gltf" }
   ]
 }

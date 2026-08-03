@@ -6,14 +6,17 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
-    "@gltfi/runtime": "workspace:*",
+    "@gltfi/emit-lua": "workspace:*",
+    "@gltfi/emit-ts": "workspace:*",
+    "@gltfi/gltf": "workspace:*",
     "@gltfi/ir": "workspace:*",
     "@gltfi/kernel": "workspace:*",
-    "@gltfi/emit-ts": "workspace:*",
     "@gltfi/parse-ts": "workspace:*",
-    "@gltfi/verify": "workspace:*",
+    "@gltfi/runtime": "workspace:*",
     "@gltfi/runtime-lib": "workspace:*",
-    "@gltfi/gltf": "workspace:*"
+    "@gltfi/runtime-lua": "workspace:*",
+    "@gltfi/verify": "workspace:*",
+    "wasmoon": "^1.16.0"
   },
   "devDependencies": {
     "esbuild": "^0.23.0"
