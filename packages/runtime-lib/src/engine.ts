@@ -158,12 +158,13 @@ export type MultiGateSlot = { lastIndex: number; used: boolean[] };
 export type WaitAllSlot = { activated: boolean[]; remaining: number | undefined };
 export type ThrottleSlot = { lastTime: number | undefined; remaining: number };
 
-// Named accessor returned by the object-form of `vars()` (see below) — one
-// entry per declared variable, closing over that variable's own numeric
-// index so emit-ts's `V.<name>.get()/.set(v)` calls need no index at all in
-// the generated text (see emit.ts's header note on the human-readable output
-// shape). `set` accepts the same raw JS value shape `vars()`'s `initial`
-// field does.
+// Legacy named accessor shape, once returned by the object-form of `vars()`
+// — kept exported only so old hand-written callers that still destructure
+// `{get, set}` off a variable keep compiling; the object form itself no
+// longer returns this shape (see `vars()` below, which now binds `V.<name>`
+// straight to the store via `Object.defineProperty` getters/setters instead
+// — emit-ts emits bare `V.<name>` reads/`V.<name> = v` writes, no `.get()`/
+// `.set(v)` calls at all anymore).
 export type VarAccessor = { get(): RawValue; set(value: RawValue): void };
 
 export interface EngineBuilder {
@@ -172,16 +173,20 @@ export interface EngineBuilder {
   // property ORDER is the variable index order (object literals preserve
   // insertion/source order for string keys — this is the load-bearing
   // contract the object form relies on), exactly like the array form's
-  // element order. Returns a named accessor per property; the array form
-  // (unchanged, still used by @gltfi/emit-lua/@gltfi/emit-py's shared IR
-  // pipeline expectations and by hand-written callers — see
+  // element order. Returns a plain object with one OWN accessor property
+  // per declared variable (`Object.defineProperty` getter/setter, each
+  // closing over that variable's own numeric index — see the
+  // implementation below), so emitted code reads/writes it exactly like a
+  // normal field: `V.counter1`/`V.counter1 = v`. The array form (unchanged,
+  // still used by @gltfi/emit-lua/@gltfi/emit-py's shared IR pipeline
+  // expectations and by hand-written callers — see
   // packages/runtime-lib/test/engine.test.ts) returns nothing.
   // One combined signature (rather than a true TS overload pair) so a plain
   // object-literal implementation can satisfy it directly: callers using the
   // array form get `void` back in practice (nothing about the return value
   // is ever asserted there — see engine.test.ts) and callers using the
-  // object form get the accessor map.
-  vars(decls: VarDecl[] | Record<string, VarDecl>): Record<string, VarAccessor> | void;
+  // object form get the live-bound variable object.
+  vars(decls: VarDecl[] | Record<string, VarDecl>): Record<string, RawValue> | void;
   getVar(index: number): RawValue;
   setVar(index: number, value: RawValue): void;
   // Object form: `rt.events({name: {externalId, expectedDuration, ...}})` —
@@ -489,12 +494,20 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
           }
           return undefined;
         }
-        const V: Record<string, VarAccessor> = {};
+        const V: Record<string, RawValue> = {};
         for (const [name, decl] of Object.entries(decls)) {
           const idx = varTypes.length;
           varTypes.push(decl.type);
           varRaw.push(decl.initial);
-          V[name] = { get: () => varRaw[idx], set: (value) => { varRaw[idx] = value; } };
+          // Bind `V.<name>` straight to this variable's store slot — a
+          // plain read/assignment in generated code (`V.counter1`/
+          // `V.counter1 = v`) goes through this getter/setter with no
+          // intermediate accessor object at all.
+          Object.defineProperty(V, name, {
+            enumerable: true,
+            get: () => varRaw[idx],
+            set: (value: RawValue) => { varRaw[idx] = value; }
+          });
         }
         return V;
       },

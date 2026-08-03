@@ -322,9 +322,12 @@ class ModuleParser {
   private tempTypeByDecl = new Map<Node, IRType>();
   // Object-form `rt.vars({name: rt.int(0), ...})`/`rt.events({name: {...}})`
   // accessor lookup: `"<boundName>.<propName>"` -> variable/event index (see
-  // matchVarsStatement/matchEventsStatement and lowerExpr's `V.<name>.get()`/
-  // readEventIndex's `E.<name>` handling below). The array form (still
-  // accepted — see parseVarsArray/parseEventsArray) never populates these.
+  // matchVarsStatement/matchEventsStatement, lowerExpr's bare `V.<name>` read
+  // and tryParseVarAssign's `V.<name> = <expr>` write handling — plus, for
+  // backward compat with previously-emitted code, the old `V.<name>.get()`/
+  // `.set(<expr>)` call-shape handling below — and readEventIndex's
+  // `E.<name>` handling). The array form (still accepted — see
+  // parseVarsArray/parseEventsArray) never populates these.
   private varIndexByProp = new Map<string, number>();
   private eventIndexByProp = new Map<string, number>();
 
@@ -926,6 +929,16 @@ class ModuleParser {
         }
       }
 
+      // Bare `V.<name> = <expr>;` (new emit-ts output shape — see
+      // tryParseVarAssign's doc comment). Checked before the doN/multiGate/
+      // waitAll/throttle state-slot resets below since both match the same
+      // `<ident>.<prop> = <expr>` shape but, like the read side above, draw
+      // from disjoint name spaces.
+      const varAssign = this.tryParseVarAssign(stmts, i, ctx);
+      if (varAssign) {
+        return varAssign;
+      }
+
       // doN / multiGate / waitAll / throttle reset shapes.
       const resetConsumed = this.tryParseReset(stmts, i);
       if (resetConsumed) {
@@ -1405,6 +1418,34 @@ class ModuleParser {
     return { k: "stateful", kind: "multiGate", slot, port: "in", args: [], outs };
   }
 
+  // Bare `V.<name> = <expr>;` — the new emit-ts output shape for setVar
+  // (see emit.ts's "setVar" case; replaces the old `V.<name>.set(<expr>)`
+  // call-statement form, still separately accepted below by matchAccessorCall
+  // for backward compat with previously-emitted code). Native-op lowering
+  // "just works" here with no special-casing: the RHS is lowered through the
+  // ordinary lowerExpr/tryLowerNativeOp path, and a compound update like
+  // `V.counter1 = (V.counter1 + 1) | 0;` naturally bottoms out at the bare
+  // `V.<name>` READ handling added to lowerExpr's PropertyAccessExpression
+  // case above, so this lowers to setVar(counter1, add_int(varGet(counter1),
+  // 1)) exactly like the old `V.counter1.set(V.counter1.get() + 1 | 0)` did.
+  private tryParseVarAssign(stmts: Statement[], i: number, ctx: Ctx): { stmt: IRStmt; consumed: number } | null {
+    const expr = this.exprOf(stmts[i]);
+    if (!expr || !Node.isBinaryExpression(expr) || expr.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
+      return null;
+    }
+    const left = expr.getLeft();
+    if (!Node.isPropertyAccessExpression(left) || !Node.isIdentifier(left.getExpression())) {
+      return null;
+    }
+    const key = `${left.getExpression().getText()}.${left.getName()}`;
+    const varId = this.varIndexByProp.get(key);
+    if (varId === undefined) {
+      return null;
+    }
+    const varType = this.variables[varId]?.type ?? "float";
+    return { stmt: { k: "setVar", varId, expr: this.lowerExpr(expr.getRight(), varType, ctx) }, consumed: 1 };
+  }
+
   private tryParseReset(stmts: Statement[], i: number): { stmt: IRStmt; consumed: number } | null {
     const expr = this.exprOf(stmts[i]);
     if (!expr || !Node.isBinaryExpression(expr) || expr.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
@@ -1659,6 +1700,17 @@ class ModuleParser {
     }
 
     if (Node.isPropertyAccessExpression(expr) && Node.isIdentifier(expr.getExpression())) {
+      // Bare `V.<name>` read (new emit-ts output shape — see parseVarsObject's
+      // varIndexByProp doc comment). Checked before the state-slot field
+      // read below since both are the same `<ident>.<prop>` AST shape but
+      // draw from disjoint name spaces (varIndexByProp keys are
+      // "<boundName>.<propName>" strings; stateSlotIndexByName keys are the
+      // bare slot identifier alone), so there's no ambiguity between e.g.
+      // `V.counter1` and `doN2.count`.
+      const key = `${expr.getExpression().getText()}.${expr.getName()}`;
+      if (this.varIndexByProp.has(key)) {
+        return { k: "varGet", varId: this.varIndexByProp.get(key)! };
+      }
       const slotIdx = this.stateSlotIndexByName.get(expr.getExpression().getText());
       if (slotIdx !== undefined) {
         return this.lowerStateFieldRead(slotIdx, expr.getName());

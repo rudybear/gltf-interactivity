@@ -84,23 +84,43 @@ def _parse_animation_ref(gltf, ref):
     return None
 
 
-class _VarAccessor:
-    """Named accessor returned per-entry by the dict-form `vars()` (see
-    Engine.vars) — closes over its own numeric index exactly like engine.ts's
-    VarAccessor, so emit-py's `V["<name>"].get()/.set(v)` calls need no index
-    at all in the generated text."""
+class _VarStore:
+    """Returned by the dict-form `vars()` (see Engine.vars) — binds EVERY
+    declared name straight to that variable's own store slot via
+    `__getattr__`/`__setattr__` (a single pair of overrides shared by every
+    name, keyed by the `name -> index` map built in `vars()` — not one
+    accessor object per entry like the old `V["<name>"].get()`/`.set(v)`
+    dict-subscript shape), so emitted code reads/writes it exactly like a
+    normal attribute: `V.counter1`/`V.counter1 = v`.
 
-    __slots__ = ("_engine", "_index")
+    Both internal fields are set via `object.__setattr__` in `__init__`
+    (never plain `self._x = ...`) specifically to avoid recursing back into
+    this class's own overridden `__setattr__`, which needs `_name_to_index`
+    to already exist before it can do anything at all — `__slots__` gives
+    them real slots, so ordinary attribute LOOKUP (via `object.
+    __getattribute__`, used throughout below) finds them directly without
+    ever reaching `__getattr__` (which only fires for names absent from
+    normal lookup, i.e. every *declared variable* name, never these two)."""
 
-    def __init__(self, engine: "Engine", index: int):
-        self._engine = engine
-        self._index = index
+    __slots__ = ("_engine", "_name_to_index")
 
-    def get(self):
-        return self._engine._var_raw[self._index]
+    def __init__(self, engine: "Engine", name_to_index: dict):
+        object.__setattr__(self, "_engine", engine)
+        object.__setattr__(self, "_name_to_index", name_to_index)
 
-    def set(self, value) -> None:
-        self._engine._var_raw[self._index] = value
+    def __getattr__(self, name):
+        name_to_index = object.__getattribute__(self, "_name_to_index")
+        if name not in name_to_index:
+            raise AttributeError(name)
+        engine = object.__getattribute__(self, "_engine")
+        return engine._var_raw[name_to_index[name]]
+
+    def __setattr__(self, name, value) -> None:
+        name_to_index = object.__getattribute__(self, "_name_to_index")
+        if name not in name_to_index:
+            raise AttributeError(name)
+        engine = object.__getattribute__(self, "_engine")
+        engine._var_raw[name_to_index[name]] = value
 
 
 class Engine:
@@ -183,23 +203,22 @@ class Engine:
     # comment): `rt.vars({"counter1": rt.int_(0), ...})` — dict insertion
     # order IS the variable index order in Python 3.7+ (the load-bearing
     # contract this relies on, same as the array form's element order).
-    # Returns a plain dict of named accessors, one per key
-    # (`V["counter1"].get()`/`.set(v)` — subscript, not attribute, access:
-    # unlike Lua/TS identifiers, a variable's display name is never
-    # guaranteed usable as a Python attribute name verbatim, so this always
-    # goes through a dict rather than dynamic attributes); the OLD array
-    # form (list of bare `{"type":...,"initial":...}` dicts, still used by
-    # hand-written callers — see packages/runtime-py/test/harness.test.ts)
-    # returns None.
+    # Returns a `_VarStore` bound to every declared name (`V.counter1`/
+    # `V.counter1 = v` — plain attribute access; variable display names are
+    # always sanitized to valid-identifier shape by @gltfi/ir's own naming
+    # pass before they ever reach here, see names.ts's sanitizeIdentifier,
+    # so attribute access is always legal Python); the OLD array form (list
+    # of bare `{"type":...,"initial":...}` dicts, still used by hand-written
+    # callers — see packages/runtime-py/test/harness.test.ts) returns None.
     def vars(self, decls):
         if isinstance(decls, dict):
-            accessors = {}
+            name_to_index = {}
             for name, decl in decls.items():
                 idx = len(self._var_types)
                 self._var_types.append(decl["type"])
                 self._var_raw.append(decl["initial"])
-                accessors[name] = _VarAccessor(self, idx)
-            return accessors
+                name_to_index[name] = idx
+            return _VarStore(self, name_to_index)
         for decl in decls:
             self._var_types.append(decl["type"])
             self._var_raw.append(decl["initial"])

@@ -745,7 +745,7 @@ class Emitter {
       }
       case "setVar": {
         const code = this.emitExpr(stmt.expr);
-        this.push(`V.${this.varName(stmt.varId)}.set(${code})`);
+        this.push(`V.${this.varName(stmt.varId)} = ${code}`);
         return;
       }
       case "setPointer": {
@@ -1182,7 +1182,7 @@ class Emitter {
       case "const":
         return constLiteral(expr.type, expr.data);
       case "varGet":
-        return `V.${this.varName(expr.varId)}.get()`;
+        return `V.${this.varName(expr.varId)}`;
       case "ptrGet": {
         const { pointer, argsObj } = this.pointerCall(expr.template, expr.args);
         const call = argsObj === null ? `rt.ptrGet(${pointer}, "${expr.valueType}")` : `rt.ptrGet(${pointer}, ${argsObj}, "${expr.valueType}")`;

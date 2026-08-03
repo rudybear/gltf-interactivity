@@ -1002,6 +1002,14 @@ class ModuleParser {
     }
 
     if (stmt.type === "AssignmentStatement") {
+      // Bare `V.<name> = <expr>` (new emit-lua output shape — see
+      // tryParseVarAssign's doc comment). Checked before the doN/multiGate/
+      // waitAll/throttle state-slot resets below since both match the same
+      // `<ident>.<prop> = <expr>` shape but draw from disjoint name spaces.
+      const varAssign = this.tryParseVarAssign(stmts, i, ctx);
+      if (varAssign) {
+        return varAssign;
+      }
       const resetConsumed = this.tryParseReset(stmts, i);
       if (resetConsumed) {
         return resetConsumed;
@@ -1487,6 +1495,33 @@ class ModuleParser {
     return { k: "stateful", kind: "multiGate", slot, port: "in", args: [], outs: {} };
   }
 
+  // Bare `V.<name> = <expr>` — the new emit-lua output shape for setVar
+  // (see emit.ts's "setVar" case; replaces the old `V.<name>.set(<expr>)`
+  // call-statement form, still separately accepted below by matchAccessorCall
+  // for backward compat with previously-emitted code). The RHS lowers
+  // through the ordinary lowerExpr path, and a compound update like
+  // `V.counter1 = m.addInt(V.counter1, 1)` naturally bottoms out at the bare
+  // `V.<name>` READ handling added to lowerExpr's MemberExpression case
+  // below, so this lowers to setVar(counter1, add_int(varGet(counter1), 1))
+  // exactly like the old `.set(...)`/`.get()` pair did.
+  private tryParseVarAssign(stmts: Statement[], i: number, ctx: Ctx): { stmt: IRStmt; consumed: number } | null {
+    const stmt = stmts[i] as AssignmentStatement;
+    if (stmt.variables.length !== 1 || stmt.init.length !== 1) {
+      return null;
+    }
+    const left = stmt.variables[0];
+    if (left.type !== "MemberExpression" || left.indexer !== "." || left.base.type !== "Identifier") {
+      return null;
+    }
+    const key = `${left.base.name}.${left.identifier.name}`;
+    const varId = this.varIndexByProp.get(key);
+    if (varId === undefined) {
+      return null;
+    }
+    const varType = this.variables[varId]?.type ?? "float";
+    return { stmt: { k: "setVar", varId, expr: this.lowerExpr(stmt.init[0], varType, ctx) }, consumed: 1 };
+  }
+
   private tryParseReset(stmts: Statement[], i: number): { stmt: IRStmt; consumed: number } | null {
     const stmt = stmts[i] as AssignmentStatement;
     if (stmt.variables.length !== 1 || stmt.init.length !== 1) {
@@ -1859,6 +1894,16 @@ class ModuleParser {
     }
 
     if (expr.type === "MemberExpression" && expr.indexer === "." && expr.base.type === "Identifier") {
+      // Bare `V.<name>` read (new emit-lua output shape — see
+      // parseVarsNamedArray's varIndexByProp doc comment). Checked before
+      // the state-slot field read below since both are the same
+      // `<ident>.<prop>` AST shape but draw from disjoint name spaces
+      // (varIndexByProp keys are "<boundName>.<propName>" strings;
+      // stateSlotIndexByName keys are the bare slot identifier alone).
+      const key = `${expr.base.name}.${expr.identifier.name}`;
+      if (this.varIndexByProp.has(key)) {
+        return { k: "varGet", varId: this.varIndexByProp.get(key)! };
+      }
       const slotIdx = this.stateSlotIndexByName.get(expr.base.name);
       if (slotIdx !== undefined) {
         return this.lowerStateFieldRead(slotIdx, expr.identifier.name);

@@ -886,6 +886,14 @@ class ModuleParser {
       }
 
       if (isType(target, "Attribute")) {
+        // Bare `V.<name> = <expr>` (new emit-py output shape — see
+        // tryParseVarAssign's doc comment). Checked before the `S.<name>`
+        // for-loop shape below since both are Attribute-target assignments,
+        // but distinguished at the AST level the same way lowerExpr's read
+        // side is: this only matches varIndexByProp's own "V.<name>"-style
+        // keys, never an "S.<name>" for-slot.
+        const varAssign = this.tryParseVarAssign(stmts, i, ctx);
+        if (varAssign) return varAssign;
         const forResult = this.tryParseFor(stmts, i, ctx);
         if (forResult) return forResult;
       }
@@ -1491,6 +1499,30 @@ class ModuleParser {
     return { k: "stateful", kind: "multiGate", slot, port: "in", args: [], outs: {} };
   }
 
+  // Bare `V.<name> = <expr>` — the new emit-py output shape for setVar (see
+  // emit.ts's "setVar" case; replaces the old `V["<name>"].set(<expr>)`
+  // dict-subscript-call form, still separately accepted below by
+  // matchAccessorCall for backward compat with previously-emitted code).
+  // The RHS lowers through the ordinary lowerExpr path, and a compound
+  // update like `V.counter1 = m.add_int(V.counter1, 1)` naturally bottoms
+  // out at the bare `V.<name>` READ handling added to lowerExpr's Attribute
+  // case above, so this lowers to setVar(counter1, add_int(varGet(counter1),
+  // 1)) exactly like the old `.set(...)`/`.get()` pair did.
+  private tryParseVarAssign(stmts: PyNode[], i: number, ctx: Ctx): { stmt: IRStmt; consumed: number } | null {
+    const stmt = stmts[i];
+    const target = nodeList(stmt.targets)[0] as PyNode;
+    if (!isType(target, "Attribute") || !isType(target.value as PyNode, "Name")) {
+      return null;
+    }
+    const key = `${(target.value as PyNode).id}.${target.attr}`;
+    const varId = this.varIndexByProp.get(key);
+    if (varId === undefined) {
+      return null;
+    }
+    const varType = this.variables[varId]?.type ?? "float";
+    return { stmt: { k: "setVar", varId, expr: this.lowerExpr(stmt.value as PyNode, varType, ctx) }, consumed: 1 };
+  }
+
   private tryParseReset(stmts: PyNode[], i: number): { stmt: IRStmt; consumed: number } | null {
     const stmt = stmts[i];
 
@@ -1899,6 +1931,18 @@ class ModuleParser {
         return { k: "temp", id: text };
       }
       fail("GP150", expr, `unresolved identifier "${text}"`);
+    }
+
+    // Bare `V.<name>` read (new emit-py output shape — see parseVarsDict's
+    // varIndexByProp doc comment). Distinct from the `S.<name>` state-slot
+    // shape below at the AST level (sAttrOf only ever matches an Attribute
+    // whose base Name is literally "S"), so there's no ambiguity — checked
+    // first purely for locality with the dict-subscript get() form above.
+    if (isType(expr, "Attribute") && isType(expr.value as PyNode, "Name")) {
+      const key = `${(expr.value as PyNode).id}.${expr.attr}`;
+      if (this.varIndexByProp.has(key)) {
+        return { k: "varGet", varId: this.varIndexByProp.get(key)! };
+      }
     }
 
     const sName = sAttrOf(expr);

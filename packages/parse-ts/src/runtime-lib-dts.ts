@@ -17,13 +17,14 @@ declare module "@gltfi/runtime-lib" {
   // Generic over the declared value's own JS shape (number for int/float,
   // boolean for bool, number[] for vectors/matrices, string for ref) so
   // \`vars()\`'s object form (below) can propagate each PROPERTY's own type
-  // through to its accessor — narrower than the old array form's plain
-  // RawValue ever was, which matters here: emit-ts's native-operator
-  // substitution (e.g. \`V.counter.get() + 1\`) needs TS to see \`.get()\` as
-  // returning \`number\`, not the wide \`RawValue\` union, or the native \`+\`/
-  // \`<\`/etc. text wouldn't type-check at all.
+  // straight through to \`V.<name>\`'s own read/write type — narrower than
+  // the old array form's plain RawValue ever was, which matters here:
+  // emit-ts's native-operator substitution (e.g. \`V.counter + 1\`) needs TS
+  // to see \`V.counter\` as plain \`number\`, not the wide \`RawValue\` union,
+  // or the native \`+\`/\`<\`/etc. text wouldn't type-check at all, and a bare
+  // assignment (\`V.counter = (V.counter + 1) | 0;\`) needs the property
+  // itself to be a plain assignable \`number\`, not a \`{get,set}\` wrapper.
   type VarDecl<T = RawValue> = { type: string; initial: T };
-  type VarAccessor<T = RawValue> = { get(): T; set(value: T): void };
   type EventDecl = { externalId?: string; defaultBool?: boolean; defaultInt?: number; defaultFloat?: number; expectedDuration?: number };
   // Maps a pointer's "type" signature STRING LITERAL (always a literal in
   // emitted code — see emit-ts's pointerCall) to the JS shape ptrGet's
@@ -48,9 +49,11 @@ declare module "@gltfi/runtime-lib" {
     // property-accesses \`V.<name>\`/\`E.<name>\` off the *object*-form
     // result, which needs the narrower return type to type-check at all).
     // The object form is generic so each property's own VarDecl<T> carries
-    // through to that property's own VarAccessor<T> in the result.
+    // through to that property's own plain value type \`T\` in the result —
+    // \`V.<name>\` is directly the value (number/boolean/number[]/string),
+    // readable AND assignable (see the header note above).
     vars(decls: VarDecl[]): void;
-    vars<T extends Record<string, VarDecl<any>>>(decls: T): { [K in keyof T]: T[K] extends VarDecl<infer U> ? VarAccessor<U> : never };
+    vars<T extends Record<string, VarDecl<any>>>(decls: T): { [K in keyof T]: T[K] extends VarDecl<infer U> ? U : never };
     getVar(index: number): RawValue;
     setVar(index: number, value: RawValue): void;
     events(decls: EventDecl[]): void;

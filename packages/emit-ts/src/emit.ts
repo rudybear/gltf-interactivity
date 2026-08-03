@@ -844,7 +844,7 @@ class Emitter {
       }
       case "setVar": {
         const code = this.emitExpr(stmt.expr);
-        this.push(`V.${this.varName(stmt.varId)}.set(${code});`);
+        this.push(`V.${this.varName(stmt.varId)} = ${code};`);
         return;
       }
       case "setPointer": {
@@ -1309,7 +1309,7 @@ class Emitter {
       case "const":
         return constLiteral(expr.type, expr.data);
       case "varGet":
-        return `V.${this.varName(expr.varId)}.get()`;
+        return `V.${this.varName(expr.varId)}`;
       case "ptrGet": {
         const { pointer, argsObj } = this.pointerCall(expr.template, expr.args);
         // Always validate against the pointer's own configured signature
@@ -1572,7 +1572,7 @@ class Emitter {
   // since every NaN comparison is false either way) — only the boolean
   // RESULT is negated, which is always exactly correct. Reuses the same
   // exprPrec/PREC_UNARY parenthesization rule as native `math/not` so
-  // atoms (`!V.flag.get()`) read bare while anything looser-binding
+  // atoms (`!V.flag`) read bare while anything looser-binding
   // (`!(a === b)`) gets parens.
   private negateCond(cond: IRExpr): string {
     const code = this.emitExpr(cond);

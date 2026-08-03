@@ -158,26 +158,41 @@ function CreateEngine(setup)
     -- decl = rt.int(0)/rt.bool(false)/... }` entries — an object keyed by
     -- name would NOT preserve declaration order (Lua table literals have no
     -- guaranteed key-iteration order), so the name lives ALONGSIDE each
-    -- array element instead of being decls' own key. Returns a table of
-    -- named accessors (`V.counter1.get()`/`.set(v)`), one per entry, each
-    -- closing over its own numeric index exactly like engine.ts's
-    -- VarAccessor. The OLD plain form (array of bare `{type=,initial=}`
+    -- array element instead of being decls' own key. Returns a table `V`
+    -- with a metatable binding EVERY declared name straight to that
+    -- variable's own store slot via `__index`/`__newindex` (a single pair of
+    -- closures shared by every name, keyed by a name->index lookup table
+    -- built here — not one closure pair per entry like the old
+    -- `V.counter1.get()`/`.set(v)` accessor-object shape), so emitted code
+    -- reads/writes it exactly like a normal field: `V.counter1`/
+    -- `V.counter1 = v`. The OLD plain form (array of bare `{type=,initial=}`
     -- decls, still used by hand-written callers — see
     -- packages/runtime-lua/test/lua-runtime.test.ts) returns nil, same as
     -- before; distinguished by whether the first element itself has a
     -- `name` field.
     function rt.vars(decls)
       if decls[1] ~= nil and decls[1].name ~= nil then
-        local V = {}
+        local nameToIndex = {}
         for _, entry in ipairs(decls) do
           local idx = #varTypes
           varTypes[idx + 1] = entry.decl.type
           varRaw[idx + 1] = entry.decl.initial
-          V[entry.name] = {
-            get = function() return varRaw[idx + 1] end,
-            set = function(v) varRaw[idx + 1] = v end
-          }
+          nameToIndex[entry.name] = idx
         end
+        local V = setmetatable({}, {
+          __index = function(_, name)
+            local idx = nameToIndex[name]
+            if idx == nil then return nil end
+            return varRaw[idx + 1]
+          end,
+          __newindex = function(_, name, value)
+            local idx = nameToIndex[name]
+            if idx == nil then
+              error("rt.vars: unknown variable \"" .. tostring(name) .. "\"")
+            end
+            varRaw[idx + 1] = value
+          end
+        })
         return V
       end
       for _, decl in ipairs(decls) do
