@@ -1004,7 +1004,20 @@ class Importer {
         return { k: "param", name: socket, type: this.socketType(nodeId, socket) };
       }
       this.warn("GI012", nodeId, `read of handler-root node's "${socket}" output from outside its own handler body; lowered to intrinsic`);
-      return { k: "intrinsic", op, config: { crossContext: true, socket }, args: [], type: this.socketType(nodeId, socket) };
+      // `sourceNode` is the original graph node index of the event node
+      // whose output is being read cross-handler — @gltfi/emit-ts needs it
+      // to correlate this read against the writing handler's
+      // `sourceNodeIds["handler:<i>"]` entry (see docs/design/ir-and-
+      // transpiler.md's GI012 note) and lower to rt.eventOutRead(sourceNode,
+      // socket), with the owning handler emitting a matching
+      // rt.eventOut(sourceNode, socket, ...) write.
+      return {
+        k: "intrinsic",
+        op,
+        config: { crossContext: true, socket, sourceNode: nodeId },
+        args: [],
+        type: this.socketType(nodeId, socket)
+      };
     }
     if (op === "variable/get") {
       return { k: "varGet", varId: this.toIndex(this.configValue(nodeId, "variable")) };
@@ -1030,7 +1043,21 @@ class Importer {
     }
     const row = spec.overloads[resolved.overloadIndex];
     const args = row.inputs.map((inputSocket) => this.buildArgExpr(nodeId, inputSocket.name, resolved.inputs[inputSocket.name] ?? "float", ctx));
-    return { k: "op", op, overload: resolved, args, socket: socket === "value" ? undefined : socket };
+    // Plain (non-configSockets) config fields — e.g. math/quatFromAngles's
+    // "order" — affect fixed op behavior but never show up as a wired value
+    // socket, so they must be read here or lost entirely. Ops using
+    // configSockets (math/switch, variable/*, pointer/*, event/*, debug/log,
+    // flow/for/multiGate/waitAll) all have dedicated raising rules above and
+    // never reach this generic path.
+    let config: Record<string, unknown> | undefined;
+    if (spec.config && spec.config.length > 0) {
+      config = {};
+      for (const field of spec.config) {
+        const raw = this.configValue(nodeId, field.name);
+        config[field.name] = raw !== undefined ? raw : field.default;
+      }
+    }
+    return { k: "op", op, overload: resolved, args, socket: socket === "value" ? undefined : socket, config };
   }
 
   private buildArgExpr(nodeId: number, socket: string, fallbackTypeSig: TypeSig, ctx: SiteCtx | null): IRExpr {

@@ -7,6 +7,8 @@
   "types": "dist/index.d.ts",
   "dependencies": {
     "@gltfi/runtime": "workspace:*",
+    "@gltfi/ir": "workspace:*",
+    "@gltfi/kernel": "workspace:*",
     "@gltfi/emit-ts": "workspace:*",
     "@gltfi/parse-ts": "workspace:*",
     "@gltfi/verify": "workspace:*",

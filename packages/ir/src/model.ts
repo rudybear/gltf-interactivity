@@ -167,7 +167,12 @@ export type IRExpr =
   | { k: "varGet"; varId: number }
   | { k: "ptrGet"; template: PtrTemplate; args: IRExpr[]; type: IRType; wantIsValid?: boolean }
   | { k: "param"; name: string; type: IRType }
-  | { k: "op"; op: string; overload: ResolvedOverload; args: IRExpr[]; socket?: string }
+  // `config` carries an op's plain (non-configSockets) config field values
+  // when present (e.g. math/quatFromAngles's "order") — needed because
+  // those fields affect fixed op behavior but never appear as wired value
+  // sockets, so nothing else in this shape would preserve them. Additive:
+  // omitted (undefined) for the vast majority of ops that have no config.
+  | { k: "op"; op: string; overload: ResolvedOverload; args: IRExpr[]; socket?: string; config?: Record<string, unknown> }
   | { k: "temp"; id: TempId }
   | { k: "stateRead"; slot: StateRef; field: string; type: IRType }
   | { k: "intrinsic"; op: string; config: Record<string, unknown>; args: IRExpr[]; type: IRType };

@@ -1,78 +1,41 @@
+// Interpreter conformance runner, rewired through the shared protocol.ts +
+// interp-adapter.ts (see docs/design's M3 refactor: this file used to call
+// @gltfi/runtime/node's evaluateTest directly; it now builds the same
+// RuntimeGraph and drives it through judgeTest via the EngineLike adapter —
+// the "All 145 tests passed." result is unchanged, which is the proof the
+// refactor didn't alter interpreter behavior).
 import fs from "node:fs";
-import path from "node:path";
-import {
-  createRuntime,
-  evaluateTest,
-  type TestEntry
-} from "@gltfi/runtime/node";
-
-const ROOT = process.env.INTERACTIVITY_TESTS_ROOT
-  ?? path.resolve(import.meta.dirname, "../../../external/glTF-Test-Assets-Interactivity/Tests/Interactivity");
-
-function readJson(filePath: string) {
-  return JSON.parse(fs.readFileSync(filePath, "utf8"));
-}
-
-function loadIndex(fileName: string) {
-  const filePath = path.join(ROOT, fileName);
-  return readJson(filePath) as Array<{
-    name: string;
-    variants: { "glTF-Binary": string; "test-Json": string };
-  }>;
-}
-
-function resolveVariantPath(entry: { name: string; variants: { "glTF-Binary": string; "test-Json": string } }) {
-  const baseDir = path.join(ROOT, entry.name);
-  const glbPath = path.join(baseDir, "glTF-Binary", entry.variants["glTF-Binary"]);
-  const testPath = path.join(baseDir, "test-Json", entry.variants["test-Json"]);
-  if (fs.existsSync(glbPath) && fs.existsSync(testPath)) {
-    return { glbPath, testPath };
-  }
-
-  const altGlb = path.join(ROOT, entry.variants["glTF-Binary"]);
-  const altTest = path.join(ROOT, entry.variants["test-Json"]);
-  if (fs.existsSync(altGlb) && fs.existsSync(altTest)) {
-    return { glbPath: altGlb, testPath: altTest };
-  }
-
-  throw new Error(`Missing files for ${entry.name}`);
-}
-
-function gatherTests() {
-  const entries = [...loadIndex("test-index.json"), ...loadIndex("mathtests-index.json")];
-  const tests: TestEntry[] = [];
-  for (const entry of entries) {
-    const { glbPath, testPath } = resolveVariantPath(entry);
-    tests.push({ name: entry.name, glbPath, testPath });
-  }
-  return tests;
-}
+import { createRuntimeFromGlbFile } from "@gltfi/runtime/node";
+import { loadTestAssets } from "./assets.js";
+import { interpEngineFromRuntime } from "./interp-adapter.js";
+import { judgeTest, type TestJson } from "./protocol.js";
 
 function main() {
-  const tests = gatherTests();
+  const assets = loadTestAssets();
   let failures = 0;
-  for (const test of tests) {
+  for (const asset of assets) {
     let result;
     try {
-      result = evaluateTest(test);
+      const testJson = JSON.parse(fs.readFileSync(asset.testPath, "utf8")) as TestJson;
+      result = judgeTest(() => interpEngineFromRuntime(createRuntimeFromGlbFile(asset.glbPath)), testJson);
     } catch (err) {
       result = { ok: false, failures: [`runner crash: ${err instanceof Error ? err.message : String(err)}`] };
     }
     if (!result.ok) {
       failures += 1;
-      console.error(`FAIL ${test.name}`);
+      console.error(`FAIL ${asset.name}`);
       for (const issue of result.failures) {
         console.error(`  - ${issue}`);
       }
     } else {
-      console.log(`PASS ${test.name}`);
+      console.log(`PASS ${asset.name}`);
     }
   }
   if (failures > 0) {
     console.error(`${failures} tests failed.`);
     process.exit(1);
   }
-  console.log(`All ${tests.length} tests passed.`);
+  console.log(`All ${assets.length} tests passed.`);
 }
 
 main();
