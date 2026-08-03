@@ -1,5 +1,5 @@
 
-import type { Value, ValueType } from "@gltfi/kernel";
+import type { Scheduler, SchedulerEffects, Value, ValueType } from "@gltfi/kernel";
 export type { Value, ValueType };
 import {
   applyBinary,
@@ -8,7 +8,7 @@ import {
   broadcast,
   cloneValue,
   crossVec3,
-  cubicBezierEase,
+  createScheduler,
   defaultValue,
   floatValue,
   intValue,
@@ -68,13 +68,18 @@ export type Graph = {
   nodes: GraphNode[];
 };
 
+// The scheduler's continuation type: a thunk closing over executeFlow and
+// the target node/socket (and, for delays, the owning node's bookkeeping —
+// see flow/setDelay below). Kept as a plain closure rather than a NodeRef so
+// the kernel scheduler never needs to know what a "node" or "socket" is.
+export type FlowCont = () => void;
+
 export type RuntimeGraph = {
   graph: Graph;
   variables: Value[];
   nodeStates: Map<number, NodeState>;
   nodeOutputs: Map<number, Map<string, Value>>;
   eventPayloads: Map<number, EventPayload>;
-  time: number;
   pointerX: number;
   pointerY: number;
   activeCameraPosition: [number, number, number] | null;
@@ -84,10 +89,16 @@ export type RuntimeGraph = {
   selectedNodeIndex: number;
   selectionPoint: [number, number, number];
   selectionRayOrigin: [number, number, number];
-  delays: DelayItem[];
-  interpolations: Interpolation[];
-  pointerInterpolations: PointerInterpolation[];
-  animationStates: AnimationState[];
+  // Owns current time, the delay/variable-interp/pointer-interp/animation
+  // tables and the phase ordering that advances them (see @gltfi/kernel's
+  // scheduler.ts). Op implementations below delegate to it instead of
+  // touching tables of their own.
+  scheduler: Scheduler<FlowCont>;
+  // Reverse index (delay id -> owning node id) so flow/cancelDelay can
+  // cancel a delay created by an arbitrary other node and keep that node's
+  // NodeState.delayIds in sync. Purely interpreter/graph-model bookkeeping;
+  // the scheduler itself has no notion of "owning node".
+  delayOwners: Map<number, number>;
   animationRuntimes: Map<number, { playhead: number; virtualPlayhead: number }>;
   gltf: any;
   // Binary buffer chunk (GLB BIN) when available; animation sampler decoding
@@ -95,37 +106,10 @@ export type RuntimeGraph = {
   glbBin: DataView | null;
   eventReceivers: Map<number, number[]>;
   randomState: number;
-  nextDelayId: number;
-  activeDelayRefs: Set<string>;
-  tickCount: number;
-  lastTickDelta: number;
   stoppedEvents: Set<string>;
   trace?: number[];
   onPointerSet?: (pointer: string, value: number[] | boolean[] | number | boolean) => void;
   onDirty?: () => void;
-};
-
-export type PointerInterpolation = {
-  pointer: string;
-  startTime: number;
-  duration: number;
-  startValue: number[];
-  endValue: number[];
-  p1: [number, number];
-  p2: [number, number];
-  isQuaternion: boolean;
-  doneFlow?: NodeRef;
-};
-
-export type AnimationState = {
-  animationIndex: number;
-  startTime: number;
-  endTime: number;
-  stopTime: number;
-  speed: number;
-  entryCreation: number;
-  endDoneFlow?: NodeRef;
-  stopDoneFlow?: NodeRef;
 };
 
 export type NodeState = {
@@ -141,29 +125,6 @@ export type NodeState = {
   lastDelayIndex?: number;
   lastDelayRef?: string;
   delayIds?: number[];
-};
-
-export type DelayItem = {
-  id: number;
-  ref: string;
-  time: number;
-  nodeId: number;
-  socket: string;
-  canceled: boolean;
-  ownerNodeId: number;
-};
-
-export type Interpolation = {
-  variableIndex: number;
-  startTime: number;
-  duration: number;
-  startValue: Value;
-  endValue: Value;
-  p1: [number, number];
-  p2: [number, number];
-  useSlerp: boolean;
-  doneFlow?: NodeRef;
-  errFlow?: NodeRef;
 };
 
 export type EventPayload = {
@@ -1185,11 +1146,11 @@ function evaluateValue(runtime: RuntimeGraph, nodeId: number, socket: string, st
       if (socket === "event") {
         result = { type: "ref", data: ["event:onTick"] };
       } else if (socket === "timeSinceLastTick") {
-        result = floatValue([runtime.lastTickDelta]);
+        result = floatValue([runtime.scheduler.lastTickDelta]);
       } else if (socket === "timeSinceStart") {
-        result = floatValue([runtime.tickCount === 0 ? 0 : runtime.time]);
+        result = floatValue([runtime.scheduler.tickCount === 0 ? 0 : runtime.scheduler.time]);
       } else {
-        result = floatValue([runtime.time]);
+        result = floatValue([runtime.scheduler.time]);
       }
       break;
     }
@@ -1831,7 +1792,7 @@ function resolveVirtualPointer(runtime: RuntimeGraph, resolved: string, signatur
       if (signature !== "bool") {
         return { value: defaultValue(signature), isValid: false };
       }
-      const playing = runtime.animationStates.some((state) => state.animationIndex === index);
+      const playing = runtime.scheduler.isAnimationPlaying(index);
       return { value: boolValue([playing]), isValid: true };
     }
     if (signature !== "float") {
@@ -1964,17 +1925,15 @@ function handlePointerInterpolate(runtime: RuntimeGraph, nodeId: number, stack: 
   }
   const target = valueToNumberArray(getInput(runtime, nodeId, "value", stack));
   const startValue = Array.isArray(current) ? current.map(Number) : [Number(current)];
-  runtime.pointerInterpolations = runtime.pointerInterpolations.filter((item) => item.pointer !== resolved);
-  runtime.pointerInterpolations.push({
+  runtime.scheduler.addPointerInterp({
     pointer: resolved,
-    startTime: runtime.time,
     duration,
     startValue,
     endValue: target,
     p1: [p1[0] ?? 0, p1[1] ?? 0],
     p2: [p2[0] ?? 0, p2[1] ?? 0],
     isQuaternion: /\/rotation$/.test(resolved),
-    doneFlow: node.flows?.done
+    doneCont: flowCont(runtime, node.flows?.done)
   });
   return true;
 }
@@ -2010,7 +1969,7 @@ function handlePointerGet(runtime: RuntimeGraph, nodeId: number, stack: Set<stri
   // not the glTF asset (KHR_interactivity Delay/Event References).
   if (/^\/extensions\/KHR_interactivity\/delays\/\{[^}]+\}$/.test(pointer)) {
     const ref = String(Object.values(inputs)[0] ?? "");
-    if (signature === "ref" && runtime.activeDelayRefs.has(ref)) {
+    if (signature === "ref" && runtime.scheduler.isDelayActive(ref)) {
       return { value: { type: "ref", data: [ref] } as Value, isValid: true };
     }
     return { value: defaultValue(signature), isValid: false };
@@ -2125,6 +2084,14 @@ function runFlow(runtime: RuntimeGraph, node: GraphNode, socket: string) {
   if (flow) {
     executeFlow(runtime, flow.node, flow.socket);
   }
+}
+
+// Wraps a NodeRef flow socket as a scheduler continuation (see FlowCont):
+// a plain closure over executeFlow, so the kernel scheduler never needs to
+// know what a "node" or "socket" is. Returns undefined when the flow isn't
+// wired, matching every call site's existing optional-doneFlow handling.
+function flowCont(runtime: RuntimeGraph, flow: NodeRef | undefined): FlowCont | undefined {
+  return flow ? () => executeFlow(runtime, flow.node, flow.socket) : undefined;
 }
 
 function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, queue: Array<{ nodeId: number; socket: string }>) {
@@ -2357,13 +2324,10 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
       const state = runtime.nodeStates.get(nodeId) ?? {};
       state.delayIds = state.delayIds ?? [];
       if (socket === "cancel") {
-        const cancelIds = new Set(state.delayIds);
-        for (const item of runtime.delays) {
-          if (cancelIds.has(item.id)) {
-            runtime.activeDelayRefs.delete(item.ref);
-          }
+        for (const id of state.delayIds) {
+          runtime.scheduler.cancelDelay(id);
+          runtime.delayOwners.delete(id);
         }
-        runtime.delays = runtime.delays.filter((item) => !cancelIds.has(item.id));
         state.delayIds = [];
         state.lastDelayIndex = -1;
         state.lastDelayRef = "";
@@ -2378,26 +2342,28 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
         runFlow(runtime, node, "err");
         break;
       }
-      const delayId = runtime.nextDelayId;
-      runtime.nextDelayId += 1;
-      const delayRef = `delay:${delayId}`;
+      // The id/ref is minted unconditionally (even with no "done" flow
+      // wired) so lastDelayIndex/lastDelay output sockets stay populated,
+      // matching the source interpreter; only a wired "done" flow actually
+      // gets a scheduled table entry.
+      const { id: delayId, ref: delayRef } = runtime.scheduler.allocateDelayId();
       state.lastDelayIndex = delayId;
       state.lastDelayRef = delayRef;
       state.delayIds.push(delayId);
-      runtime.nodeStates.set(nodeId, state);
-      runtime.activeDelayRefs.add(delayRef);
       const doneFlow = node.flows?.done;
       if (doneFlow) {
-        runtime.delays.push({
-          id: delayId,
-          ref: delayRef,
-          time: runtime.time + duration,
-          nodeId: doneFlow.node,
-          socket: doneFlow.socket,
-          canceled: false,
-          ownerNodeId: nodeId
+        runtime.delayOwners.set(delayId, nodeId);
+        runtime.scheduler.scheduleDelay(delayId, delayRef, duration, () => {
+          const ownerState = runtime.nodeStates.get(nodeId);
+          if (ownerState?.delayIds) {
+            ownerState.delayIds = ownerState.delayIds.filter((id) => id !== delayId);
+            runtime.nodeStates.set(nodeId, ownerState);
+          }
+          runtime.delayOwners.delete(delayId);
+          executeFlow(runtime, doneFlow.node, doneFlow.socket);
         });
       }
+      runtime.nodeStates.set(nodeId, state);
       runFlow(runtime, node, "out");
       break;
     }
@@ -2409,22 +2375,24 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
       // "delayIndex" socket, so keep it as a fallback.
       const delayInput = getInputOptional(runtime, nodeId, "delay", stack)
         ?? getInput(runtime, nodeId, "delayIndex", stack);
-      let delay: DelayItem | undefined;
+      let found;
       if (delayInput.type === "ref") {
         const ref = String(delayInput.data[0] ?? "");
-        delay = runtime.delays.find((item) => item.ref === ref);
+        found = runtime.scheduler.findDelayByRef(ref);
       } else {
         const delayIndex = Math.trunc(valueToNumberArray(delayInput)[0] ?? -1);
-        delay = runtime.delays.find((item) => item.id === delayIndex);
+        found = runtime.scheduler.findDelayById(delayIndex);
       }
-      if (delay) {
-        const found = delay;
-        runtime.activeDelayRefs.delete(found.ref);
-        runtime.delays = runtime.delays.filter((item) => item.id !== found.id);
-        const ownerState = runtime.nodeStates.get(found.ownerNodeId);
-        if (ownerState?.delayIds) {
-          ownerState.delayIds = ownerState.delayIds.filter((id) => id !== found.id);
-          runtime.nodeStates.set(found.ownerNodeId, ownerState);
+      if (found) {
+        runtime.scheduler.cancelDelay(found.id);
+        const ownerNodeId = runtime.delayOwners.get(found.id);
+        runtime.delayOwners.delete(found.id);
+        if (ownerNodeId !== undefined) {
+          const ownerState = runtime.nodeStates.get(ownerNodeId);
+          if (ownerState?.delayIds) {
+            ownerState.delayIds = ownerState.delayIds.filter((id) => id !== found.id);
+            runtime.nodeStates.set(ownerNodeId, ownerState);
+          }
         }
       }
       runFlow(runtime, node, "out");
@@ -2460,16 +2428,12 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
         runFlow(runtime, node, "err");
         break;
       }
-      runtime.animationStates = runtime.animationStates.filter((state) => state.animationIndex !== animIndex);
-      runtime.animationStates.push({
+      runtime.scheduler.startAnimation({
         animationIndex: animIndex,
         startTime,
         endTime,
-        stopTime: endTime,
         speed,
-        entryCreation: runtime.time,
-        endDoneFlow: node.flows?.done,
-        stopDoneFlow: undefined
+        endCont: flowCont(runtime, node.flows?.done)
       });
       runFlow(runtime, node, "out");
       break;
@@ -2483,7 +2447,7 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
         runFlow(runtime, node, "err");
         break;
       }
-      runtime.animationStates = runtime.animationStates.filter((state) => state.animationIndex !== animIndex);
+      runtime.scheduler.stopAnimation(animIndex);
       runFlow(runtime, node, "out");
       break;
     }
@@ -2497,11 +2461,7 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
         runFlow(runtime, node, "err");
         break;
       }
-      const entry = runtime.animationStates.find((state) => state.animationIndex === animIndex);
-      if (entry) {
-        entry.stopTime = stopTime;
-        entry.stopDoneFlow = node.flows?.done;
-      }
+      runtime.scheduler.stopAnimationAt(animIndex, stopTime, flowCont(runtime, node.flows?.done));
       runFlow(runtime, node, "out");
       break;
     }
@@ -2532,7 +2492,7 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
         runFlow(runtime, node, "err");
         break;
       }
-      const decision = throttleAdvance(state.throttleTime, duration, runtime.time);
+      const decision = throttleAdvance(state.throttleTime, duration, runtime.scheduler.time);
       state.throttleTime = decision.lastTime;
       state.throttleRemaining = decision.remaining;
       runtime.nodeStates.set(nodeId, state);
@@ -2575,17 +2535,15 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
       const index = toIndex(variableIndex);
       const startValue = cloneValue(runtime.variables[index] ?? defaultValue(value.type));
       const endValue = cloneValue(value);
-      runtime.interpolations.push({
+      runtime.scheduler.addVariableInterp({
         variableIndex: index,
-        startTime: runtime.time,
         duration,
         startValue,
         endValue,
         p1: [p1[0] ?? 0, p1[1] ?? 0],
         p2: [p2[0] ?? 0, p2[1] ?? 0],
         useSlerp,
-        doneFlow: node.flows?.done,
-        errFlow: node.flows?.err
+        doneCont: flowCont(runtime, node.flows?.done)
       });
       runFlow(runtime, node, "out");
       break;
@@ -2608,151 +2566,14 @@ export function executeFlow(runtime: RuntimeGraph, nodeId: number, socket = "in"
   }
 }
 
+// Thin wrapper: the phase ordering (animation playback, pointer
+// interpolations, variable interpolations, due delays, then per-tick
+// handler activation with tick bookkeeping) now lives in the kernel
+// scheduler (see @gltfi/kernel's scheduler.ts). Kept as a function — rather
+// than inlining `runtime.scheduler.advance(delta)` at call sites — because
+// host.ts and other embedders import and call it directly.
 export function advanceTime(runtime: RuntimeGraph, delta: number) {
-  runtime.time += delta;
-  // Animation playback (KHR_interactivity Animation Control Operations).
-  const finishedAnimations: Array<{ flow?: NodeRef }> = [];
-  runtime.animationStates = runtime.animationStates.filter((state) => {
-    const { animationIndex, startTime, endTime, stopTime, speed } = state;
-    if (startTime === endTime) {
-      applyAnimationAt(runtime, animationIndex, startTime);
-      finishedAnimations.push({ flow: state.endDoneFlow });
-      return false;
-    }
-    const elapsed = Math.max(0, runtime.time - state.entryCreation);
-    const scaled = startTime > endTime ? -elapsed * speed : elapsed * speed;
-    const current = startTime + scaled;
-    const forward = startTime < endTime;
-    const stopHit = forward
-      ? current >= stopTime && stopTime >= startTime && stopTime < endTime
-      : current <= stopTime && stopTime <= startTime && stopTime > endTime;
-    if (stopHit) {
-      applyAnimationAt(runtime, animationIndex, stopTime);
-      finishedAnimations.push({ flow: state.stopDoneFlow });
-      return false;
-    }
-    const endHit = forward ? current >= endTime : current <= endTime;
-    if (endHit) {
-      applyAnimationAt(runtime, animationIndex, endTime);
-      finishedAnimations.push({ flow: state.endDoneFlow });
-      return false;
-    }
-    applyAnimationAt(runtime, animationIndex, current);
-    return true;
-  });
-  for (const finished of finishedAnimations) {
-    if (finished.flow) {
-      executeFlow(runtime, finished.flow.node, finished.flow.socket);
-    }
-  }
-  // Object-model property interpolations (pointer/interpolate).
-  const finishedPointerInterps: Array<{ flow?: NodeRef }> = [];
-  runtime.pointerInterpolations = runtime.pointerInterpolations.filter((interp) => {
-    const t = interp.duration > 0 ? (runtime.time - interp.startTime) / interp.duration : Infinity;
-    if (t <= 0) {
-      return true;
-    }
-    if (Number.isNaN(t) || t >= 1) {
-      const target = interp.endValue.length === 1 ? interp.endValue[0] : interp.endValue;
-      if (setPointerValue(runtime.gltf, interp.pointer, target)) {
-        runtime.onPointerSet?.(interp.pointer, target);
-        runtime.onDirty?.();
-      }
-      finishedPointerInterps.push({ flow: interp.doneFlow });
-      return false;
-    }
-    const q = cubicBezierEase(t, interp.p1, interp.p2);
-    const value = interp.isQuaternion
-      ? quatSlerp(interp.startValue, interp.endValue, q)
-      : interp.startValue.map((item, index) => item + (interp.endValue[index] - item) * q);
-    const written = value.length === 1 ? value[0] : value;
-    if (setPointerValue(runtime.gltf, interp.pointer, written)) {
-      runtime.onPointerSet?.(interp.pointer, written);
-      runtime.onDirty?.();
-    }
-    return true;
-  });
-  for (const finished of finishedPointerInterps) {
-    if (finished.flow) {
-      executeFlow(runtime, finished.flow.node, finished.flow.socket);
-    }
-  }
-  runtime.interpolations = runtime.interpolations.filter((interp) => {
-    const t = Math.min(1, (runtime.time - interp.startTime) / interp.duration);
-    const ease = cubicBezierEase(t, interp.p1, interp.p2);
-    if (interp.useSlerp && interp.startValue.type === "float4" && interp.endValue.type === "float4") {
-      const q = quatSlerp(valueToNumberArray(interp.startValue), valueToNumberArray(interp.endValue), ease);
-      runtime.variables[interp.variableIndex] = { type: "float4", data: q };
-    } else {
-      const start = valueToNumberArray(interp.startValue);
-      const end = valueToNumberArray(interp.endValue);
-      const out = start.map((item, index) => item + (end[index] - item) * ease);
-      runtime.variables[interp.variableIndex] = { type: interp.endValue.type, data: out } as Value;
-    }
-    if (t >= 1) {
-      if (interp.doneFlow) {
-        executeFlow(runtime, interp.doneFlow.node, interp.doneFlow.socket);
-      }
-      return false;
-    }
-    return true;
-  });
-  const ready = runtime.delays.filter((item) => !item.canceled && item.time <= runtime.time);
-  runtime.delays = runtime.delays.filter((item) => !item.canceled && item.time > runtime.time);
-  for (const item of ready) {
-    runtime.activeDelayRefs.delete(item.ref);
-    const ownerState = runtime.nodeStates.get(item.ownerNodeId);
-    if (ownerState?.delayIds) {
-      ownerState.delayIds = ownerState.delayIds.filter((id) => id !== item.id);
-      runtime.nodeStates.set(item.ownerNodeId, ownerState);
-    }
-    executeFlow(runtime, item.nodeId, item.socket);
-  }
-  if (delta > 0) {
-    runtime.lastTickDelta = runtime.tickCount === 0 ? NaN : delta;
-    runtime.graph.nodes.forEach((node, index) => {
-      if ((runtime.graph.declarations[node.declaration]?.op ?? "") === "event/onTick") {
-        executeFlow(runtime, index);
-      }
-    });
-    runtime.tickCount += 1;
-  }
-}
-
-function runEntryPoint(runtime: RuntimeGraph, entry: { nodeId: number; delayedExecutionTime?: number }, options: ExecuteOptions) {
-  runtime.time = 0;
-  runtime.delays = [];
-  runtime.interpolations = [];
-  runtime.nodeStates.clear();
-  runtime.nodeOutputs.clear();
-  runtime.eventPayloads.clear();
-  executeFlow(runtime, entry.nodeId);
-  const delay = entry.delayedExecutionTime ?? 0;
-  if (delay <= 0) {
-    advanceTime(runtime, 0);
-    return;
-  }
-  while (runtime.time + 1e-6 < delay) {
-    let nextTime = delay;
-    if (runtime.delays.length > 0) {
-      const soonest = Math.min(...runtime.delays.filter((item) => !item.canceled).map((item) => item.time));
-      if (Number.isFinite(soonest)) {
-        nextTime = Math.min(nextTime, soonest);
-      }
-    }
-    if (runtime.interpolations.length > 0) {
-      const soonestInterp = Math.min(...runtime.interpolations.map((interp) => interp.startTime + interp.duration));
-      if (Number.isFinite(soonestInterp)) {
-        nextTime = Math.min(nextTime, soonestInterp);
-      }
-    }
-    const delta = Math.max(0, nextTime - runtime.time);
-    if (delta === 0) {
-      advanceTime(runtime, options.tickStep ?? 1 / 60);
-    } else {
-      advanceTime(runtime, delta);
-    }
-  }
+  runtime.scheduler.advance(delta);
 }
 
 export function compareValues(expected: Array<number | boolean>, actual: Value, type: ValueType, epsilon = 1e-4): boolean {
@@ -2816,13 +2637,20 @@ export function createRuntime(
   } else if (binary) {
     glbBin = new DataView(binary.buffer, binary.byteOffset, binary.byteLength);
   }
-  return {
+  // `runtime` is referenced by the scheduler effects below before it's
+  // fully populated; that's fine; effects only run once the scheduler's
+  // advance()/add*() methods are called, which is always after this
+  // function returns. Built via an empty-object placeholder + Object.assign
+  // (rather than a `let runtime: RuntimeGraph;` reassignment) so every
+  // closure captures the same, single runtime object identity.
+  const runtime = {} as RuntimeGraph;
+  const scheduler = createScheduler<FlowCont>(makeSchedulerEffects(runtime));
+  Object.assign(runtime, {
     graph,
     variables,
     nodeStates: new Map(),
     nodeOutputs: new Map(),
     eventPayloads: new Map(),
-    time: 0,
     pointerX: 0,
     pointerY: 0,
     activeCameraPosition: null,
@@ -2832,22 +2660,49 @@ export function createRuntime(
     selectedNodeIndex: -1,
     selectionPoint: [NaN, NaN, NaN],
     selectionRayOrigin: [NaN, NaN, NaN],
-    delays: [],
-    interpolations: [],
-    pointerInterpolations: [],
-    animationStates: [],
+    scheduler,
+    delayOwners: new Map(),
     animationRuntimes: new Map(),
     gltf: prepareGltfData(gltf),
     glbBin,
     eventReceivers,
     randomState: 123456789,
-    nextDelayId: 0,
-    activeDelayRefs: new Set(),
-    tickCount: 0,
-    lastTickDelta: NaN,
     stoppedEvents: new Set(),
     onPointerSet: options.onPointerSet,
     onDirty: options.onDirty
+  } satisfies RuntimeGraph);
+  return runtime;
+}
+
+// Builds the SchedulerEffects the kernel scheduler drives: applying sampled
+// animation channels, writing interpolated pointer/variable values, and
+// resuming execution for a fired continuation. `runtime` is a forward
+// reference (see createRuntime) — every function here is only ever invoked
+// after createRuntime has fully populated it.
+function makeSchedulerEffects(runtime: RuntimeGraph): SchedulerEffects<FlowCont> {
+  return {
+    fireFlow(cont) {
+      cont();
+    },
+    applyAnimationSample(animationIndex, requestedTime) {
+      applyAnimationAt(runtime, animationIndex, requestedTime);
+    },
+    setPointer(pointer, value) {
+      if (setPointerValue(runtime.gltf, pointer, value)) {
+        runtime.onPointerSet?.(pointer, value as number[] | boolean[] | number | boolean);
+        runtime.onDirty?.();
+      }
+    },
+    setVariable(variableIndex, value) {
+      runtime.variables[variableIndex] = value;
+    },
+    onTickPhase() {
+      runtime.graph.nodes.forEach((node, index) => {
+        if ((runtime.graph.declarations[node.declaration]?.op ?? "") === "event/onTick") {
+          executeFlow(runtime, index);
+        }
+      });
+    }
   };
 }
 
@@ -2885,7 +2740,7 @@ export function evaluateGraphTests(buildRuntime: () => RuntimeGraph, testJson: T
     }
     const deadline = duration + 0.25;
     const step = 1 / 60;
-    while (runtime.time < deadline) {
+    while (runtime.scheduler.time < deadline) {
       advanceTime(runtime, step);
     }
     for (const subTest of test.subTests) {

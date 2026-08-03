@@ -121,22 +121,16 @@ export class InteractivityRuntime {
   }
 
   getDebugState() {
-    const r = this.runtime as unknown as {
-      time: number;
-      tickCount: number;
-      lastTickDelta: number;
-      delays: unknown[];
-      pointerInterpolations: unknown[];
-      gltf?: { nodes?: Array<{ translation?: number[] }> };
-    };
+    const scheduler = this.runtime.scheduler;
+    const gltf = this.runtime.gltf as { nodes?: Array<{ translation?: number[] }> } | undefined;
     return {
-      time: r.time,
-      tickCount: r.tickCount,
-      lastTickDelta: r.lastTickDelta,
-      delays: r.delays?.length,
-      pointerInterpolations: r.pointerInterpolations?.length,
-      node3: r.gltf?.nodes?.[3]?.translation ?? null,
-      node4: r.gltf?.nodes?.[4]?.translation ?? null
+      time: scheduler.time,
+      tickCount: scheduler.tickCount,
+      lastTickDelta: scheduler.lastTickDelta,
+      delays: scheduler.delayCount,
+      pointerInterpolations: scheduler.pointerInterpCount,
+      node3: gltf?.nodes?.[3]?.translation ?? null,
+      node4: gltf?.nodes?.[4]?.translation ?? null
     };
   }
 
