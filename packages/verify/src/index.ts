@@ -7,7 +7,7 @@
 // it came from @gltfi/ir's exportGraph or anywhere else); normalizeGraph +
 // equivalentGraphs do a best-effort parallel walk comparing two graphs.
 import { getOpSpec } from "@gltfi/kernel";
-import type { Diagnostic } from "@gltfi/ir";
+import { formatPointerTemplate, parsePointerTemplate, type Diagnostic } from "@gltfi/ir";
 
 // Structurally compatible with @gltfi/ir's Graph/GraphNode/GraphJson types
 // (and hence with @gltfi/runtime's Graph) — kept as a local, minimal shape
@@ -245,7 +245,43 @@ function isDefaultLiteral(signature: string, data: ReadonlyArray<number | boolea
   }
 }
 
-function canonicalConfig(graph: VGraph, op: string, node: VGraphNode): string {
+// pointer/get|set|interpolate's "pointer" config carries a template string
+// ("/nodes/[nodeIndex]/translation") whose bracketed params are backed by
+// ordinary value sockets of the same name. @gltfi/emit-ts's readability
+// rewrite inlines any CONSTANT-fed int param straight into the path string
+// at emit time (see emit.ts's pointerCall doc comment), which is execution-
+// equivalent but structurally different: the re-exported graph's "pointer"
+// config text and value-socket set genuinely differ from a graph that never
+// went through that inlining. Since this specific pattern — a literal node/
+// material/etc. index feeding a pointer/set that writes a fixed "test
+// passed" marker — is essentially universal across the official corpus
+// (verified: every one of the 145 conformance assets follows it), leaving
+// it uncanonicalized would make equivalentGraphs report DIVERGED for
+// nearly every test, defeating its purpose as a triage signal. Resolve
+// BOTH graphs' pointer templates through the same "inline any literal int
+// param" transform before comparing (mirrors emit-ts's pointerCall exactly,
+// including restricting this to `int` params only — a `ref` param's value
+// is itself a full pointer-shaped string, unsafe to splice as raw literal
+// path text) — an already-literal template is a no-op under this, so this
+// only ever makes two graphs MORE likely to compare equal, never less.
+function resolvePointerTemplate(node: VGraphNode, pointerStr: string): { resolvedPointer: string; inlinedSockets: Set<string> } {
+  const template = parsePointerTemplate(pointerStr);
+  const inlinedSockets = new Set<string>();
+  const segments = template.segments.map((seg) => {
+    if (seg.k === "lit") {
+      return seg;
+    }
+    const entry = node.values?.[seg.name];
+    if (seg.k === "int" && entry && !("node" in entry)) {
+      inlinedSockets.add(seg.name);
+      return { k: "lit" as const, text: String(Math.trunc(Number(entry.value[0] ?? 0))) };
+    }
+    return seg;
+  });
+  return { resolvedPointer: formatPointerTemplate({ segments }), inlinedSockets };
+}
+
+function canonicalConfig(graph: VGraph, op: string, node: VGraphNode, resolvedPointer: string | undefined): string {
   const cfg = node.configuration ?? {};
   const keys = Object.keys(cfg).sort();
   return JSON.stringify(
@@ -253,6 +289,9 @@ function canonicalConfig(graph: VGraph, op: string, node: VGraphNode): string {
       if (POINTER_TYPE_OPS.has(op) && k === "type") {
         const idx = Number(cfg[k].value[0]);
         return [k, `sig:${graph.types[idx]?.signature ?? `<invalid:${idx}>`}`];
+      }
+      if (POINTER_TYPE_OPS.has(op) && k === "pointer" && resolvedPointer !== undefined) {
+        return [k, resolvedPointer];
       }
       if (op === "flow/switch" && k === "cases") {
         // flow/switch's output flow sockets are keyed by the case *value*
@@ -271,7 +310,11 @@ function canonicalConfig(graph: VGraph, op: string, node: VGraphNode): string {
 export function normalizeGraph(graph: VGraph): NormalizedGraph {
   const nodes: NormalizedNode[] = graph.nodes.map((node) => {
     const op = graph.declarations[node.declaration]?.op ?? `<invalid:${node.declaration}>`;
+    const pointerCfgValue = POINTER_TYPE_OPS.has(op) ? node.configuration?.pointer?.value[0] : undefined;
+    const pointerResolution = typeof pointerCfgValue === "string" ? resolvePointerTemplate(node, pointerCfgValue) : undefined;
+    const inlinedSockets = pointerResolution?.inlinedSockets ?? new Set<string>();
     const values = Object.entries(node.values ?? {})
+      .filter(([socket]) => !inlinedSockets.has(socket))
       .map(([socket, v]): [string, string] => {
         if ("node" in v) {
           return [normSocket(socket), `ref:${v.node}:${normSocket(v.socket ?? "value")}`];
@@ -284,7 +327,7 @@ export function normalizeGraph(graph: VGraph): NormalizedGraph {
     const flows = Object.entries(node.flows ?? {})
       .map(([socket, f]): [string, number] => [normSocket(socket), f.node])
       .sort((a, b) => a[0].localeCompare(b[0]));
-    return { op, config: canonicalConfig(graph, op, node), values, flows };
+    return { op, config: canonicalConfig(graph, op, node, pointerResolution?.resolvedPointer), values, flows };
   });
   return { graph, nodes };
 }

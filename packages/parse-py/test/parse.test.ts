@@ -27,13 +27,215 @@ import fs from "node:fs";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { createRuntimeFromGlbFile } from "@gltfi/runtime/node";
-import { checkModule, importGraph, type Graph, type IRExpr, type IRModule, type IRStmt } from "@gltfi/ir";
+import { resolveOverload } from "@gltfi/kernel";
+import { checkModule, formatPointerTemplate, importGraph, parsePointerTemplate, type Graph, type IRExpr, type IRModule, type IRStmt, type PtrTemplate } from "@gltfi/ir";
 import { emitModule } from "@gltfi/emit-ts";
 import { emitModuleLua } from "@gltfi/emit-lua";
 import { emitModulePy } from "@gltfi/emit-py";
 import { parseModule } from "@gltfi/parse-ts";
 import { parseModuleLua } from "@gltfi/parse-lua";
 import { closeParser, parseModulePy } from "../src/index.js";
+
+const AMBIGUOUS_COMPARE_OPS = new Set(["math/eq", "math/lt", "math/le", "math/gt", "math/ge"]);
+
+// Mirrors @gltfi/parse-ts/test/parse.test.ts's identically-named helper —
+// see that file for the full rationale. Needed HERE too because
+// @gltfi/emit-ts (one of the three backends this file cross-compares)
+// inlines constant pointer-template args into the path string (see emit-
+// ts's pointerCall), while @gltfi/emit-lua/@gltfi/emit-py still emit the
+// parameterized template unchanged — so without normalizing all sides
+// through the same inlining, every pointer node would spuriously mismatch.
+function inlinePointerConstants(template: PtrTemplate, args: IRExpr[]): { template: PtrTemplate; args: IRExpr[] } {
+  let argIdx = 0;
+  const remainingArgs: IRExpr[] = [];
+  const segments = template.segments.map((seg) => {
+    if (seg.k === "lit") {
+      return seg;
+    }
+    const arg = args[argIdx];
+    argIdx += 1;
+    // Only INT params inline safely — see emit-ts's pointerCall doc comment
+    // (a `ref` param's own value is a full pointer-shaped string, which
+    // would double up with the template's surrounding literal segments).
+    if (seg.k === "int" && arg && arg.k === "const") {
+      return { k: "lit" as const, text: String(Math.trunc(Number(arg.data[0] ?? 0))) };
+    }
+    remainingArgs.push(arg);
+    return seg;
+  });
+  const resolvedTemplate = parsePointerTemplate(formatPointerTemplate({ segments }));
+  return { template: resolvedTemplate, args: remainingArgs };
+}
+
+function normalizePointersInExpr(expr: IRExpr): IRExpr {
+  switch (expr.k) {
+    case "ptrGet": {
+      const { template, args } = inlinePointerConstants(expr.template, expr.args.map(normalizePointersInExpr));
+      return { ...expr, template, args };
+    }
+    case "op": {
+      const args = expr.args.map(normalizePointersInExpr);
+      // See parse-ts's test file's identical comment: emit-ts's native
+      // math/eq|lt|le|gt|ge substitution loses the int-vs-float distinction
+      // whenever an operand's type comes from an all-literal math/switch
+      // (harmlessly — the rendered "===" / "<" / etc. text is identical
+      // either way); emit-lua/emit-py keep the original, unambiguous type.
+      // All sides canonicalize to "float" so this doesn't spuriously
+      // mismatch.
+      if (AMBIGUOUS_COMPARE_OPS.has(expr.op) && expr.overload.inputs.a === "int") {
+        const overload = resolveOverload(expr.op, { a: "float", b: "float" });
+        if (overload) {
+          const canonArgs = args.map((a) => (a.k === "const" && a.type === "int" ? { ...a, type: "float" as const } : a));
+          return { ...expr, overload, args: canonArgs };
+        }
+      }
+      return { ...expr, args };
+    }
+    case "intrinsic": {
+      const args = expr.args.map(normalizePointersInExpr);
+      if (expr.op === "math/switch") {
+        const [selection, ...rest] = args;
+        const canonRest = rest.map((a) => (a.k === "const" && a.type === "int" ? { ...a, type: "float" as const } : a));
+        return { ...expr, type: expr.type === "int" ? "float" : expr.type, args: [selection, ...canonRest] };
+      }
+      return { ...expr, args };
+    }
+    default:
+      return expr;
+  }
+}
+
+function normalizePointersInStmt(stmt: IRStmt): IRStmt {
+  switch (stmt.k) {
+    case "seq":
+      return { ...stmt, stmts: stmt.stmts.map(normalizePointersInStmt) };
+    case "let":
+      return { ...stmt, expr: normalizePointersInExpr(stmt.expr) };
+    case "if":
+      return { ...stmt, cond: normalizePointersInExpr(stmt.cond), then: normalizePointersInStmt(stmt.then), else: stmt.else ? normalizePointersInStmt(stmt.else) : undefined };
+    case "while":
+      return { ...stmt, cond: normalizePointersInExpr(stmt.cond), body: normalizePointersInStmt(stmt.body), completed: stmt.completed ? normalizePointersInStmt(stmt.completed) : undefined };
+    case "for":
+      return {
+        ...stmt,
+        start: normalizePointersInExpr(stmt.start),
+        end: normalizePointersInExpr(stmt.end),
+        body: normalizePointersInStmt(stmt.body),
+        completed: stmt.completed ? normalizePointersInStmt(stmt.completed) : undefined
+      };
+    case "switch":
+      return {
+        ...stmt,
+        selector: normalizePointersInExpr(stmt.selector),
+        cases: stmt.cases.map(([c, body]) => [c, normalizePointersInStmt(body)] as [number, IRStmt]),
+        default: stmt.default ? normalizePointersInStmt(stmt.default) : undefined
+      };
+    case "setVar":
+      return { ...stmt, expr: normalizePointersInExpr(stmt.expr) };
+    case "setPointer": {
+      const { template, args } = inlinePointerConstants(stmt.template, stmt.args.map(normalizePointersInExpr));
+      return { ...stmt, template, args, value: normalizePointersInExpr(stmt.value), out: stmt.out ? normalizePointersInStmt(stmt.out) : undefined, err: stmt.err ? normalizePointersInStmt(stmt.err) : undefined };
+    }
+    case "emitEvent":
+      return { ...stmt, args: stmt.args.map(normalizePointersInExpr) };
+    case "stopPropagation":
+      return { ...stmt, stopImmediate: normalizePointersInExpr(stmt.stopImmediate) };
+    case "log":
+      return { ...stmt, args: stmt.args.map(normalizePointersInExpr) };
+    case "callProc":
+      return stmt;
+    case "async": {
+      const out = stmt.out ? normalizePointersInStmt(stmt.out) : undefined;
+      const err = stmt.err ? normalizePointersInStmt(stmt.err) : undefined;
+      const done = stmt.done ? (stmt.done.kind === "inline" ? { kind: "inline" as const, body: normalizePointersInStmt(stmt.done.body) } : stmt.done) : undefined;
+      if (stmt.kind === "ptrInterp" && stmt.template) {
+        const fixed = stmt.args.slice(0, 4).map(normalizePointersInExpr);
+        const ptrArgs = stmt.args.slice(4);
+        const { template, args: remainingPtrArgs } = inlinePointerConstants(stmt.template, ptrArgs.map(normalizePointersInExpr));
+        return { ...stmt, template, args: [...fixed, ...remainingPtrArgs], out, err, done };
+      }
+      return { ...stmt, args: stmt.args.map(normalizePointersInExpr), out, err, done };
+    }
+    case "stateful":
+      return { ...stmt, args: stmt.args.map(normalizePointersInExpr), outs: Object.fromEntries(Object.entries(stmt.outs).map(([k, v]) => [k, normalizePointersInStmt(v)])) };
+    case "intrinsic":
+      return { ...stmt, args: stmt.args.map(normalizePointersInExpr), outs: Object.fromEntries(Object.entries(stmt.outs).map(([k, v]) => [k, normalizePointersInStmt(v)])) };
+  }
+}
+
+// Mirrors parse-ts's/parse-lua's test files' identical helper: @gltfi/emit-
+// ts renames `let` temps to short sequential `t<n>` ids (see emit.ts's
+// allocTemp) while @gltfi/emit-lua/@gltfi/emit-py still emit the ORIGINAL
+// graph-node-id-derived temp id unchanged — canonicalize all sides to
+// first-encountered-order `t1`/`t2`/... (fresh per handler/proc body)
+// before comparing.
+function canonicalizeTempIds(stmt: IRStmt): IRStmt {
+  let counter = 0;
+  const renames = new Map<string, string>();
+  const renameId = (id: string): string => {
+    const existing = renames.get(id);
+    if (existing) {
+      return existing;
+    }
+    counter += 1;
+    const fresh = `t${counter}`;
+    renames.set(id, fresh);
+    return fresh;
+  };
+  const walkExpr = (expr: IRExpr): IRExpr => {
+    switch (expr.k) {
+      case "temp":
+        return { ...expr, id: renameId(expr.id) };
+      case "op":
+        return { ...expr, args: expr.args.map(walkExpr) };
+      case "ptrGet":
+        return { ...expr, args: expr.args.map(walkExpr) };
+      case "intrinsic":
+        return { ...expr, args: expr.args.map(walkExpr) };
+      default:
+        return expr;
+    }
+  };
+  const walkStmt = (s: IRStmt): IRStmt => {
+    switch (s.k) {
+      case "seq":
+        return { ...s, stmts: s.stmts.map(walkStmt) };
+      case "let":
+        return { ...s, temp: renameId(s.temp), expr: walkExpr(s.expr) };
+      case "if":
+        return { ...s, cond: walkExpr(s.cond), then: walkStmt(s.then), else: s.else ? walkStmt(s.else) : undefined };
+      case "while":
+        return { ...s, cond: walkExpr(s.cond), body: walkStmt(s.body), completed: s.completed ? walkStmt(s.completed) : undefined };
+      case "for":
+        return { ...s, start: walkExpr(s.start), end: walkExpr(s.end), body: walkStmt(s.body), completed: s.completed ? walkStmt(s.completed) : undefined };
+      case "switch":
+        return { ...s, selector: walkExpr(s.selector), cases: s.cases.map(([c, body]) => [c, walkStmt(body)] as [number, IRStmt]), default: s.default ? walkStmt(s.default) : undefined };
+      case "setVar":
+        return { ...s, expr: walkExpr(s.expr) };
+      case "setPointer":
+        return { ...s, args: s.args.map(walkExpr), value: walkExpr(s.value), out: s.out ? walkStmt(s.out) : undefined, err: s.err ? walkStmt(s.err) : undefined };
+      case "emitEvent":
+        return { ...s, args: s.args.map(walkExpr) };
+      case "stopPropagation":
+        return { ...s, stopImmediate: walkExpr(s.stopImmediate) };
+      case "log":
+        return { ...s, args: s.args.map(walkExpr) };
+      case "callProc":
+        return s;
+      case "async": {
+        const out = s.out ? walkStmt(s.out) : undefined;
+        const err = s.err ? walkStmt(s.err) : undefined;
+        const done = s.done ? (s.done.kind === "inline" ? { kind: "inline" as const, body: walkStmt(s.done.body) } : s.done) : undefined;
+        return { ...s, args: s.args.map(walkExpr), out, err, done };
+      }
+      case "stateful":
+        return { ...s, args: s.args.map(walkExpr), outs: Object.fromEntries(Object.entries(s.outs).map(([k, v]) => [k, walkStmt(v)])) };
+      case "intrinsic":
+        return { ...s, args: s.args.map(walkExpr), outs: Object.fromEntries(Object.entries(s.outs).map(([k, v]) => [k, walkStmt(v)])) };
+    }
+  };
+  return walkStmt(stmt);
+}
 
 const ROOT = path.resolve(import.meta.dirname, "../../../external/glTF-Test-Assets-Interactivity/Tests/Interactivity");
 
@@ -123,7 +325,7 @@ function seqOf(items: IRStmt[]): IRStmt {
 }
 
 function normalizeStmt(stmt: IRStmt): IRStmt {
-  return seqOf(normalizeToList(stmt));
+  return seqOf(normalizeToList(canonicalizeTempIds(normalizePointersInStmt(stmt))));
 }
 
 const PLACEHOLDER_LOG_ARG: IRExpr = { k: "const", type: "ref", data: ["<log-arg>"] };
@@ -132,7 +334,15 @@ function stripForComparison(module: IRModule): unknown {
   return {
     variables: module.variables.map((v) => ({ type: v.type, initial: v.initial })),
     events: module.events.map((e) => ({ id: e.id, values: e.values })),
-    stateSlots: module.stateSlots,
+    // .name is excluded: @gltfi/parse-ts's round-trip now deliberately
+    // renames state slots to short display identifiers (doN1, gate2, ...)
+    // distinct from @gltfi/ir/import.ts's own graph-node-id-derived name
+    // (see @gltfi/emit-ts's computeStateSlotDisplayNames) — emit-lua/emit-py
+    // + parse-lua/parse-py still round-trip the ORIGINAL IR name unchanged,
+    // so comparing `.name` here would spuriously fail this cross-parser
+    // identity check against parseModule (TS) even though both sides
+    // structurally agree.
+    stateSlots: module.stateSlots.map((s) => ({ kind: s.kind, config: s.config })),
     handlers: module.handlers.map((h) => ({ ...h, body: normalizeStmt(h.body) })),
     procs: module.procs.map((p) => ({ ...p, body: normalizeStmt(p.body) }))
   };

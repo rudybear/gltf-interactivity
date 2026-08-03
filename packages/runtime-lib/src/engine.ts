@@ -158,11 +158,67 @@ export type MultiGateSlot = { lastIndex: number; used: boolean[] };
 export type WaitAllSlot = { activated: boolean[]; remaining: number | undefined };
 export type ThrottleSlot = { lastTime: number | undefined; remaining: number };
 
+// Named accessor returned by the object-form of `vars()` (see below) — one
+// entry per declared variable, closing over that variable's own numeric
+// index so emit-ts's `V.<name>.get()/.set(v)` calls need no index at all in
+// the generated text (see emit.ts's header note on the human-readable output
+// shape). `set` accepts the same raw JS value shape `vars()`'s `initial`
+// field does.
+export type VarAccessor = { get(): RawValue; set(value: RawValue): void };
+
 export interface EngineBuilder {
-  vars(decls: VarDecl[]): void;
+  // Additive object form (see docs/design/ir-and-transpiler.md's IR->TS
+  // section and this package's README): `rt.vars({name: rt.int(0), ...})` —
+  // property ORDER is the variable index order (object literals preserve
+  // insertion/source order for string keys — this is the load-bearing
+  // contract the object form relies on), exactly like the array form's
+  // element order. Returns a named accessor per property; the array form
+  // (unchanged, still used by @gltfi/emit-lua/@gltfi/emit-py's shared IR
+  // pipeline expectations and by hand-written callers — see
+  // packages/runtime-lib/test/engine.test.ts) returns nothing.
+  // One combined signature (rather than a true TS overload pair) so a plain
+  // object-literal implementation can satisfy it directly: callers using the
+  // array form get `void` back in practice (nothing about the return value
+  // is ever asserted there — see engine.test.ts) and callers using the
+  // object form get the accessor map.
+  vars(decls: VarDecl[] | Record<string, VarDecl>): Record<string, VarAccessor> | void;
   getVar(index: number): RawValue;
   setVar(index: number, value: RawValue): void;
-  events(decls: EventDecl[]): void;
+  // Object form: `rt.events({name: {externalId, expectedDuration, ...}})` —
+  // property order is event index order (same insertion-order contract as
+  // `vars()`'s object form). Returns a plain name->index map (a bare
+  // `number`, since that's exactly what `send`/`onReceive`'s first
+  // parameter already accepts — no separate "event ref" wrapper type
+  // needed).
+  events(decls: EventDecl[] | Record<string, EventDecl>): Record<string, number> | void;
+  // Variable-declaration-shorthand helpers, usable as `rt.vars({name:
+  // rt.int(0), ...})` entries — each just builds the same `{type, initial}`
+  // shape the array form's elements always were. Defaults match
+  // @gltfi/kernel's own per-type zero value (see value.ts's defaultValue).
+  int(x?: number): VarDecl;
+  bool(x?: boolean): VarDecl;
+  float(x?: number): VarDecl;
+  float2(x?: number, y?: number): VarDecl;
+  float3(x?: number, y?: number, z?: number): VarDecl;
+  float4(x?: number, y?: number, z?: number, w?: number): VarDecl;
+  float2x2(...values: number[]): VarDecl;
+  float3x3(...values: number[]): VarDecl;
+  float4x4(...values: number[]): VarDecl;
+  ref(pointer?: string): VarDecl;
+  // State-slot factories — plain object literals with the exact shape
+  // emit-ts used to write out literally (see DelaySlot/DoNSlot/
+  // MultiGateSlot/WaitAllSlot/ThrottleSlot above); the optional parameters
+  // exist purely so a call site can echo the same count/options that are
+  // ALSO passed to the matching doN/multiGate/waitAll/throttle call for a
+  // human reader's benefit — they don't affect the returned slot's shape,
+  // which never carries outputCount/inputFlows/isRandom/isLoop (those are
+  // re-supplied at every doN/multiGate/waitAll/throttle call site, exactly
+  // like before).
+  doNState(): DoNSlot;
+  multiGateState(outputCount?: number, opts?: { isRandom?: boolean; isLoop?: boolean }): MultiGateSlot;
+  waitAllState(inputFlows?: number): WaitAllSlot;
+  throttleState(): ThrottleSlot;
+  delayState(): DelaySlot;
   onStart(fn: () => void): void;
   onTick(fn: (timeSinceStart: number, timeSinceLastTick: number) => void): void;
   onReceive(eventIndex: number, fn: (payload: [boolean, number, number, number]) => void): void;
@@ -176,8 +232,15 @@ export interface EngineBuilder {
   onSelect(nodeIndex: number, stopPropagation: boolean, fn: (params: SelectParams) => void): void;
   onHoverIn(nodeIndex: number, fn: (params: HoverParams) => void): void;
   onHoverOut(nodeIndex: number, fn: (params: HoverParams) => void): void;
-  send(eventIndex: number, externalId: string | undefined, payload: [boolean, number, number, number]): void;
-  log(template: string, args: unknown[]): void;
+  // Combined signature covering three call shapes: the OLD `(eventIndex,
+  // externalId, payload)` (externalId is IGNORED — it's looked up from this
+  // engine's own eventDecls table instead, since it's fully redundant with
+  // eventIndex/the `E.<name>` ref that names it), the additive `(eventIndex,
+  // payload)`, and `(eventIndex)` alone when every payload value equals the
+  // event's own declared default (see emit-ts's emitEvent doc comment) — no
+  // second argument at all in that case.
+  send(eventIndex: number, secondArg?: string | [boolean, number, number, number], thirdArg?: [boolean, number, number, number]): void;
+  log(template: string, args?: unknown[]): void;
   // `eventRef` is the compile-time-known ref string of the CURRENT handler's
   // own event (e.g. "event:custom:3"), exactly what `param("event")` reads
   // — see emit-ts's paramAccess. Mirrors interpreter.ts's event/
@@ -199,8 +262,15 @@ export interface EngineBuilder {
   tickTime(): number;
   tickDelta(): number;
   random(): number;
-  ptrGet(pointer: string, args: Record<string, unknown>, type: ValueType): { value: unknown; isValid: boolean };
-  ptrSet(pointer: string, args: Record<string, unknown>, type: ValueType, value: unknown): boolean;
+  // Combined signature covering both the object-args form (unchanged) and an
+  // additive args-less form for when every pointer-template parameter is a
+  // compile-time constant (see emit-ts's pointerCall — it inlines constant
+  // template args straight into the path string, so there's nothing left to
+  // pass in an args object at all): `argsOrType` is either the args record
+  // (3-arg form omitted) or, when it's a string, IS the type signature and
+  // the args object was omitted entirely.
+  ptrGet(pointer: string, argsOrType: Record<string, unknown> | ValueType, type?: ValueType): { value: unknown; isValid: boolean };
+  ptrSet(pointer: string, argsOrType: Record<string, unknown> | ValueType, typeOrValue: ValueType | unknown, value?: unknown): boolean;
 
   // --- async ops (flow/setDelay, variable/interpolate, pointer/interpolate,
   // animation/start|stop|stopAt) — each mirrors its interpreter.ts
@@ -214,14 +284,17 @@ export interface EngineBuilder {
   // matching NodeState.delayIds's loop-cancel-clear behavior exactly.
   cancelDelaySlot(slot: DelaySlot): void;
   varInterp(varId: number, value: RawValue, duration: number, p1: number[], p2: number[], useSlerp: boolean, done?: FlowCont): { ok: boolean };
+  // Combined signature — see ptrGet/ptrSet's doc comment above for the
+  // args-less form this also accepts (shifts every parameter left by one
+  // when `argsOrType` is a string, i.e. IS the type signature).
   ptrInterp(
     pointer: string,
-    args: Record<string, unknown>,
-    type: ValueType,
-    value: RawValue,
-    duration: number,
-    p1: number[],
-    p2: number[],
+    argsOrType: Record<string, unknown> | ValueType,
+    typeOrValue: ValueType | RawValue,
+    valueOrDuration: RawValue | number,
+    durationOrP1: number | number[],
+    p1OrP2: number[],
+    p2OrDone: number[] | FlowCont | undefined,
     done?: FlowCont
   ): { ok: boolean };
   animStart(animationRef: unknown, startTime: number, endTime: number, speed: number, done?: FlowCont): { ok: boolean };
@@ -232,7 +305,12 @@ export interface EngineBuilder {
   // — each is the "in" port's decision function; reset ports are lowered
   // directly by emit-ts as plain field assignments on the slot object (no
   // dedicated rt.* call needed — see emit.ts's emitStateful). ---
-  doN(slot: DoNSlot, n: number): { fire: boolean };
+  // Returns the fire decision directly (not `{fire}`) — the *only*
+  // non-additive shape change in this surface (see the task report): every
+  // real call site checks this exactly once (`if (rt.doN(...)) {...}`), so
+  // there was never a reason to name an intermediate result — see emit-ts's
+  // emitStateful, which now inlines the call straight into the `if`.
+  doN(slot: DoNSlot, n: number): boolean;
   multiGate(slot: MultiGateSlot, outputCount: number, isRandom: boolean, isLoop: boolean): { index: number };
   waitAll(slot: WaitAllSlot, inputFlows: number, index: number): { completed: boolean };
   throttle(slot: ThrottleSlot, duration: number): { invalid: boolean; fire: boolean };
@@ -404,10 +482,21 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
 
     const rt: EngineBuilder = {
       vars(decls) {
-        for (const decl of decls) {
+        if (Array.isArray(decls)) {
+          for (const decl of decls) {
+            varTypes.push(decl.type);
+            varRaw.push(decl.initial);
+          }
+          return undefined;
+        }
+        const V: Record<string, VarAccessor> = {};
+        for (const [name, decl] of Object.entries(decls)) {
+          const idx = varTypes.length;
           varTypes.push(decl.type);
           varRaw.push(decl.initial);
+          V[name] = { get: () => varRaw[idx], set: (value) => { varRaw[idx] = value; } };
         }
+        return V;
       },
       getVar(index) {
         return varRaw[index];
@@ -416,8 +505,36 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
         varRaw[index] = value;
       },
       events(decls) {
-        eventDecls.push(...decls);
+        if (Array.isArray(decls)) {
+          eventDecls.push(...decls);
+          return undefined;
+        }
+        const E: Record<string, number> = {};
+        for (const [name, decl] of Object.entries(decls)) {
+          const idx = eventDecls.length;
+          eventDecls.push(decl);
+          E[name] = idx;
+        }
+        return E;
       },
+      int: (x = 0) => ({ type: "int", initial: Math.trunc(x) }),
+      bool: (x = false) => ({ type: "bool", initial: x }),
+      float: (x = 0) => ({ type: "float", initial: x }),
+      float2: (x = 0, y = 0) => ({ type: "float2", initial: [x, y] }),
+      float3: (x = 0, y = 0, z = 0) => ({ type: "float3", initial: [x, y, z] }),
+      float4: (x = 0, y = 0, z = 0, w = 0) => ({ type: "float4", initial: [x, y, z, w] }),
+      float2x2: (...values) => ({ type: "float2x2", initial: values.length > 0 ? values : [1, 0, 0, 1] }),
+      float3x3: (...values) => ({ type: "float3x3", initial: values.length > 0 ? values : [1, 0, 0, 0, 1, 0, 0, 0, 1] }),
+      float4x4: (...values) => ({
+        type: "float4x4",
+        initial: values.length > 0 ? values : [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+      }),
+      ref: (pointer = "") => ({ type: "ref", initial: pointer }),
+      doNState: () => ({ count: 0 }),
+      multiGateState: () => ({ lastIndex: -1, used: [] }),
+      waitAllState: () => ({ activated: [], remaining: undefined }),
+      throttleState: () => ({ lastTime: undefined, remaining: NaN }),
+      delayState: () => ({ lastId: -1, lastRef: "", ids: [] }),
       onStart(fn) {
         onStartHandlers.push(fn);
       },
@@ -444,7 +561,14 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
         list.push(fn);
         hoverOutHandlers.set(nodeIndex, list);
       },
-      send(eventIndex, externalId, payload) {
+      send(eventIndex, secondArg, thirdArg) {
+        const decl = eventDecls[eventIndex];
+        const payload: [boolean, number, number, number] = Array.isArray(secondArg)
+          ? secondArg
+          : Array.isArray(thirdArg)
+            ? thirdArg
+            : [decl?.defaultBool ?? false, decl?.defaultInt ?? 0, decl?.defaultFloat ?? 0, decl?.expectedDuration ?? 0];
+        const externalId = decl?.externalId;
         sentEvents.push({ eventIndex, externalId, payload });
         lastPayloadByIndex.set(eventIndex, payload);
         // Mirrors interpreter.ts's "event/send" case: clear any stale stop
@@ -496,11 +620,17 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
       random() {
         return stepRandom() / 0xffffffff;
       },
-      ptrGet(pointer, args, type) {
-        return resolvePtrGet(pointerHost, pointer, args, type);
+      ptrGet(pointer, argsOrType, type) {
+        if (typeof argsOrType === "string") {
+          return resolvePtrGet(pointerHost, pointer, {}, argsOrType);
+        }
+        return resolvePtrGet(pointerHost, pointer, argsOrType, type as ValueType);
       },
-      ptrSet(pointer, args, type, value) {
-        return resolvePtrSet(pointerHost, pointer, args, type, value);
+      ptrSet(pointer, argsOrType, typeOrValue, value) {
+        if (typeof argsOrType === "string") {
+          return resolvePtrSet(pointerHost, pointer, {}, argsOrType, typeOrValue);
+        }
+        return resolvePtrSet(pointerHost, pointer, argsOrType, typeOrValue as ValueType, value);
       },
 
       // -- async ops --------------------------------------------------
@@ -572,7 +702,36 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
         });
         return { ok: true };
       },
-      ptrInterp(pointer, args, type, value, duration, p1, p2, done) {
+      ptrInterp(pointer, argsOrType, typeOrValue, valueOrDuration, durationOrP1, p1OrP2, p2OrDone, doneMaybe) {
+        // See ptrGet/ptrSet's identical dispatch: `argsOrType` being a
+        // string means the args object was omitted (every pointer-template
+        // param was a compile-time constant, already inlined into `pointer`
+        // itself — see emit-ts's pointerCall) and every following parameter
+        // shifts left by one.
+        let args: Record<string, unknown>;
+        let type: ValueType;
+        let value: RawValue;
+        let duration: number;
+        let p1: number[];
+        let p2: number[];
+        let done: FlowCont | undefined;
+        if (typeof argsOrType === "string") {
+          args = {};
+          type = argsOrType;
+          value = typeOrValue as RawValue;
+          duration = valueOrDuration as number;
+          p1 = durationOrP1 as number[];
+          p2 = p1OrP2;
+          done = p2OrDone as FlowCont | undefined;
+        } else {
+          args = argsOrType;
+          type = typeOrValue as ValueType;
+          value = valueOrDuration as RawValue;
+          duration = durationOrP1 as number;
+          p1 = p1OrP2;
+          p2 = p2OrDone as number[];
+          done = doneMaybe;
+        }
         const prep = ptrInterpPrepare(pointerHost, pointer, args, type);
         if (!prep) {
           return { ok: false };
@@ -634,7 +793,7 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
       doN(slot, n) {
         const decision = doNAdvance(slot.count, Math.trunc(n));
         slot.count = decision.count;
-        return { fire: decision.fire };
+        return decision.fire;
       },
       multiGate(slot, outputCount, isRandom, isLoop) {
         const decision = multiGateAdvance(slot.used, outputCount, isRandom, isLoop, (count) => stepRandom() % count);

@@ -14,21 +14,69 @@ export const RUNTIME_LIB_DTS = `
 declare module "@gltfi/runtime-lib" {
   type RawValue = number | boolean | string | number[];
   type FlowCont = () => void;
+  // Generic over the declared value's own JS shape (number for int/float,
+  // boolean for bool, number[] for vectors/matrices, string for ref) so
+  // \`vars()\`'s object form (below) can propagate each PROPERTY's own type
+  // through to its accessor — narrower than the old array form's plain
+  // RawValue ever was, which matters here: emit-ts's native-operator
+  // substitution (e.g. \`V.counter.get() + 1\`) needs TS to see \`.get()\` as
+  // returning \`number\`, not the wide \`RawValue\` union, or the native \`+\`/
+  // \`<\`/etc. text wouldn't type-check at all.
+  type VarDecl<T = RawValue> = { type: string; initial: T };
+  type VarAccessor<T = RawValue> = { get(): T; set(value: T): void };
+  type EventDecl = { externalId?: string; defaultBool?: boolean; defaultInt?: number; defaultFloat?: number; expectedDuration?: number };
+  // Maps a pointer's "type" signature STRING LITERAL (always a literal in
+  // emitted code — see emit-ts's pointerCall) to the JS shape ptrGet's
+  // \`.value\` actually has at that type — same motivation as VarAccessor<T>
+  // above: emit-ts's native-operator substitution can embed \`rt.ptrGet(...)
+  // .value\` directly as an operand (e.g. \`rt.ptrGet(...).value - 1 < eps\`),
+  // which needs \`.value\` narrowed to \`number\`, not the wide RawValue union,
+  // to type-check at all.
+  type ValueOfSig<T> = T extends "bool" ? boolean : T extends "ref" ? string : T extends "float" | "int" ? number : number[];
 
   interface EngineFactory {
     (options?: { gltf?: unknown; glbBin?: unknown; seed?: number }): unknown;
   }
 
   interface EngineBuilder {
-    vars(decls: Array<{ type: string; initial: RawValue }>): void;
+    // Array form (index-addressed, unchanged) and object form (named,
+    // declaration-order-addressed — see engine.ts's EngineBuilder.vars doc
+    // comment) as real overloads (this ambient .d.ts is a pure type
+    // declaration with no implementation to reconcile against, unlike
+    // runtime-lib's own object-literal-implemented interface, so there's no
+    // obstacle to precise overload resolution here — and emitted code
+    // property-accesses \`V.<name>\`/\`E.<name>\` off the *object*-form
+    // result, which needs the narrower return type to type-check at all).
+    // The object form is generic so each property's own VarDecl<T> carries
+    // through to that property's own VarAccessor<T> in the result.
+    vars(decls: VarDecl[]): void;
+    vars<T extends Record<string, VarDecl<any>>>(decls: T): { [K in keyof T]: T[K] extends VarDecl<infer U> ? VarAccessor<U> : never };
     getVar(index: number): RawValue;
     setVar(index: number, value: RawValue): void;
-    events(decls: Array<{ externalId?: string; defaultBool?: boolean; defaultInt?: number; defaultFloat?: number; expectedDuration?: number }>): void;
+    events(decls: EventDecl[]): void;
+    events(decls: Record<string, EventDecl>): Record<string, number>;
+    int(x?: number): VarDecl<number>;
+    bool(x?: boolean): VarDecl<boolean>;
+    float(x?: number): VarDecl<number>;
+    float2(x?: number, y?: number): VarDecl<number[]>;
+    float3(x?: number, y?: number, z?: number): VarDecl<number[]>;
+    float4(x?: number, y?: number, z?: number, w?: number): VarDecl<number[]>;
+    float2x2(...values: number[]): VarDecl<number[]>;
+    float3x3(...values: number[]): VarDecl<number[]>;
+    float4x4(...values: number[]): VarDecl<number[]>;
+    ref(pointer?: string): VarDecl<string>;
+    doNState(): any;
+    multiGateState(outputCount?: number, opts?: { isRandom?: boolean; isLoop?: boolean }): any;
+    waitAllState(inputFlows?: number): any;
+    throttleState(): any;
+    delayState(): any;
     onStart(fn: () => void): void;
     onTick(fn: (timeSinceStart: number, timeSinceLastTick: number) => void): void;
     onReceive(eventIndex: number, fn: (payload: [boolean, number, number, number]) => void): void;
-    send(eventIndex: number, externalId: string | undefined, payload: [boolean, number, number, number]): void;
-    log(template: string, args: unknown[]): void;
+    // Combined signature — see engine.ts's EngineBuilder.send doc comment
+    // for the three call shapes this covers.
+    send(eventIndex: number, secondArg?: string | [boolean, number, number, number], thirdArg?: [boolean, number, number, number]): void;
+    log(template: string, args?: unknown[]): void;
     stopPropagation(eventRef: string, stopImmediate: boolean): void;
     eventOut(nodeKey: number, socket: string, value: unknown): void;
     eventOutRead(nodeKey: number, socket: string): unknown;
@@ -41,20 +89,34 @@ declare module "@gltfi/runtime-lib" {
     // the emitted call site is always used at a definite type (fed straight
     // into rt.setVar/an m.* call/etc.) — see this package's index.ts header
     // note on why this ambient .d.ts is intentionally looser than the real
-    // package for exactly this kind of call-site-typed value.
-    ptrGet(pointer: string, args: Record<string, unknown>, type: string): { value: RawValue; isValid: boolean };
-    ptrSet(pointer: string, args: Record<string, unknown>, type: string, value: unknown): boolean;
+    // package for exactly this kind of call-site-typed value. Each pointer
+    // method's combined signature also covers the args-less form (constant
+    // template args inlined into the path — see emit-ts's pointerCall).
+    ptrGet<T extends string>(pointer: string, args: Record<string, unknown>, type: T): { value: ValueOfSig<T>; isValid: boolean };
+    ptrGet<T extends string>(pointer: string, type: T): { value: ValueOfSig<T>; isValid: boolean };
+    ptrSet(pointer: string, argsOrType: Record<string, unknown> | string, typeOrValue: string | unknown, value?: unknown): boolean;
 
     setDelay(slot: any, duration: number, done?: FlowCont): { ok: boolean };
     cancelDelay(ref: unknown): void;
     cancelDelaySlot(slot: any): void;
     varInterp(varId: number, value: RawValue, duration: number, p1: number[], p2: number[], useSlerp: boolean, done?: FlowCont): { ok: boolean };
-    ptrInterp(pointer: string, args: Record<string, unknown>, type: string, value: RawValue, duration: number, p1: number[], p2: number[], done?: FlowCont): { ok: boolean };
+    ptrInterp(
+      pointer: string,
+      argsOrType: Record<string, unknown> | string,
+      typeOrValue: string | RawValue,
+      valueOrDuration: RawValue | number,
+      durationOrP1: number | number[],
+      p1OrP2: number[],
+      p2OrDone: number[] | FlowCont | undefined,
+      done?: FlowCont
+    ): { ok: boolean };
     animStart(animationRef: unknown, startTime: number, endTime: number, speed: number, done?: FlowCont): { ok: boolean };
     animStop(animationRef: unknown): { ok: boolean };
     animStopAt(animationRef: unknown, stopTime: number, done?: FlowCont): { ok: boolean };
 
-    doN(slot: any, n: number): { fire: boolean };
+    // doN now returns the fire decision directly (boolean), not {fire} — see
+    // engine.ts's EngineBuilder.doN doc comment.
+    doN(slot: any, n: number): boolean;
     multiGate(slot: any, outputCount: number, isRandom: boolean, isLoop: boolean): { index: number };
     waitAll(slot: any, inputFlows: number, index: number): { completed: boolean };
     throttle(slot: any, duration: number): { invalid: boolean; fire: boolean };
