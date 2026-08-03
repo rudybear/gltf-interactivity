@@ -78,6 +78,9 @@ importers:
 
   packages/conformance:
     dependencies:
+      '@gltfi/emit-cs':
+        specifier: workspace:*
+        version: link:../emit-cs
       '@gltfi/emit-lua':
         specifier: workspace:*
         version: link:../emit-lua
@@ -108,6 +111,9 @@ importers:
       '@gltfi/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@gltfi/runtime-cs':
+        specifier: workspace:*
+        version: link:../runtime-cs
       '@gltfi/runtime-lib':
         specifier: workspace:*
         version: link:../runtime-lib
@@ -127,6 +133,15 @@ importers:
       esbuild:
         specifier: ^0.23.0
         version: 0.23.1
+
+  packages/emit-cs:
+    dependencies:
+      '@gltfi/ir':
+        specifier: workspace:*
+        version: link:../ir
+      '@gltfi/kernel':
+        specifier: workspace:*
+        version: link:../kernel
 
   packages/emit-lua:
     dependencies:
@@ -259,6 +274,8 @@ importers:
       '@gltfi/kernel':
         specifier: workspace:*
         version: link:../kernel
+
+  packages/runtime-cs: {}
 
   packages/runtime-lib:
     dependencies:

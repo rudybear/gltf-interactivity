@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Single project hosting BOTH the hand-written runtime library
+    (Engine/M/KMath/Numeric/State/Scheduler/Pointer/Animation/JsonUtil — see
+    each file's own header) and the persistent conformance-runner harness
+    (Harness.cs/Program.cs), built as an executable so
+    packages/conformance/src/run-compiled-cs.ts can spawn it directly (mirrors
+    run-compiled-py.ts spawning `python3 harness.py` — see that file's own
+    header for the FIFO-bridge rationale this backend's runner reuses
+    unmodified, just against a compiled binary instead of an interpreter).
+
+    Deliberately does NOT set <CheckForOverflowUnderflow>true</...> (the
+    default is false/unchecked) — @gltfi/emit-cs relies on this: native `+`/
+    `-`/`*`/unary `-` over C# `int` silently wrap on overflow exactly like
+    the spec's int32 arithmetic, with NO `unchecked(...)` wrapper needed at
+    any call site (see M.cs's own header note). Nullable is off repo-wide for
+    this backend (every other C# file here assumes non-nullable-by-default
+    reference semantics with explicit `?` only where genuinely optional).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>gltfi-harness-cs</AssemblyName>
+    <RootNamespace>GltfiRuntime</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <NoWarn>CS8632</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Roslyn: compiles each received module source string to an in-memory
+         assembly at "load" time — see Harness.cs's own header. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+  </ItemGroup>
+
+</Project>
