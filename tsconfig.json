@@ -8,6 +8,7 @@
     { "path": "packages/emit-ts" },
     { "path": "packages/emit-lua" },
     { "path": "packages/parse-ts" },
+    { "path": "packages/parse-lua" },
     { "path": "packages/runtime-lib" },
     { "path": "packages/runtime-lua" },
     { "path": "packages/verify" },

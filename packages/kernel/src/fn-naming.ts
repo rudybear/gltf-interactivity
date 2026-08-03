@@ -1,13 +1,22 @@
-// Reverse of @gltfi/emit-ts's `m.*` function-name selection (emit.ts's
-// baseMName/mFunctionName/ARITH_INT_OPS/BOOL_INT_OPS): given a `m.<fn>` call
-// name found in emitted TypeScript, recover the (op, overloadIndex) pair it
-// was generated from. Built once at module load by re-running emit.ts's own
-// naming rule forward over every (op, overloadIndex) row in @gltfi/kernel's
-// OP_REGISTRY and inverting the resulting table — this keeps the two
-// directions mechanically in sync (any change to emit.ts's naming rule that
-// isn't mirrored here shows up as a build-time assertion failure, not a
-// silent parse divergence).
-import { OP_REGISTRY, type TypeSig } from "@gltfi/kernel";
+// Reverse of the `m.*` function-name selection BOTH @gltfi/emit-ts's and
+// @gltfi/emit-lua's emit.ts independently implement (their identical
+// baseMName/mFunctionName/ARITH_INT_OPS/BOOL_INT_OPS — see either file's own
+// header comment): given a `m.<fn>` call name found in EITHER emitted
+// backend's output, recover the (op, overloadIndex) pair it was generated
+// from. This lives in @gltfi/kernel (not either parser package) because it is
+// pure over OP_REGISTRY, has no dependency on @gltfi/ir, and — critically —
+// the naming rule itself is byte-for-byte identical between the two emitters
+// (same base name, same Int/Bool-suffix decision, same math/eq special case),
+// so @gltfi/parse-ts and @gltfi/parse-lua share this one reverse table rather
+// than each maintaining their own copy of the same logic.
+//
+// Built once at module load by re-running the naming rule forward over every
+// (op, overloadIndex) row in OP_REGISTRY and inverting the resulting table —
+// this keeps the forward and reverse directions mechanically in sync (any
+// change to either emitter's naming rule that isn't mirrored here shows up as
+// a build-time assertion failure in the emit-ts/emit-lua test suites' own
+// round-trip coverage, not a silent parse divergence).
+import { OP_REGISTRY, type TypeSig } from "./registry.js";
 
 const ARITH_INT_OPS = new Set(["abs", "sign", "neg", "add", "sub", "mul", "div", "rem", "min", "max", "clamp"]);
 const BOOL_INT_OPS = new Set(["and", "or", "not", "xor"]);
@@ -20,12 +29,13 @@ function baseMName(op: string): string {
   return short ?? op;
 }
 
-// Row-level stand-in for emit.ts's `primaryInputSig(overload)`: emit.ts reads
-// the RESOLVED concrete type of socket "a" (or the first input) off a
-// ResolvedOverload; naming only ever branches on whether that's "int"/"bool"
-// vs anything else, and a row's declared (possibly generic) type for that
-// same socket already carries that distinction (a generic F/V/M/T socket is
-// never "int" or "bool"), so the raw declared row type is sufficient here.
+// Row-level stand-in for the emitters' own `primaryInputSig(overload)`: each
+// emitter reads the RESOLVED concrete type of socket "a" (or the first input)
+// off a ResolvedOverload; naming only ever branches on whether that's
+// "int"/"bool" vs anything else, and a row's declared (possibly generic) type
+// for that same socket already carries that distinction (a generic F/V/M/T
+// socket is never "int" or "bool"), so the raw declared row type is
+// sufficient here.
 function primaryRowSig(row: { inputs: Array<{ name: string; type: string }> }): string {
   const a = row.inputs.find((i) => i.name === "a");
   return (a ?? row.inputs[0])?.type ?? "float";
@@ -67,11 +77,10 @@ for (const spec of OP_REGISTRY.values()) {
 // see emit-ts/src/math.ts's header note: "lt/le/gt/ge and the bitwise-only
 // ops have no int suffix... one function covers both") have TWO: a float
 // row and an int row sharing the same name. Callers must disambiguate
-// among the results using the actual argument types (see
-// index.ts's lowerMCall) — silently picking the first candidate here
-// previously caused a real bug (an int comparison like `m.lt(intVar, 2)`
-// always resolved to the float row, mistyping the literal `2` as float
-// instead of int).
+// among the results using the actual argument types (see each parser's own
+// lowerMCall) — silently picking the first candidate here previously caused
+// a real bug (an int comparison like `m.lt(intVar, 2)` always resolved to
+// the float row, mistyping the literal `2` as float instead of int).
 export function lookupMFunctions(fnName: string, argCount: number): FnCandidate[] {
   const candidates = FN_TABLE.get(fnName);
   if (!candidates || candidates.length === 0) {

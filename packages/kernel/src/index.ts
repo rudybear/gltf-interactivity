@@ -4,4 +4,5 @@ export * from "./state.js";
 export * from "./scheduler.js";
 export * from "./registry.js";
 export * from "./registry-query.js";
+export * from "./fn-naming.js";
 export * from "./animation.js";

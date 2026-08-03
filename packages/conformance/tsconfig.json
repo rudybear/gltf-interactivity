@@ -12,6 +12,7 @@
     { "path": "../emit-ts" },
     { "path": "../emit-lua" },
     { "path": "../parse-ts" },
+    { "path": "../parse-lua" },
     { "path": "../verify" },
     { "path": "../runtime-lib" },
     { "path": "../runtime-lua" },

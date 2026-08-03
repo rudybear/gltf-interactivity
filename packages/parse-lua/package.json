@@ -1,0 +1,20 @@
+{
+  "name": "@gltfi/parse-lua",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "dependencies": {
+    "@gltfi/ir": "workspace:*",
+    "@gltfi/kernel": "workspace:*",
+    "luaparse": "^0.3.1"
+  },
+  "devDependencies": {
+    "@gltfi/emit-lua": "workspace:*",
+    "@gltfi/emit-ts": "workspace:*",
+    "@gltfi/parse-ts": "workspace:*",
+    "@gltfi/runtime": "workspace:*",
+    "@types/luaparse": "^0.2.13"
+  }
+}

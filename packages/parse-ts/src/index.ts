@@ -34,7 +34,10 @@ import { Node, Project, ScriptTarget, SyntaxKind, ts, type Expression, type Stat
 import {
   defaultValue,
   getOpSpec,
+  isGenericSig,
+  lookupMFunctions,
   resolveOverload,
+  type FnCandidate,
   type ResolvedOverload,
   type TypeSig
 } from "@gltfi/kernel";
@@ -61,7 +64,6 @@ import {
   type StateKind
 } from "@gltfi/ir";
 import { RUNTIME_LIB_DTS } from "./runtime-lib-dts.js";
-import { isGenericSig, lookupMFunctions, type FnCandidate } from "./fnmap.js";
 
 export type ParseResult = { module: IRModule; diagnostics: Diagnostic[] };
 
@@ -256,7 +258,7 @@ function familyOf(generic: "F" | "V" | "M" | "T"): readonly IRType[] | null {
 
 // Length -> concrete type within a family, preferring the vector reading
 // over the (F-family-only) matrix reading of a length-4/9/16 literal when
-// both are legal — see this file's header + fnmap.ts's header note. Never
+// both are legal — see this file's header + @gltfi/kernel's fn-naming.ts header note. Never
 // actually exercised ambiguously by the conformance corpus (verified during
 // development: every generic-op literal argument in the corpus is length-1/
 // 2/3 or co-occurs with a definitely-typed sibling), so this is a documented
@@ -1331,7 +1333,7 @@ class ModuleParser {
     }
     // Some fn names (lt/le/gt/ge, the bitwise-only ops) map to TWO fixed
     // rows (a float row and an int row) with no suffix to distinguish them
-    // — see fnmap.ts's lookupMFunctions doc comment. Disambiguate using the
+    // — see @gltfi/kernel's fn-naming.ts lookupMFunctions doc comment. Disambiguate using the
     // actual argument types before picking a row (picking candidates[0]
     // unconditionally was a real bug: `m.lt(intVar, 2)` always resolved to
     // the float row, mistyping the literal `2` as float).
@@ -1398,8 +1400,8 @@ class ModuleParser {
     return { k: "op", op, overload, args: argExprs, socket: resultSocket };
   }
 
-  // Picks which of several same-named candidate rows (see fnmap.ts's
-  // lookupMFunctions) matches the actual call site, using the same
+  // Picks which of several same-named candidate rows (see @gltfi/kernel's
+  // fn-naming.ts's lookupMFunctions) matches the actual call site, using the same
   // "probe a non-literal arg's own bottom-up type" strategy as the generic
   // pinning above — sound here too since every currently-colliding case
   // (lt/le/gt/ge, the bitwise ops) has fully FIXED (non-generic) rows, so a

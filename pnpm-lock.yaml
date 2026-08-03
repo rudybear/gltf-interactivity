@@ -93,6 +93,9 @@ importers:
       '@gltfi/kernel':
         specifier: workspace:*
         version: link:../kernel
+      '@gltfi/parse-lua':
+        specifier: workspace:*
+        version: link:../parse-lua
       '@gltfi/parse-ts':
         specifier: workspace:*
         version: link:../parse-ts
@@ -151,6 +154,34 @@ importers:
         version: link:../runtime
 
   packages/kernel: {}
+
+  packages/parse-lua:
+    dependencies:
+      '@gltfi/ir':
+        specifier: workspace:*
+        version: link:../ir
+      '@gltfi/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      luaparse:
+        specifier: ^0.3.1
+        version: 0.3.1
+    devDependencies:
+      '@gltfi/emit-lua':
+        specifier: workspace:*
+        version: link:../emit-lua
+      '@gltfi/emit-ts':
+        specifier: workspace:*
+        version: link:../emit-ts
+      '@gltfi/parse-ts':
+        specifier: workspace:*
+        version: link:../parse-ts
+      '@gltfi/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@types/luaparse':
+        specifier: ^0.2.13
+        version: 0.2.13
 
   packages/parse-ts:
     dependencies:
@@ -667,6 +698,9 @@ packages:
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
 
+  '@types/luaparse@0.2.13':
+    resolution: {integrity: sha512-nWs2m9b/zrMcAA2Rs+wTxdIsBkSYMo0+6ko8mpeqS5dhchU3hQN9kZGcSw96n497Vc7kGpDLtSicjdpaUrRAkw==}
+
   '@types/node@22.20.1':
     resolution: {integrity: sha512-EANqOCF9QFyra+4pfxUcX9STKJpCLjMbObVzljIJomAWSnuSIEAvyzEU53GaajbXJEgdh0iEcPL+DGvpUd4k1Q==}
 
@@ -834,6 +868,10 @@ packages:
 
   loupe@3.2.1:
     resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
+
+  luaparse@0.3.1:
+    resolution: {integrity: sha512-b21h2bFEbtGXmVqguHogbyrMAA0wOHyp9u/rx+w6Yc9pW1t9YjhGUsp87lYcp7pFRqSWN/PhFkrdIqKEUzRjjQ==}
+    hasBin: true
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -1326,6 +1364,8 @@ snapshots:
 
   '@types/estree@1.0.9': {}
 
+  '@types/luaparse@0.2.13': {}
+
   '@types/node@22.20.1':
     dependencies:
       undici-types: 6.21.0
@@ -1523,6 +1563,8 @@ snapshots:
   is-number@7.0.0: {}
 
   loupe@3.2.1: {}
+
+  luaparse@0.3.1: {}
 
   magic-string@0.30.21:
     dependencies:

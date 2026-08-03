@@ -26,6 +26,12 @@ Code namespaces:
 - **`GV0xx`** — `@gltfi/verify`'s `validateGraph` (structural checks on a graph
   JSON — KHR_interactivity's own invariants, independent of `@gltfi/ir`). Always
   **error** severity.
+- **`GL1xx`** — `@gltfi/parse-lua`'s `parseModuleLua` (emitted Lua → IR). Always
+  **error** severity (a `ParseError` thrown mid-parse always aborts with an empty
+  module), except `GL180` which is informational. The Lua-surface counterpart to
+  `GI1xx` — same numbering scheme, same "mechanical inverse of the emitter"
+  design, distinct namespace (no overlap with `GI1xx`, since Lua has no ambient
+  type-checker pass analogous to parse-ts's `GI001`).
 
 ## GI0xx — `@gltfi/ir` importGraph (graph → IR)
 
@@ -69,9 +75,47 @@ first one, returning an empty module) — except `GI180`, pushed directly as `in
 | `GI140` | error | An expression doesn't match any recognized value-expression shape (including an unrecognized parenthesized expression, or an array literal with the wrong element count/non-literal elements). | The expression-level mechanical inverse of `emit.ts`'s expression emission; the catch-all when nothing else in `ModuleParser`'s expression dispatch matches. |
 | `GI141` | error | `rt.getVar`'s argument isn't a numeric literal, or a pointer's `pointer`/`type` string-literal arguments are missing (in a value-expression context). | Same static-literal requirements as `GI123`/`GI125`, enforced again at the expression level (`rt.getVar` used as a value rather than in a statement). |
 | `GI142` | error | `m.switchCase(...)`'s `cases`/`values` arguments aren't array literals, or a case value isn't numeric. | `math/switch`'s case table must be statically enumerable, same requirement as `flow/switch`'s `GI130`. |
-| `GI143` | error | An `m.<fn>(...)` call references an unknown function, an op missing from the registry, the wrong argument count, an unresolvable overload for the given argument types, an unrecognized multi-output index, or an output socket the op doesn't have. | The single broadest bucket — every way a math-namespace call can fail to map back onto a concrete `OpSpec` overload via `fnmap.ts`'s `lookupMFunctions`/`socketTypeSig`. |
+| `GI143` | error | An `m.<fn>(...)` call references an unknown function, an op missing from the registry, the wrong argument count, an unresolvable overload for the given argument types, an unrecognized multi-output index, or an output socket the op doesn't have. | The single broadest bucket — every way a math-namespace call can fail to map back onto a concrete `OpSpec` overload via `@gltfi/kernel`'s `fn-naming.ts`'s `lookupMFunctions`/`socketTypeSig` (this reverse `m.*`-name table is shared with `@gltfi/parse-lua`, since `emit-ts`'s and `emit-lua`'s naming rule is byte-for-byte identical — see that file's own header comment). |
 | `GI150` | error | An identifier doesn't resolve to any known binding (variable, proc, state slot, ...). | The final fallback when an identifier reference can't be matched to anything the parser tracks — usually a genuinely free variable that shouldn't exist in emitted code. |
 | `GI180` | info | Best-effort reconstruction of a cross-handler event-output read (`rt.eventOutRead(sourceNode, socket)`). | The parse-side counterpart to `import.ts`'s `GI012`: `emit-ts` emits a dedicated call for these reads (see `docs/design/ir-and-transpiler.md`), and reconstructing it is inherently approximate, but never an error — informational only. |
+
+## GL1xx — `@gltfi/parse-lua` parseModuleLua (Lua → IR)
+
+The Lua-surface counterpart to `GI1xx` above — same design (a mechanical inverse
+of the corresponding emitter, here `@gltfi/emit-lua`'s `emit.ts`), same
+all-error-except-one-informational-code severity convention. All raised by the
+same `fail(code, node, message)` pattern parse-ts uses, throwing a `ParseError`
+that aborts parsing with an empty module — except `GL180`, pushed directly as
+`info`. Unlike `GI1xx`, there is no ambient type-checker pass analogous to
+parse-ts's TS-diagnostics `GI001`: Lua has no static types at all, so GL1xx's
+structural subset validator carries the full soundness burden a real type
+checker would otherwise share.
+
+| Code | Severity | Meaning | Spec rationale |
+| --- | --- | --- | --- |
+| `GL001` | error | luaparse itself raised a syntax error against the source. | The Lua-grammar counterpart to parse-ts's TS-diagnostics `GI001` — a real Lua parse failure, not a structural-shape mismatch (those are `GL1xx`+). Emitted modules are supposed to always be valid Lua 5.1 syntax, so any syntax error here is fatal. |
+| `GL100` | error | The module's shape doesn't match `return function(rt) ... end` (wrong top-level statement count, non-`ReturnStatement`, non-anonymous/local function, wrong parameter). | This exact shape is what `@gltfi/emit-lua` always produces (see `emit.ts`'s header comment); `parse-lua` is a mechanical *inverse* of that emitter, so anything else means the source wasn't produced by (or compatible with) this pipeline. |
+| `GL101` | error | `rt.vars({...})` isn't the module's first statement, or an element isn't a well-formed `{ type = ..., initial = ... }` table literal. | Variable declarations must come first and be statically enumerable — the IR needs a fixed, ordered variable table before it can structure anything that reads/writes them. |
+| `GL102` | error | `rt.events({...})` isn't the second statement, or an element is malformed. | Same rigidity as `GL101`, for the event table. |
+| `GL103` | error | A proc's forward-declared name (`local proc1, proc2, ...`) isn't assigned an anonymous function (`procN = function() ... end`) in the following statements. | Procs are forward-declared then defined (see `emit.ts`'s emitProcs doc comment on why: either-order proc-to-proc calls) — every declared name must get exactly one matching definition for `callProc` to have somewhere to call. |
+| `GL104` | error | A top-level statement isn't a recognized handler registration (`rt.onStart`/`rt.onTick`/`rt.onReceive`), or its callback isn't a function expression, or `rt.onReceive`'s event-index argument isn't a numeric literal. | Handler registration is the only other thing allowed at module scope besides `rt.vars`/`rt.events`/proc declarations — anything else has no IR shape to parse into. |
+| `GL110` | error | A statement inside a handler/proc body doesn't match any recognized statement shape. | The statement-level mechanical inverse of `emit.ts`'s statement emission — every `IRStmt` variant emits one specific Lua shape, and this is the fallback when none match (including an `==`-headed `if` chain that wasn't consumed by a preceding switch/multiGate lookahead — see `GL130`). |
+| `GL121` | error | An unrecognized bare `do ... end` block (expected a `pointer/set` `if ok then ... else ... end` wrapper). | `pointer/set`'s emitted shape always wraps the write in a `do ... end` block containing an `ok`-checking `if` (needed so the local `ok` variable's scope doesn't leak into the surrounding block); a bare block that doesn't match means the source diverged from that convention. |
+| `GL122` | error | An unrecognized `local function` declaration where an async done-continuation was expected. | Async ops (`setDelay`, `varInterp`, `ptrInterp`, `animStart`, ...) emit their "on complete" continuation as either an inline `local function` or a proc reference — anything else can't be lowered back. |
+| `GL123` | error | `rt.setVar`'s first argument isn't a numeric literal, or references an out-of-range variable index. | Variable indices must be statically known at parse time to resolve the target's declared type. |
+| `GL124` | error | `rt.send`'s event-index argument isn't a numeric literal, or its payload isn't a 4-element table literal. | `event/send`'s payload is a fixed-shape tuple (`bool`, `int`, `float`, `expectedDuration`) — anything else doesn't round-trip to a valid graph node. |
+| `GL125` | error | A pointer op's (`pointer/get`/`set`/`interpolate`) `pointer`/`type` arguments aren't string literals, its `if ok then ... else ... end` shape is wrong, or its params table is missing a declared template parameter. | Pointer templates are resolved statically at export time (`@gltfi/ir/pointer.ts`), so every part of the call must be literal, not computed. |
+| `GL126` | error | `rt.varInterp`/`rt.ptrInterp`'s numeric/string-literal arguments are missing, or its done-continuation isn't a proc reference/inline `local function`/`nil`. | Same static-literal requirement as `GL125`/`GL123`, applied to the interpolation ops' arguments. |
+| `GL127` | error | An expression expected to be a state-slot identifier isn't one, or names an unknown slot. | `doN`/`multiGate`/`waitAll`/`throttle`/`for`/`delay` state reads go through a fixed table of slot identifiers the emitter itself generated — an unrecognized one means the source was hand-edited or corrupted. |
+| `GL128` | error | A `flow/multiGate` if/elseif-chain case (`R.index == N`) isn't a numeric literal. | Mirrors `flow/switch`'s `GL130` for multiGate's own emitted dispatch shape (an if/elseif chain here, unlike parse-ts's native `switch` statement — Lua has no switch statement at all). |
+| `GL129` | error | A for-loop reconstruction failed: no `while` loop follows a for-slot assignment, the loop condition isn't `slot < end`, or the body's last statement isn't the index increment. | `flow/for` always emits this exact three-part shape (`slot = start; while slot < end do body; slot = slot + 1.0 end`); any deviation means it wasn't produced by `emit.ts`. |
+| `GL130` | error | A `flow/switch` if/elseif-chain case isn't a numeric-literal equality test (`selVar == N`). | Switch cases are graph flow-socket names, which must be statically known integers, not computed. Also covers a malformed chain reaching `tryParseSwitchAfterLet`/the generic `if`-dispatch's defensive check. |
+| `GL140` | error | An expression doesn't match any recognized value-expression shape (including an array table literal with a named key mixed in, or the wrong element count/non-literal elements). | The expression-level mechanical inverse of `emit.ts`'s expression emission; the catch-all when nothing else in `ModuleParser`'s expression dispatch matches. |
+| `GL141` | error | `rt.getVar`'s argument isn't a numeric literal, or a pointer's `pointer`/`type` string-literal arguments are missing (in a value-expression context). | Same static-literal requirements as `GL123`/`GL125`, enforced again at the expression level (`rt.getVar` used as a value rather than in a statement). |
+| `GL142` | error | `m.switchCase(...)`'s `cases`/`values` arguments aren't plain array table literals, or a case value isn't numeric. | `math/switch`'s case table must be statically enumerable, same requirement as `flow/switch`'s `GL130`. |
+| `GL143` | error | An `m.<fn>(...)` call references an unknown function, an op missing from the registry, the wrong argument count, an unresolvable overload for the given argument types, an unrecognized multi-output index, or an output socket the op doesn't have. | The single broadest bucket — every way a math-namespace call can fail to map back onto a concrete `OpSpec` overload, via the SAME `@gltfi/kernel` `fn-naming.ts` reverse table `GI143` uses (see that entry's note on why it's shared rather than duplicated per backend). |
+| `GL150` | error | An identifier doesn't resolve to any known binding (variable, proc, state slot, ...). | The final fallback when an identifier reference can't be matched to anything the parser tracks — usually a genuinely free variable that shouldn't exist in emitted code. |
+| `GL180` | info | Best-effort reconstruction of a cross-handler event-output read (`rt.eventOutRead(sourceNode, socket)`). | The parse-side counterpart to `import.ts`'s `GI012`, mirroring parse-ts's own `GI180` for the Lua surface: `emit-lua` emits a dedicated call for these reads, and reconstructing it is inherently approximate, but never an error — informational only. |
 
 ## GI2xx — `@gltfi/ir` exportGraph (IR → graph)
 
@@ -150,10 +194,11 @@ execution equivalence via the conformance judge protocol).
 ## Regenerating this table
 
 ```sh
-grep -rn -oE '"(GI|GIC|GV)[0-9]+"' packages/*/src/*.ts | sort -u
+grep -rn -oE '"(GI|GIC|GV|GL)[0-9]+"' packages/*/src/*.ts | sort -u
 ```
 
 Cross-check severities against each producing module's own emission helper
 (`warn`/`error` methods in `import.ts`/`export.ts`/`check.ts`, `err` in
-`verify/src/index.ts`, `fail`/direct `diagnostics.push` in `parse-ts/src/index.ts`)
-rather than assuming from the code's numeric range alone.
+`verify/src/index.ts`, `fail`/direct `diagnostics.push` in `parse-ts/src/index.ts`
+and `parse-lua/src/index.ts`) rather than assuming from the code's numeric range
+alone.

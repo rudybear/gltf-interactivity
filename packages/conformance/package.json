@@ -11,6 +11,7 @@
     "@gltfi/gltf": "workspace:*",
     "@gltfi/ir": "workspace:*",
     "@gltfi/kernel": "workspace:*",
+    "@gltfi/parse-lua": "workspace:*",
     "@gltfi/parse-ts": "workspace:*",
     "@gltfi/runtime": "workspace:*",
     "@gltfi/runtime-lib": "workspace:*",
