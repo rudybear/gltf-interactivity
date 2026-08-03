@@ -20,6 +20,15 @@ export interface PointerHost {
   getAnimationPlayhead(animationIndex: number): { playhead: number; virtualPlayhead: number };
   activeCameraPosition: [number, number, number] | null;
   activeCameraRotation: [number, number, number, number] | null;
+  // Optional observer for successful direct pointer/set writes (mirrors
+  // interpreter.ts's runtime.onPointerSet — see engine.ts's EngineOptions
+  // doc comment): lets a host (e.g. the viewer's SceneAdapter bridge) mirror
+  // a compiled engine's internal gltf-clone mutation into a separately
+  // rendered scene without polling. Called with the fully-resolved pointer
+  // (template params already substituted, e.g. "/nodes/3/translation") and
+  // the raw value that was written. Not called by ptrGet (read-only) or on
+  // a failed/rejected ptrSet.
+  onPointerSet?: (pointer: string, value: unknown) => void;
 }
 
 function decodeToken(token: string): string {
@@ -640,7 +649,11 @@ export function ptrSet(host: PointerHost, pointer: string, args: Record<string, 
   if (resolved === null) {
     return false;
   }
-  return setPointerValue(host.gltf, resolved, value);
+  const ok = setPointerValue(host.gltf, resolved, value);
+  if (ok) {
+    host.onPointerSet?.(resolved, value);
+  }
+  return ok;
 }
 
 // Writes an already-resolved (no template substitution needed) pointer path

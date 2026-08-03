@@ -39,6 +39,19 @@ import { kernelValueToRaw, rawToKernelValue, type RawValue } from "./value.js";
 
 export type SentEvent = { eventIndex: number; externalId?: string; payload: [boolean, number, number, number] };
 
+// KHR_node_selectability / KHR_node_hoverability payload shapes handed to
+// rt.onSelect/rt.onHoverIn/rt.onHoverOut registrations and read back by
+// fireSelect/fireHoverIn/fireHoverOut — see the EngineInteractive doc
+// comment below for the ancestor-chain bubbling semantics these drive.
+export type SelectParams = {
+  selectedNode: string;
+  selectedNodeIndex: number;
+  controllerIndex: number;
+  selectionPoint: [number, number, number];
+  selectionRayOrigin: [number, number, number];
+};
+export type HoverParams = { hoveredNode: string; controllerIndex: number };
+
 // The minimal interface both engines (this compiled one, and a thin adapter
 // wrapping the interpreter's RuntimeGraph — see packages/conformance/src/
 // interp-adapter.ts) satisfy; packages/conformance/src/protocol.ts's
@@ -70,8 +83,51 @@ export type EngineOptions = {
   // @gltfi/kernel's animation.ts's readAccessorElements doc comment).
   glbBin?: ArrayBuffer | Uint8Array | DataView | null;
   seed?: number;
+  // Mirrors interpreter.ts's createRuntime({onPointerSet}) exactly — called
+  // with the fully-resolved pointer and raw value whenever a direct
+  // pointer/set write (rt.ptrSet), a scheduled pointer/interpolate tick
+  // (rt.ptrInterp), or an animation channel sample writes into this
+  // engine's internal gltf clone. Lets a host (the viewer's SceneAdapter
+  // bridge — see apps/viewer/src/engine-host.ts) mirror those writes into a
+  // separately rendered scene without polling; unused by
+  // packages/conformance (judgeTest reads variables directly, never the
+  // gltf clone).
+  onPointerSet?: (pointer: string, value: number[] | boolean[] | number | boolean) => void;
 };
-export type EngineFactory = (options?: EngineOptions) => EngineLike;
+// KHR_node_selectability / KHR_node_hoverability entry points, additive
+// beyond the conformance-oriented EngineLike surface (the official corpus's
+// test-index.json / mathtests-index.json never include the UserInteractions
+// category, so packages/conformance never needs these — see
+// packages/runtime/src/host.ts's InteractivityRuntime.setSelection/setHover
+// for the interpreter-side sibling this mirrors). A `() => EngineInteractive`
+// factory is structurally assignable to `() => EngineLike` (covariant
+// function return), so EngineFactory below widening to this doesn't disturb
+// any existing EngineLike-typed caller (run-compiled.ts, protocol.ts).
+export interface EngineInteractive extends EngineLike {
+  // Ancestor-chain bubbling from `nodeIndex` (the actual hit node) up to the
+  // scene root, deepest first — mirrors host.ts's triggerNodeEvent exactly,
+  // including the same (new, symmetric) stopPropagation short-circuit: once
+  // any onSelect handler that fires at a given chain level was configured
+  // with `stopPropagation: true`, bubbling stops before reaching that
+  // level's parent. No-op when nodeIndex < 0 (matches host.ts's setSelection
+  // guard).
+  fireSelect(nodeIndex: number, point: [number, number, number], rayOrigin?: [number, number, number], controllerIndex?: number): void;
+  // Full hover-transition entry point — mirrors host.ts's setHover(nodeIndex,
+  // point) exactly: internally tracks the previously-hovered node, no-ops if
+  // `nodeIndex` is unchanged, and fires onHoverOut for the old chain / onHoverIn
+  // for the new chain excluding whichever ancestor nodes are shared between
+  // them (so a hover move within one still-hovered subtree doesn't re-fire a
+  // shared ancestor's handlers). Pass nodeIndex -1 to hover nothing.
+  fireHoverIn(nodeIndex: number, point?: [number, number, number], controllerIndex?: number): void;
+  // Sugar for "pointer left every hoverable target" — equivalent to
+  // `fireHoverIn(-1)`. `nodeIndex` is accepted only for call-site symmetry
+  // with fireSelect/fireHoverIn (the actual previously-hovered node is
+  // whatever this engine's own internal state already tracked); it does not
+  // affect which handlers fire.
+  fireHoverOut(nodeIndex?: number): void;
+}
+
+export type EngineFactory = (options?: EngineOptions) => EngineInteractive;
 
 export type VarDecl = { type: ValueType; initial: RawValue };
 export type EventDecl = {
@@ -110,6 +166,16 @@ export interface EngineBuilder {
   onStart(fn: () => void): void;
   onTick(fn: (timeSinceStart: number, timeSinceLastTick: number) => void): void;
   onReceive(eventIndex: number, fn: (payload: [boolean, number, number, number]) => void): void;
+  // KHR_node_selectability/hoverability handler registration — `nodeIndex`
+  // is the node this handler's event/onSelect|onHoverIn|onHoverOut node was
+  // configured with (config.nodeIndex, default -1 meaning "never matches
+  // any real chain entry", exactly like the interpreter's own guard — see
+  // host.ts's triggerNodeEvent's `configured === target` check). Firing is
+  // driven by the engine's fireSelect/fireHoverIn/fireHoverOut methods, not
+  // from inside setup() itself.
+  onSelect(nodeIndex: number, stopPropagation: boolean, fn: (params: SelectParams) => void): void;
+  onHoverIn(nodeIndex: number, fn: (params: HoverParams) => void): void;
+  onHoverOut(nodeIndex: number, fn: (params: HoverParams) => void): void;
   send(eventIndex: number, externalId: string | undefined, payload: [boolean, number, number, number]): void;
   log(template: string, args: unknown[]): void;
   // `eventRef` is the compile-time-known ref string of the CURRENT handler's
@@ -197,6 +263,23 @@ function normalizeGlbBin(bin: EngineOptions["glbBin"]): DataView | null {
   return new DataView(bin.buffer, bin.byteOffset, bin.byteLength);
 }
 
+// Mirrors interpreter.ts's prepareGltfData's parent-index pass: for
+// fireSelect/fireHoverIn's ancestor-chain bubbling, computed once per engine
+// instance from the (already-cloned) gltf document handed to this factory
+// call. Index i holds node i's parent node index, or -1 for a root/orphan.
+function computeNodeParents(gltf: any): number[] {
+  const nodes = gltf?.nodes ?? [];
+  const parents = new Array(nodes.length).fill(-1);
+  nodes.forEach((node: any, index: number) => {
+    (node?.children ?? []).forEach((child: number) => {
+      if (child >= 0 && child < parents.length) {
+        parents[child] = index;
+      }
+    });
+  });
+  return parents;
+}
+
 // Mirrors interpreter.ts's parseAnimationRef: a ref-typed value is only a
 // valid animation reference when it's literally "/animations/<n>" and that
 // animation exists in the document.
@@ -213,13 +296,21 @@ function parseAnimationRef(gltf: any, ref: unknown): number | null {
 }
 
 export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory {
-  return (options: EngineOptions = {}): EngineLike => {
+  return (options: EngineOptions = {}): EngineInteractive => {
     const varTypes: ValueType[] = [];
     const varRaw: RawValue[] = [];
     const eventDecls: EventDecl[] = [];
     const onStartHandlers: Array<() => void> = [];
     const onTickHandlers: Array<(timeSinceStart: number, timeSinceLastTick: number) => void> = [];
     const onReceiveHandlers = new Map<number, Array<(payload: [boolean, number, number, number]) => void>>();
+    // KHR_node_selectability/hoverability handler registries, keyed by the
+    // handler's configured nodeIndex (see EngineBuilder.onSelect's doc
+    // comment) — fired by fireSelect/fireHoverIn/fireHoverOut below.
+    const selectHandlers = new Map<number, Array<{ fn: (params: SelectParams) => void; stopPropagation: boolean }>>();
+    const hoverInHandlers = new Map<number, Array<(params: HoverParams) => void>>();
+    const hoverOutHandlers = new Map<number, Array<(params: HoverParams) => void>>();
+    // Mirrors host.ts's InteractivityRuntime.lastHoverIndex.
+    let hoverIndex = -1;
     const sentEvents: SentEvent[] = [];
     const eventOutRegisters = new Map<string, unknown>();
     // Last-sent payload per event index — mirrors interpreter.ts's
@@ -228,6 +319,19 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
     // order-independent cross-handler event/receive payload reads.
     const lastPayloadByIndex = new Map<number, [boolean, number, number, number]>();
     const gltf: unknown = options.gltf ? JSON.parse(JSON.stringify(options.gltf)) : undefined;
+    const nodeParents = computeNodeParents(gltf);
+    // Chain of glTF node indices from `nodeIndex` up to the scene root
+    // (inclusive of the node itself) — mirrors host.ts's ancestorChain
+    // exactly (same cycle guard via the includes() check).
+    function ancestorChain(nodeIndex: number): number[] {
+      const chain: number[] = [];
+      let current = nodeIndex;
+      while (current >= 0 && current < nodeParents.length && !chain.includes(current)) {
+        chain.push(current);
+        current = nodeParents[current];
+      }
+      return chain;
+    }
     const glbBin = normalizeGlbBin(options.glbBin);
     let randomState = options.seed ?? DEFAULT_SEED;
     // Per-send-dispatch stop set, keyed by event ref string — see
@@ -266,7 +370,8 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
       // interpreter.ts's own default (nothing in the corpus ever calls the
       // interpreter's equivalent camera-pose setter either).
       activeCameraPosition: null,
-      activeCameraRotation: null
+      activeCameraRotation: null,
+      onPointerSet: options.onPointerSet as ((pointer: string, value: unknown) => void) | undefined
     };
 
     const effects: SchedulerEffects<FlowCont> = {
@@ -274,7 +379,9 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
         cont();
       },
       applyAnimationSample(animationIndex, requestedTime) {
-        const result = applyAnimationAt({ gltf, glbBin }, animationIndex, requestedTime);
+        const result = applyAnimationAt({ gltf, glbBin }, animationIndex, requestedTime, (pointer, value) => {
+          options.onPointerSet?.(pointer, value);
+        });
         if (!result) {
           return;
         }
@@ -282,6 +389,7 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
       },
       setPointer(pointer, value) {
         writePointerRaw(gltf, pointer, value);
+        options.onPointerSet?.(pointer, value as number[] | boolean[] | number | boolean);
       },
       setVariable(variableIndex, value) {
         varRaw[variableIndex] = kernelValueToRaw(varTypes[variableIndex] ?? value.type, value);
@@ -320,6 +428,21 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
         const list = onReceiveHandlers.get(eventIndex) ?? [];
         list.push(fn);
         onReceiveHandlers.set(eventIndex, list);
+      },
+      onSelect(nodeIndex, stopPropagation, fn) {
+        const list = selectHandlers.get(nodeIndex) ?? [];
+        list.push({ fn, stopPropagation });
+        selectHandlers.set(nodeIndex, list);
+      },
+      onHoverIn(nodeIndex, fn) {
+        const list = hoverInHandlers.get(nodeIndex) ?? [];
+        list.push(fn);
+        hoverInHandlers.set(nodeIndex, list);
+      },
+      onHoverOut(nodeIndex, fn) {
+        const list = hoverOutHandlers.get(nodeIndex) ?? [];
+        list.push(fn);
+        hoverOutHandlers.set(nodeIndex, list);
       },
       send(eventIndex, externalId, payload) {
         sentEvents.push({ eventIndex, externalId, payload });
@@ -563,6 +686,72 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
       },
       get eventDefaults() {
         return eventDecls.map((d) => d.expectedDuration);
+      },
+      fireSelect(nodeIndex, point, rayOrigin, controllerIndex = 0) {
+        if (nodeIndex < 0) {
+          return;
+        }
+        const params: SelectParams = {
+          selectedNode: `/nodes/${nodeIndex}`,
+          selectedNodeIndex: nodeIndex,
+          controllerIndex,
+          selectionPoint: [...point],
+          selectionRayOrigin: rayOrigin ? [...rayOrigin] : [Number.NaN, Number.NaN, Number.NaN]
+        };
+        // Deepest-first bubbling with a symmetric stopPropagation
+        // short-circuit — see EngineInteractive.fireSelect's doc comment
+        // and host.ts's triggerNodeEvent (enhanced the same way for parity).
+        for (const target of ancestorChain(nodeIndex)) {
+          const handlers = selectHandlers.get(target);
+          if (!handlers || handlers.length === 0) {
+            continue;
+          }
+          let stopped = false;
+          for (const handler of handlers) {
+            handler.fn(params);
+            if (handler.stopPropagation) {
+              stopped = true;
+            }
+          }
+          if (stopped) {
+            break;
+          }
+        }
+      },
+      fireHoverIn(nodeIndex, point, controllerIndex = 0) {
+        const previous = hoverIndex;
+        if (nodeIndex === previous) {
+          return;
+        }
+        hoverIndex = nodeIndex;
+        const prevChain = new Set(ancestorChain(previous));
+        const nextChain = new Set(ancestorChain(nodeIndex));
+        if (previous >= 0) {
+          const outParams: HoverParams = { hoveredNode: `/nodes/${previous}`, controllerIndex };
+          for (const target of ancestorChain(previous)) {
+            if (nextChain.has(target)) {
+              continue;
+            }
+            for (const handler of hoverOutHandlers.get(target) ?? []) {
+              handler(outParams);
+            }
+          }
+        }
+        if (nodeIndex >= 0) {
+          const inParams: HoverParams = { hoveredNode: `/nodes/${nodeIndex}`, controllerIndex };
+          for (const target of ancestorChain(nodeIndex)) {
+            if (prevChain.has(target)) {
+              continue;
+            }
+            for (const handler of hoverInHandlers.get(target) ?? []) {
+              handler(inParams);
+            }
+          }
+        }
+        void point; // reserved for a future hoverPoint pointer bridge; unused by onHoverIn/Out's current output sockets.
+      },
+      fireHoverOut() {
+        this.fireHoverIn(-1);
       }
     };
   };

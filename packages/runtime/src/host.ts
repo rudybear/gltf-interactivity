@@ -120,6 +120,24 @@ export class InteractivityRuntime {
     return dirty;
   }
 
+  // Read-by-index variable access — mirrors @gltfi/runtime-lib's
+  // EngineLike.getVariableByIndex/variableCount exactly (see
+  // packages/conformance/src/interp-adapter.ts's sibling implementation),
+  // so a host (e.g. apps/viewer's window.__gltfi smoke-test probe) can read
+  // either engine's variable state through the same shape without knowing
+  // which one it's holding.
+  getVariable(index: number) {
+    return this.runtime.variables[index];
+  }
+
+  get variableCount() {
+    return this.runtime.variables.length;
+  }
+
+  get time() {
+    return this.runtime.scheduler.time;
+  }
+
   getDebugState() {
     const scheduler = this.runtime.scheduler;
     const gltf = this.runtime.gltf as { nodes?: Array<{ translation?: number[] }> } | undefined;
@@ -183,6 +201,14 @@ export class InteractivityRuntime {
   // node or one of its ancestors, deepest first (event bubbling per
   // KHR_node_selectability / KHR_node_hoverability). `accept` lets hover
   // transitions skip handlers whose subtree contained both hover targets.
+  // For "event/onSelect" specifically, once any handler that fires at a
+  // given chain level was configured with stopPropagation:true, bubbling
+  // stops before reaching that level's parent — mirrors
+  // @gltfi/runtime-lib's engine.ts's fireSelect exactly (added there first;
+  // ported back here so both engines' bubbling behavior is identical, since
+  // the official corpus never exercises this — UserInteractions isn't in
+  // test-index.json/mathtests-index.json — so there was no conformance gate
+  // forcing the two to agree before now).
   private triggerNodeEvent(op: string, hitNodeIndex: number, accept: (handlerNodeIndex: number) => boolean) {
     const handlers = this.eventNodes.get(op);
     if (!handlers || handlers.length === 0) {
@@ -190,13 +216,23 @@ export class InteractivityRuntime {
     }
     const chain = this.ancestorChain(hitNodeIndex);
     for (const target of chain) {
+      let stopped = false;
       for (const handlerId of handlers) {
         const node = this.graph.nodes[handlerId];
         const raw = (node.configuration as Record<string, { value?: unknown[] }> | undefined)?.nodeIndex?.value?.[0];
         const configured = typeof raw === "number" ? Math.trunc(raw) : -1;
         if (configured === target && accept(configured)) {
           executeFlow(this.runtime, handlerId, "in");
+          if (op === "event/onSelect") {
+            const stopRaw = (node.configuration as Record<string, { value?: unknown[] }> | undefined)?.stopPropagation?.value?.[0];
+            if (Boolean(stopRaw)) {
+              stopped = true;
+            }
+          }
         }
+      }
+      if (stopped) {
+        break;
       }
     }
   }

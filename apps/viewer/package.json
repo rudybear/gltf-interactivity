@@ -7,17 +7,22 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "predev": "node scripts/bundle-runtime-lib.mjs",
     "dev": "vite",
-    "build": "vite build"
+    "prebuild": "node scripts/bundle-runtime-lib.mjs",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@gltfi/runtime": "workspace:*",
     "@gltfi/runtime-lib": "workspace:*",
     "@gltfi/gltf": "workspace:*",
+    "@gltfi/ir": "workspace:*",
     "@gltfi/emit-ts": "workspace:*"
   },
   "devDependencies": {
     "vite": "^5.4.0",
-    "@webgpu/types": "^0.1.44"
+    "@webgpu/types": "^0.1.44",
+    "esbuild": "^0.23.0"
   }
 }

@@ -15,17 +15,20 @@
 // through `m.*` calls (design decision 2) — no native-operator substitution
 // this milestone.
 //
-// Scope for this milestone (compiled path M3): every corpus test under
-// math/, type/, ref/ — confirmed (see task report) to use only onStart
-// handlers, flow/branch, flow/for, flow/sequence, pointer/get, pointer/set,
-// variable/get|set, debug/log, event/send, and the math/type/ref op set
-// itself (no while/switch/doN/multiGate/waitAll/throttle/setDelay/
-// interpolate/animation/onTick/receive/onSelect/onHoverIn/onHoverOut/GI012
-// cross-handler reads in scope). Statement/expr kinds beyond that are
-// implemented where cheap and clearly correct (while, switch, onTick,
-// onReceive, param, GI012) but are NOT exercised by the acceptance corpus;
-// stateful/async ops and the two extension-event handler kinds are not
-// implemented and raise EmitError — see the per-kind notes below.
+// Scope for the M3 conformance corpus (math/, type/, ref/, and everything
+// else in test-index.json/mathtests-index.json — 145/145 via `pnpm
+// conf:compiled`): onStart/onTick/receive handlers, every stateful/async op,
+// and the full math/type/ref op set. UserInteractions (event/onSelect,
+// event/onHoverIn, event/onHoverOut) is the one op family the official
+// corpus never exercises (it isn't in either index file at all — those
+// tests require live user input, not an automated oracle), but the viewer
+// (apps/viewer) needs it for click-select/hover parity with the interpreter,
+// so those three handler kinds are implemented too — see engine.ts's
+// onSelect/onHoverIn/onHoverOut + fireSelect/fireHoverIn/fireHoverOut and
+// this file's emitHandler/paramAccess "onSelect"/"onHoverIn"/"onHoverOut"
+// branches, plus packages/runtime-lib/test/engine.test.ts and
+// packages/runtime/test/host.test.ts for the DOM-less bubbling/
+// stopPropagation parity coverage between the two engines.
 import {
   formatPointerTemplate,
   pointerTemplateParams,
@@ -52,12 +55,19 @@ export class EmitError extends Error {
 export type EmitFlavor = "ts" | "js";
 
 export type EmitOptions = {
-  // "js" drops type annotations for in-browser Blob import. The generated
-  // code carries no type annotations either way in this milestone (every
-  // value is a plain inferred JS expression — see the header note), so the
-  // two flavors currently produce identical output; the option is accepted
-  // now so callers (esp. run-compiled.ts) don't need to change when a later
-  // milestone starts emitting explicit annotations for the "ts" flavor.
+  // "js" drops the handful of explicit type annotations emitStateSlots emits
+  // on doN/multiGate/waitAll/throttle/delay state-slot object literals (see
+  // that method's own doc comment for why "ts" needs them) — those are the
+  // only non-erasable-by-syntax TS constructs this emitter ever produces
+  // (every value expression elsewhere is plain inferred JS — see the header
+  // note), so stripping just that one spot's colon-type text is enough to
+  // make "js" output valid, directly-executable ECMAScript with no
+  // transpile step, for the viewer's in-browser Blob-URL module import path
+  // (apps/viewer's compiled-engine loader — see docs/design and
+  // apps/viewer/src/compiled-engine.ts). "ts" keeps the annotations, which
+  // @gltfi/parse-ts's own type checker requires (see that annotation's doc
+  // comment) and which run-compiled.ts's esbuild bundle (loader: "ts")
+  // strips anyway.
   flavor?: EmitFlavor;
 };
 
@@ -150,10 +160,14 @@ function constLiteral(type: IRType, data: Array<number | boolean | string>): str
 type HandlerEventCtx =
   | { kind: "onStart" }
   | { kind: "onTick" }
-  | { kind: "receive"; eventRef: number };
+  | { kind: "receive"; eventRef: number }
+  | { kind: "onSelect" }
+  | { kind: "onHoverIn" }
+  | { kind: "onHoverOut" };
 
 class Emitter {
   private readonly module: IRModule;
+  private readonly flavor: EmitFlavor;
   private readonly lines: string[] = [];
   private indent = 2; // inside `createEngine((rt) => { ... })`
   // Current handler's event context, for `param` lowering (see emitExpr's
@@ -180,8 +194,9 @@ class Emitter {
     return `__${prefix}${this.varCounter}`;
   }
 
-  constructor(module: IRModule) {
+  constructor(module: IRModule, flavor: EmitFlavor) {
     this.module = module;
+    this.flavor = flavor;
     this.collectCrossHandlerReads(module);
   }
 
@@ -351,6 +366,14 @@ class Emitter {
   // own file strict-mode sound, which @gltfi/parse-ts's type checker
   // requires (see docs/design/ir-and-transpiler.md's GIscript subset: "The
   // TS type checker runs first").
+  // `annotate` renders a colon-type suffix for the "ts" flavor and "" for
+  // "js" (see EmitOptions.flavor's doc comment) — every other part of these
+  // five declarations (the object literal itself) is identical JS either
+  // way, so this is the one substitution point that needs to differ.
+  private annotate(type: string): string {
+    return this.flavor === "ts" ? `: ${type}` : "";
+  }
+
   private emitStateSlots() {
     this.module.stateSlots.forEach((slot) => {
       switch (slot.kind) {
@@ -360,19 +383,21 @@ class Emitter {
           return;
         }
         case "delay":
-          this.push(`const ${slot.name}: { lastId: number; lastRef: string; ids: number[] } = { lastId: -1, lastRef: "", ids: [] };`);
+          this.push(`const ${slot.name}${this.annotate("{ lastId: number; lastRef: string; ids: number[] }")} = { lastId: -1, lastRef: "", ids: [] };`);
           return;
         case "doN":
-          this.push(`const ${slot.name}: { count: number } = { count: 0 };`);
+          this.push(`const ${slot.name}${this.annotate("{ count: number }")} = { count: 0 };`);
           return;
         case "multiGate":
-          this.push(`const ${slot.name}: { lastIndex: number; used: boolean[] } = { lastIndex: -1, used: [] };`);
+          this.push(`const ${slot.name}${this.annotate("{ lastIndex: number; used: boolean[] }")} = { lastIndex: -1, used: [] };`);
           return;
         case "waitAll":
-          this.push(`const ${slot.name}: { activated: boolean[]; remaining: number | undefined } = { activated: [], remaining: undefined };`);
+          this.push(
+            `const ${slot.name}${this.annotate("{ activated: boolean[]; remaining: number | undefined }")} = { activated: [], remaining: undefined };`
+          );
           return;
         case "throttle":
-          this.push(`const ${slot.name}: { lastTime: number | undefined; remaining: number } = { lastTime: undefined, remaining: NaN };`);
+          this.push(`const ${slot.name}${this.annotate("{ lastTime: number | undefined; remaining: number }")} = { lastTime: undefined, remaining: NaN };`);
           return;
       }
     });
@@ -432,8 +457,42 @@ class Emitter {
         this.push("});");
         return;
       }
-      default:
-        throw new EmitError(`handler kind "${handler.kind}" not supported this milestone`, handler.kind, this.originNodeId);
+      // KHR_node_selectability/hoverability handlers — not covered by the
+      // official corpus (UserInteractions isn't in test-index.json/
+      // mathtests-index.json, so the M3 conformance gate never exercised
+      // this), but needed for the viewer's compiled-engine path to support
+      // click-select/hover parity with the interpreter (see
+      // packages/runtime-lib/src/engine.ts's onSelect/onHoverIn/onHoverOut +
+      // fireSelect/fireHoverIn/fireHoverOut, and host.ts's sibling
+      // triggerNodeEvent bubbling). `params` is destructured to plain locals
+      // so paramAccess's onSelect/onHoverIn/onHoverOut branches (below) can
+      // emit bare identifiers exactly like every other handler kind's params.
+      case "onSelect": {
+        const nodeIndex = Math.trunc(Number((handler.config as { nodeIndex?: number } | undefined)?.nodeIndex ?? -1));
+        const stopPropagation = Boolean((handler.config as { stopPropagation?: boolean } | undefined)?.stopPropagation);
+        this.handlerEventCtx = { kind: "onSelect" };
+        this.push(`rt.onSelect(${nodeIndex}, ${stopPropagation ? "true" : "false"}, (params) => {`);
+        this.indent += 1;
+        this.push("const { selectedNode, selectedNodeIndex, controllerIndex, selectionPoint, selectionRayOrigin } = params;");
+        this.emitEventOutWrites();
+        this.emitStmt(handler.body);
+        this.indent -= 1;
+        this.push("});");
+        return;
+      }
+      case "onHoverIn":
+      case "onHoverOut": {
+        const nodeIndex = Math.trunc(Number((handler.config as { nodeIndex?: number } | undefined)?.nodeIndex ?? -1));
+        this.handlerEventCtx = { kind: handler.kind };
+        this.push(`rt.${handler.kind === "onHoverIn" ? "onHoverIn" : "onHoverOut"}(${nodeIndex}, (params) => {`);
+        this.indent += 1;
+        this.push("const { hoveredNode, controllerIndex } = params;");
+        this.emitEventOutWrites();
+        this.emitStmt(handler.body);
+        this.indent -= 1;
+        this.push("});");
+        return;
+      }
     }
   }
 
@@ -908,6 +967,9 @@ class Emitter {
     if (name === "event") {
       if (ctx.kind === "onStart") return '"event:onStart"';
       if (ctx.kind === "onTick") return '"event:onTick"';
+      if (ctx.kind === "onSelect") return '"event:onSelect"';
+      if (ctx.kind === "onHoverIn") return '"event:onHoverIn"';
+      if (ctx.kind === "onHoverOut") return '"event:onHoverOut"';
       return `"event:custom:${ctx.eventRef}"`;
     }
     if (ctx.kind === "onTick") {
@@ -919,6 +981,20 @@ class Emitter {
       if (name === "intParameter") return "payload[1]";
       if (name === "floatParameter") return "payload[2]";
       if (name === "expectedDuration") return "payload[3]";
+    }
+    // Destructured to bare locals right at the rt.onSelect/onHoverIn/
+    // onHoverOut callback's top (see emitHandler) — same shape as every
+    // other handler kind's params, one identifier per named socket.
+    if (ctx.kind === "onSelect") {
+      if (name === "selectedNode") return "selectedNode";
+      if (name === "selectedNodeIndex") return "selectedNodeIndex";
+      if (name === "controllerIndex") return "controllerIndex";
+      if (name === "selectionPoint") return "selectionPoint";
+      if (name === "selectionRayOrigin") return "selectionRayOrigin";
+    }
+    if (ctx.kind === "onHoverIn" || ctx.kind === "onHoverOut") {
+      if (name === "hoveredNode") return "hoveredNode";
+      if (name === "controllerIndex") return "controllerIndex";
     }
     throw new EmitError(`param("${name}") not supported for handler kind "${ctx.kind}"`, "param", this.originNodeId);
   }
@@ -1017,6 +1093,5 @@ function hashString(s: string): number {
 }
 
 export function emitModule(module: IRModule, opts: EmitOptions = {}): EmitResult {
-  void opts.flavor;
-  return new Emitter(module).run();
+  return new Emitter(module, opts.flavor ?? "ts").run();
 }

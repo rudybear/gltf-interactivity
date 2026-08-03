@@ -12,7 +12,7 @@ All core conformance gates pass against the official Khronos test assets (145 te
 | V2 Compiled | graph → TypeScript → execute | **145/145** |
 | V3 Roundtrip | graph → TypeScript → parse → graph′ → interpreter | **145/145** |
 
-In progress: WebGPU viewer with an interpreter/compiled engine toggle; planned: Luau and typed-Python backends over the same IR.
+The WebGPU viewer (`pnpm dev`) hosts both engines — `?engine=interpreter` (default) or `?engine=compiled` — with click-select and hover bubbling. `pnpm smoke` runs a headless render check (needs a real GPU; software WebGPU in sandboxes can't sustain the swap-chain). Planned: Luau and typed-Python backends over the same IR.
 
 ## Quickstart
 

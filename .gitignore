@@ -4,3 +4,4 @@ external/
 *.tsbuildinfo
 reports/render/
 .scratch/
+apps/viewer/public/gltfi-runtime-lib.mjs*
