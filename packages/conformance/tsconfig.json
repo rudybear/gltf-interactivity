@@ -18,6 +18,7 @@
     { "path": "../parse-lua" },
     { "path": "../parse-py" },
     { "path": "../parse-cs" },
+    { "path": "../parse-gd" },
     { "path": "../verify" },
     { "path": "../runtime-lib" },
     { "path": "../runtime-lua" },

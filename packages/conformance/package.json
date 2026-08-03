@@ -15,6 +15,7 @@
     "@gltfi/ir": "workspace:*",
     "@gltfi/kernel": "workspace:*",
     "@gltfi/parse-cs": "workspace:*",
+    "@gltfi/parse-gd": "workspace:*",
     "@gltfi/parse-lua": "workspace:*",
     "@gltfi/parse-py": "workspace:*",
     "@gltfi/parse-ts": "workspace:*",

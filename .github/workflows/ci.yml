@@ -35,4 +35,20 @@ jobs:
       - run: pnpm conf:roundtrip-lua
       - run: pnpm conf:roundtrip-py
       - run: pnpm conf:roundtrip-cs
+      # conf:gd (compiled GDScript, pre-existing) and conf:roundtrip-gd (this
+      # task's new GDScript round-trip gate) are intentionally NOT run here.
+      # conf:gd genuinely needs a real `godot --headless` binary on PATH
+      # (run-compiled-gd.ts's GdSession spawns one), which this runner
+      # doesn't install (unlike .NET, set up above for the C# gates) — do
+      # NOT add a Godot install step here. conf:roundtrip-gd is DIFFERENT:
+      # @gltfi/parse-gd is a pure, dependency-free, in-process parser (see
+      # that package's own header — Godot 4.3 exposes no public GDScript AST
+      # API, so unlike parse-py's/parse-cs's own harness-process parsers,
+      # there's no language runtime to shell out to at all), so it needs NO
+      # godot binary and technically COULD run here — kept out anyway purely
+      # to keep the whole GDScript backend's CI footprint at zero until
+      # conf:gd's own godot dependency is addressed, rather than running an
+      # inconsistent "one GDScript gate but not the other" split. Run both
+      # locally with Godot 4.3+ on PATH (`GLTFI_GODOT=<path>` if it's not
+      # named `godot`): `pnpm conf:gd`, `pnpm conf:roundtrip-gd`.
       - run: pnpm fuzz

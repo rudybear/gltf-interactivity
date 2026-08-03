@@ -47,6 +47,17 @@ Code namespaces:
   emitter" design, distinct namespace. `GC001` covers a Roslyn `CSharpSyntaxTree.
   ParseText` syntax error (a SYNTAX-only check, no semantic analysis — see the
   table below for what that does and doesn't catch).
+- **`GG1xx`** — `@gltfi/parse-gd`'s `parseModuleGd` (emitted GDScript → IR).
+  Always **error** severity (a `ParseError` thrown mid-parse always aborts with an
+  empty module), except `GG180` which is informational. The GDScript-surface
+  counterpart to `GI1xx`/`GL1xx`/`GP1xx`/`GC1xx` — same numbering scheme, same
+  "mechanical inverse of the emitter" design, distinct namespace. Unlike every
+  sibling above, `parse-gd` shells out to no external grammar at all (Godot 4.3
+  exposes no public GDScript AST API — see that package's own header for the
+  brief `tree-sitter-gdscript` evaluation and why it took the task's designed
+  fallback instead): `GG001` covers a syntax error raised by `parse-gd`'s OWN
+  hand-rolled tokenizer/parser (`./gdscript-syntax.ts`), not a third-party/
+  language-native one.
 
 ## GI0xx — `@gltfi/ir` importGraph (graph → IR)
 
@@ -233,6 +244,73 @@ subtype's own declared properties (mirrors Python's `ast.dump()`-style
 | `GC161` | error | A native C# operator expression (`+`/`-`/`*`/`/`/`==`/`!=`/`<`/`<=`/`>`/`>=`/`&&`/`\|\|`/`!`/unary `-`) couldn't be resolved to a kernel overload for its inferred operand type. | The native-operator counterpart to `GC143` — `@gltfi/emit-cs` substitutes a broader set of ops as native C# operators than any other backend (int arithmetic AND int/float/bool comparisons — see `emit.ts`'s own header table), so `tryLowerNativeOp` has correspondingly more inference work (`inferScalarKind`/`inferNumericOperandType`) than parse-py's/parse-lua's narrower equivalents; this is what fires when that inference still can't resolve a real overload. |
 | `GC180` | info | Best-effort reconstruction of a cross-handler event-output read (`rt.EventOutRead(sourceNode, socket)`). | The parse-side counterpart to `import.ts`'s `GI012`, mirroring `GI180`/`GL180`/`GP180` for the C# surface: `emit-cs` emits a dedicated call for these reads, and reconstructing it is inherently approximate, but never an error — informational only. Unlike the other three backends, this one CAN sometimes recover the read's exact `IRType` rather than falling back to `"ref"`: `emit-cs` wraps every `EventOutRead` call in an explicit C# cast (`(int)`/`(bool)`/`(string)`/`(double)`/`(double[])`, one per `IRType` — see `Engine.EventOutRead`'s own boxing convention), and `unwrapCast` reads that cast's target type directly when it unambiguously maps to one (every case except `(double[])`, which stays ambiguous across the vector/matrix family — see `ast-helpers.ts`'s own `unwrapCast` doc comment). |
 
+## GG1xx — `@gltfi/parse-gd` parseModuleGd (GDScript → IR)
+
+The GDScript-surface counterpart to `GI1xx`/`GL1xx`/`GP1xx`/`GC1xx` above — same
+design (a mechanical inverse of `emit-gd`'s `emit.ts`, case for case), same
+convention that any `ParseError` thrown mid-parse aborts with an empty module,
+except `GG180`, pushed directly as `info`. No ambient type-checker pass
+analogous to parse-ts's `GI001` (GDScript has no static types in the emitted
+source, same as Lua/Python/C#'s own untyped-parse situation).
+
+Structurally, this parser is the one genuine outlier among the five: Godot 4.3
+exposes no public GDScript AST API at all, so unlike `GL1xx`/`GP1xx`/`GC1xx`
+(each a thin walk over a REAL language grammar's own tree — luaparse's,
+CPython's `ast.parse`'s, Roslyn's `CSharpSyntaxTree.ParseText`'s), `@gltfi/
+parse-gd` ships its OWN hand-rolled, zero-dependency, indentation-aware
+tokenizer + recursive-descent parser (`packages/parse-gd/src/gdscript-
+syntax.ts`) over exactly the constructs `emit-gd` can produce, then lowers
+that generic tree the same way every sibling parser's `ModuleParser` lowers
+its own language's tree. (A brief evaluation of the `tree-sitter-gdscript` npm
+package — a native Node addon requiring `node-gyp-build`, not the zero-native-
+deps `web-tree-sitter` WASM binding, single-maintainer, general-purpose
+grammar far broader than this emitter's own narrow subset — raised enough
+doubt to take the task's designed fallback instead; see `gdscript-syntax.ts`'s
+own header for the full rationale.) `GG001` is therefore a syntax error from
+`parse-gd`'s own tokenizer/parser, not a third-party or language-native one.
+
+Two structural simplifications this parser gets that `GL1xx`/`GP1xx` don't:
+`emit-gd` has no OLD/NEW dual-shape history to stay backward-compatible with
+(every construct has exactly one canonical emitted shape, unlike e.g. `GP101`'s
+old-list/new-dict `rt.vars` duality), and GDScript's `elif` is a distinct token
+from `else:` + a nested `if` (unlike Python's/Lua's own grammars, where the two
+are byte-identical ASTs), so switch/multiGate/throttle lookaheads here need no
+"is this elif-looking nested-if actually unrelated" defensive chain-walking at
+all. One genuine GDScript-specific complication neither has: async "done"
+continuations are bare IDENTIFIER references (a Callable value) resolved
+against two whole-file pools built in `ModuleParser.run`'s first pass (known
+proc names, and `contN`-named top-level funcs — see `GG122`), never an inline
+nested function the way Python's/Lua's own local `def`/`local function`
+continuation is (GDScript lambdas can't forward-reference/self-recurse — see
+`emit-gd`'s own header note).
+
+| Code | Severity | Meaning | Spec rationale |
+| --- | --- | --- | --- |
+| `GG001` | error | `parse-gd`'s own tokenizer/parser (`gdscript-syntax.ts`) raised a syntax error against the source (bad indentation, unexpected token, unterminated string, ...). | The GDScript-grammar counterpart to `GL001`'s luaparse syntax error / `GP001`'s CPython `SyntaxError` / `GC001`'s Roslyn syntax diagnostics — a real parse failure, not a structural-shape mismatch (those are `GG1xx`+). Emitted modules are supposed to always be valid GDScript 2.0 syntax within this emitter's own subset, so any syntax error here is fatal. |
+| `GG100` | error | The module's top level doesn't match `extends RefCounted` + `var m`/`var rt`/`var V`/`var E` + zero-or-more state-slot `var` fields + `func build(_rt) -> void: ...` (missing/misnamed field, wrong `build` parameter). | This exact shape is what `@gltfi/emit-gd` always produces (see `emit.ts`'s header comment); `parse-gd` is a mechanical *inverse* of that emitter, so anything else means the source wasn't produced by (or compatible with) this pipeline. |
+| `GG101` | error | `V = rt.vars([...])` isn't `build()`'s second statement, an element isn't a well-formed `[name, rt.<type>(...)]` pair, or the declaration-helper call is unrecognized. | Variable declarations must come first and be statically enumerable — the IR needs a fixed, ordered variable table before it can structure anything that reads/writes them. |
+| `GG102` | error | `E = rt.events([...])` isn't `build()`'s third statement, or an element isn't a well-formed `[name, {...}]` pair. | Same rigidity as `GG101`, for the event table. |
+| `GG103` | error | A state-slot init assignment is missing, out of order, or doesn't match one of the six known shapes (`<slot> = <int literal>` for `for`, or `<slot> = rt.<kind>_state()` for the other five). | State-slot init statements must appear in the SAME order as the class's own `var` field declarations (see `GG100`) — a mismatch means the source diverged from `emit.ts`'s own `emitStateSlots` convention. |
+| `GG104` | error | A statement inside `build()` after the state-slot inits isn't a recognized handler-registration call (`rt.on_start`/`rt.on_tick`/`rt.on_receive`), or one references a function name not defined anywhere else in the file. | Handler registration is the only thing left in `build()`'s body besides the fixed header — every registered name must resolve to a real top-level `func` for the corresponding handler body to have somewhere to come from. |
+| `GG105` | error | A top-level statement after `build()` isn't a `func` definition. | Procs, handler bodies, and `contN` continuations are the only things left at module scope — anything else has no IR shape to parse into. |
+| `GG110` | error | A statement inside a handler/proc/continuation body doesn't match any recognized statement shape (including an elif-chain that reached the generic `if` dispatch unconsumed by a switch/multiGate/throttle lookahead). | The statement-level mechanical inverse of `emit.ts`'s statement emission — every `IRStmt` variant emits one specific GDScript shape, and this is the fallback when none match. |
+| `GG122` | error | An async op's "done" argument, or a `contN`-shaped top-level func, is a bare identifier that resolves to neither a known proc name nor a known `contN` continuation body. | Async ops (`set_delay`, `var_interp`, `ptr_interp`, `anim_start`, ...) reference their "on complete" continuation as either a proc's own name or a synthesized `contN` name (never inlined — see this section's own header note); an unresolvable reference means the source diverged from `emit.ts`'s own naming convention. |
+| `GG123` | error | `V.<name>` is assigned or read where `<name>` isn't one of `rt.vars([...])`'s own declared entries. | Every `setVar`/`varGet` target must resolve to a real declared variable — an unrecognized name means the source was hand-edited or corrupted. |
+| `GG124` | error | `rt.send`'s first argument isn't a numeric literal or `E["<name>"]`, or its payload argument isn't a 4-element array literal. | `event/send`'s payload is a fixed-shape tuple (`bool`, `int`, `float`, `expectedDuration`) — anything else doesn't round-trip to a valid graph node. |
+| `GG125` | error | A pointer op's (`rt.ptr_get`/`ptr_set`/`ptr_interp`) `pointer`/`type` arguments aren't string literals, or its args dict is missing a declared template parameter. | Pointer templates are resolved statically at export time (`@gltfi/ir/pointer.ts`), so every part of the call must be literal, not computed. |
+| `GG126` | error | `rt.var_interp`/`rt.ptr_interp`'s numeric/string-literal arguments are missing, or its done-continuation isn't a proc/continuation reference or `Callable()`. | Same static-literal requirement as `GG125`/`GG123`, applied to the interpolation ops' arguments. |
+| `GG127` | error | An expression expected to be a state-slot identifier isn't one, or names an unknown slot. | `doN`/`multiGate`/`waitAll`/`throttle`/`for`/`delay` state reads go through a fixed set of identifiers the emitter itself generated — an unrecognized one means the source was hand-edited or corrupted. |
+| `GG128` | error | A `flow/multiGate` if/elif-chain case (`R["index"] == N`) isn't a numeric literal. | Mirrors `flow/switch`'s own `GG130` for multiGate's own emitted dispatch shape. |
+| `GG129` | error | A for-loop reconstruction failed: no `while` loop follows a for-slot assignment, the loop condition isn't `<slot> < (end)`, or the body's last statement isn't the index increment. | `flow/for` always emits this exact three-part shape (`slot = start; while slot < (end): body; slot = slot + 1`); any deviation means it wasn't produced by `emit.ts`. |
+| `GG130` | error | A `flow/switch` if/elif-chain case isn't a numeric-literal equality test against the hoisted selector. | Switch cases are graph flow-socket names, which must be statically known integers, not computed. |
+| `GG140` | error | An expression doesn't match any recognized value-expression shape (including an array literal with a non-numeric-literal element, or an unrecognized state-slot field read). | The expression-level mechanical inverse of `emit.ts`'s expression emission; the catch-all when nothing else in `ModuleParser`'s expression dispatch matches. |
+| `GG141` | error | A pointer's `pointer`/`type` string-literal arguments are missing (in a value-expression context, i.e. `rt.ptr_get(...)`). | Same static-literal requirements as `GG123`/`GG125`, enforced again at the expression level. |
+| `GG142` | error | `m.switchCase(...)`'s `cases`/`values` arguments aren't plain array literals, or a case value isn't numeric. | `math/switch`'s case table must be statically enumerable, same requirement as `flow/switch`'s `GG130`. |
+| `GG143` | error | An `m.<fn>(...)` call references an unknown function, an op missing from the registry, the wrong argument count, an unresolvable overload for the given argument types, an unrecognized multi-output index/socket, or an output socket the op doesn't have. | The single broadest bucket — every way a math-namespace call can fail to map back onto a concrete `OpSpec` overload, via the SAME `@gltfi/kernel` `fn-naming.ts` reverse table `GI143`/`GL143`/`GP143` use, after first reversing `emit-gd`'s own keyword-collision renaming (a strict superset of `GP143`'s `PY_UNRENAME` — see `GD_UNRENAME` in `parse-gd/src/index.ts`, the mirror image of `emit-gd`'s own `GD_RENAME`). |
+| `GG150` | error | An identifier doesn't resolve to any known binding (a temp, a `for`-slot's own bare index read, or an onTick time parameter — variable/proc/other-state-slot references go through `V.<name>`/a bare call/`<slot>[<field>]` instead, never a plain identifier lookup). | The final fallback when an identifier reference can't be matched to anything the parser tracks — usually a genuinely free variable that shouldn't exist in emitted code. |
+| `GG161` | error | A native GDScript operator expression (`+`/`-`/`*`/`==`/`!=`/`<`/`<=`/`>`/`>=`/`and`/`or`/`not`/unary `-`) couldn't be resolved to a kernel overload for its inferred operand type. | The native-operator counterpart to `GG143` — identical operator set/precedence to `GP161`'s Python equivalent (see `emit-gd`'s own header note: "identical operator SET and precedence table to emit-py's own"), since GDScript, like Python, never natively substitutes int arithmetic/comparisons or division. |
+| `GG180` | info | Best-effort reconstruction of a cross-handler event-output read (`rt.event_out_read(sourceNode, socket)`). | The parse-side counterpart to `import.ts`'s `GI012`, mirroring `GI180`/`GL180`/`GP180`/`GC180` for the GDScript surface: `emit-gd` emits a dedicated call for these reads, and reconstructing it is inherently approximate, but never an error — informational only. |
+
 ## GI2xx — `@gltfi/ir` exportGraph (IR → graph)
 
 All **error** severity except `GI212` (informational). An export error means the
@@ -310,11 +388,11 @@ execution equivalence via the conformance judge protocol).
 ## Regenerating this table
 
 ```sh
-grep -rn -oE '"(GI|GIC|GV|GL|GP|GC)[0-9]+"' packages/*/src/*.ts | sort -u
+grep -rn -oE '"(GI|GIC|GV|GL|GP|GC|GG)[0-9]+"' packages/*/src/*.ts | sort -u
 ```
 
 Cross-check severities against each producing module's own emission helper
 (`warn`/`error` methods in `import.ts`/`export.ts`/`check.ts`, `err` in
 `verify/src/index.ts`, `fail`/direct `diagnostics.push` in `parse-ts/src/index.ts`,
-`parse-lua/src/index.ts`, `parse-py/src/index.ts`, and `parse-cs/src/index.ts`)
-rather than assuming from the code's numeric range alone.
+`parse-lua/src/index.ts`, `parse-py/src/index.ts`, `parse-cs/src/index.ts`, and
+`parse-gd/src/index.ts`) rather than assuming from the code's numeric range alone.
