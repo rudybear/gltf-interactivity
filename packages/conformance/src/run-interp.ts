@@ -4,7 +4,7 @@ import {
   createRuntime,
   evaluateTest,
   type TestEntry
-} from "@gltfi/runtime";
+} from "@gltfi/runtime/node";
 
 const ROOT = process.env.INTERACTIVITY_TESTS_ROOT
   ?? path.resolve(import.meta.dirname, "../../../external/glTF-Test-Assets-Interactivity/Tests/Interactivity");

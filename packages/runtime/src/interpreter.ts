@@ -1,27 +1,25 @@
 
-import fs from "node:fs";
+export type ValueType = "bool" | "int" | "float" | "float2" | "float3" | "float4" | "float2x2" | "float3x3" | "float4x4" | "ref";
 
-type ValueType = "bool" | "int" | "float" | "float2" | "float3" | "float4" | "float2x2" | "float3x3" | "float4x4" | "ref";
-
-type Value = {
+export type Value = {
   type: ValueType;
   data: number[] | boolean[] | string[];
 };
 
-type NodeRef = { node: number; socket: string };
+export type NodeRef = { node: number; socket: string };
 
-type NodeValue =
+export type NodeValue =
   | { type: number; value: Array<number | boolean | string> }
   | NodeRef;
 
-type GraphNode = {
+export type GraphNode = {
   declaration: number;
   configuration?: Record<string, { value: Array<number | boolean | string> }>;
   values?: Record<string, NodeValue>;
   flows?: Record<string, NodeRef>;
 };
 
-type Graph = {
+export type Graph = {
   types: Array<{ signature: ValueType }>;
   variables: Array<{ id: string; type: number; value: Array<number | boolean | string> }>;
   events: Array<{ id: string; values: Record<string, { type: number; value: Array<number | boolean | string> }> }>;
@@ -29,20 +27,31 @@ type Graph = {
   nodes: GraphNode[];
 };
 
-type RuntimeGraph = {
+export type RuntimeGraph = {
   graph: Graph;
   variables: Value[];
   nodeStates: Map<number, NodeState>;
   nodeOutputs: Map<number, Map<string, Value>>;
   eventPayloads: Map<number, EventPayload>;
   time: number;
+  pointerX: number;
+  pointerY: number;
+  activeCameraPosition: [number, number, number] | null;
+  activeCameraRotation: [number, number, number, number] | null;
+  hoveredNodeIndex: number;
+  hoverPoint: [number, number, number];
+  selectedNodeIndex: number;
+  selectionPoint: [number, number, number];
+  selectionRayOrigin: [number, number, number];
   delays: DelayItem[];
   interpolations: Interpolation[];
   pointerInterpolations: PointerInterpolation[];
   animationStates: AnimationState[];
   animationRuntimes: Map<number, { playhead: number; virtualPlayhead: number }>;
   gltf: any;
-  glbBin: Buffer | null;
+  // Binary buffer chunk (GLB BIN) when available; animation sampler decoding
+  // degrades gracefully when it is null (see readAccessorElements).
+  glbBin: DataView | null;
   eventReceivers: Map<number, number[]>;
   randomState: number;
   nextDelayId: number;
@@ -51,9 +60,11 @@ type RuntimeGraph = {
   lastTickDelta: number;
   stoppedEvents: Set<string>;
   trace?: number[];
+  onPointerSet?: (pointer: string, value: number[] | boolean[] | number | boolean) => void;
+  onDirty?: () => void;
 };
 
-type PointerInterpolation = {
+export type PointerInterpolation = {
   pointer: string;
   startTime: number;
   duration: number;
@@ -65,7 +76,7 @@ type PointerInterpolation = {
   doneFlow?: NodeRef;
 };
 
-type AnimationState = {
+export type AnimationState = {
   animationIndex: number;
   startTime: number;
   endTime: number;
@@ -76,7 +87,7 @@ type AnimationState = {
   stopDoneFlow?: NodeRef;
 };
 
-type NodeState = {
+export type NodeState = {
   doNCount?: number;
   forIndex?: number;
   throttleTime?: number;
@@ -91,7 +102,7 @@ type NodeState = {
   delayIds?: number[];
 };
 
-type DelayItem = {
+export type DelayItem = {
   id: number;
   ref: string;
   time: number;
@@ -101,7 +112,7 @@ type DelayItem = {
   ownerNodeId: number;
 };
 
-type Interpolation = {
+export type Interpolation = {
   variableIndex: number;
   startTime: number;
   duration: number;
@@ -114,14 +125,16 @@ type Interpolation = {
   errFlow?: NodeRef;
 };
 
-type EventPayload = {
+export type EventPayload = {
   boolParameter?: boolean;
   intParameter?: number;
   floatParameter?: number;
   expectedDuration?: number;
 };
 
-type TestJson = {
+// Shape of a KHR_interactivity conformance-corpus test-oracle JSON file. Env
+// neutral: describing it here doesn't require file I/O.
+export type TestJson = {
   glbFileName: string;
   name: string;
   tests: Array<{
@@ -137,49 +150,20 @@ type TestJson = {
   }>;
 };
 
+// Identifies a conformance test case by file path; the paths are only ever
+// touched by node.ts, which is the sole place that reads them from disk.
 export type TestEntry = {
   name: string;
   glbPath: string;
   testPath: string;
 };
 
-type TestResult = { ok: boolean; failures: string[] };
+export type TestResult = { ok: boolean; failures: string[] };
 
-type ExecuteOptions = {
+export type ExecuteOptions = {
   maxIterations?: number;
   tickStep?: number;
 };
-
-function readGlb(filePath: string): { json: any; bin: Buffer | null } {
-  const data = fs.readFileSync(filePath);
-  const magic = data.toString("utf8", 0, 4);
-  if (magic !== "glTF") {
-    throw new Error(`Invalid GLB magic in ${filePath}`);
-  }
-  let offset = 12;
-  let jsonChunk: Buffer | null = null;
-  let binChunk: Buffer | null = null;
-  while (offset < data.length) {
-    const chunkLength = data.readUInt32LE(offset);
-    const chunkType = data.readUInt32LE(offset + 4);
-    offset += 8;
-    const chunkData = data.subarray(offset, offset + chunkLength);
-    offset += chunkLength;
-    if (chunkType === 0x4e4f534a) {
-      jsonChunk = chunkData;
-    } else if (chunkType === 0x004e4942) {
-      binChunk = chunkData;
-    }
-  }
-  if (!jsonChunk) {
-    throw new Error(`Missing JSON chunk in ${filePath}`);
-  }
-  return { json: JSON.parse(jsonChunk.toString("utf8")), bin: binChunk };
-}
-
-function readGlbJson(filePath: string) {
-  return readGlb(filePath).json;
-}
 
 function parseScalar(value: number | boolean | string): number | boolean | string {
   if (typeof value === "string") {
@@ -309,11 +293,6 @@ function applyUnary(a: Value, op: (x: number) => number, outputType?: ValueType)
 
 function isFiniteValue(value: Value): boolean {
   return valueToNumberArray(value).every((item) => Number.isFinite(item));
-}
-
-function bezierY(t: number, p1: [number, number], p2: [number, number]): number {
-  const u = 1 - t;
-  return 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t;
 }
 
 function quatNormalize(q: number[]): number[] {
@@ -745,21 +724,7 @@ function rotate2D(v: number[], angle: number): number[] {
   return [v[0] * c - v[1] * s, v[0] * s + v[1] * c];
 }
 
-function rotate3D(v: number[], q: number[]): number[] {
-  const [x, y, z] = v;
-  const [qx, qy, qz, qw] = q;
-  const ix = qw * x + qy * z - qz * y;
-  const iy = qw * y + qz * x - qx * z;
-  const iz = qw * z + qx * y - qy * x;
-  const iw = -qx * x - qy * y - qz * z;
-  return [
-    ix * qw + iw * -qx + iy * -qz - iz * -qy,
-    iy * qw + iw * -qy + iz * -qx - ix * -qz,
-    iz * qw + iw * -qz + ix * -qy - iy * -qx
-  ];
-}
-
-function resolveGraph(gltf: any): Graph {
+export function resolveGraph(gltf: any): Graph {
   const inter = gltf.extensions?.KHR_interactivity;
   if (!inter) {
     throw new Error("Missing KHR_interactivity.");
@@ -775,9 +740,11 @@ const ACCESSOR_COMPONENT_COUNTS: Record<string, number> = {
   SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT2: 4, MAT3: 9, MAT4: 16
 };
 
-// Decodes an accessor from the GLB binary chunk as an array of per-element
-// number arrays. Only tightly-packed float32 data is supported, which covers
-// animation samplers in the test corpus.
+// Decodes an accessor from the binary chunk as an array of per-element number
+// arrays. Only tightly-packed float32 data is supported, which covers
+// animation samplers. Returns null when no binary chunk is available — hosts
+// that construct this runtime from glTF JSON only still get animation
+// playhead tracking and done flows, just without sampled TRS/weights values.
 function readAccessorElements(runtime: RuntimeGraph, accessorIndex: number): number[][] | null {
   const accessor = runtime.gltf?.accessors?.[accessorIndex];
   const bin = runtime.glbBin;
@@ -790,11 +757,15 @@ function readAccessorElements(runtime: RuntimeGraph, accessorIndex: number): num
     return null;
   }
   const byteOffset = (view.byteOffset ?? 0) + (accessor.byteOffset ?? 0);
+  const end = byteOffset + accessor.count * componentCount * 4;
+  if (end > bin.byteLength) {
+    return null;
+  }
   const out: number[][] = [];
   for (let i = 0; i < accessor.count; i += 1) {
     const element: number[] = [];
     for (let j = 0; j < componentCount; j += 1) {
-      element.push(bin.readFloatLE(byteOffset + (i * componentCount + j) * 4));
+      element.push(bin.getFloat32(byteOffset + (i * componentCount + j) * 4, true));
     }
     out.push(element);
   }
@@ -845,6 +816,7 @@ function applyAnimationAt(runtime: RuntimeGraph, animationIndex: number, request
   }
   const { max } = getAnimationTimeRange(runtime, animationIndex);
   const t = effectiveAnimationTime(requested, Number.isFinite(max) ? max : 0);
+  let wroteAny = false;
   for (const channel of animation.channels ?? []) {
     const sampler = animation.samplers?.[channel.sampler];
     const target = channel.target;
@@ -890,6 +862,11 @@ function applyAnimationAt(runtime: RuntimeGraph, animationIndex: number, request
     } else {
       node[target.path] = sampled;
     }
+    runtime.onPointerSet?.(`/nodes/${target.node}/${target.path}`, sampled);
+    wroteAny = true;
+  }
+  if (wroteAny) {
+    runtime.onDirty?.();
   }
   const state = runtime.animationRuntimes.get(animationIndex) ?? { playhead: 0, virtualPlayhead: 0 };
   state.playhead = t;
@@ -975,7 +952,16 @@ function evaluateValue(runtime: RuntimeGraph, nodeId: number, socket: string, st
   const op = runtime.graph.declarations[node.declaration]?.op ?? "";
   const cached = getOutputCached(runtime, nodeId, socket);
   if (cached) {
-    if (op !== "event/onTick") {
+    if (
+      op !== "event/onTick"
+      && op !== "event/onPointerMove"
+      && op !== "event/onPointerDown"
+      && op !== "event/onPointerUp"
+      && op !== "event/onSelect"
+      && op !== "event/onHover"
+      && op !== "event/onHoverIn"
+      && op !== "event/onHoverOut"
+    ) {
       stack.delete(key);
       return cached;
     }
@@ -1725,6 +1711,57 @@ function evaluateValue(runtime: RuntimeGraph, nodeId: number, socket: string, st
       }
       break;
     }
+    case "event/onPointerMove":
+    case "event/onPointerDown":
+    case "event/onPointerUp": {
+      if (socket === "x") {
+        result = floatValue([runtime.pointerX]);
+      } else if (socket === "y") {
+        result = floatValue([runtime.pointerY]);
+      } else if (socket === "position") {
+        result = { type: "float2", data: [runtime.pointerX, runtime.pointerY] };
+      }
+      break;
+    }
+    case "event/onSelect": {
+      // KHR_node_selectability sockets: selectedNode is a node reference.
+      if (socket === "selectedNode") {
+        const index = runtime.selectedNodeIndex;
+        result = { type: "ref" as ValueType, data: [index >= 0 ? `/nodes/${index}` : ""] };
+      } else if (socket === "selectedNodeIndex") {
+        result = intValue([runtime.selectedNodeIndex]);
+      } else if (socket === "selectionPoint") {
+        result = { type: "float3" as ValueType, data: [...runtime.selectionPoint] };
+      } else if (socket === "selectionRayOrigin") {
+        result = { type: "float3" as ValueType, data: [...runtime.selectionRayOrigin] };
+      } else if (socket === "controllerIndex") {
+        result = intValue([0]);
+      } else if (socket === "event") {
+        result = { type: "ref" as ValueType, data: ["event:onSelect"] };
+      }
+      break;
+    }
+    case "event/onHoverIn":
+    case "event/onHoverOut": {
+      // KHR_node_hoverability sockets: hoveredNode is a node reference.
+      if (socket === "hoveredNode") {
+        const index = runtime.hoveredNodeIndex;
+        result = { type: "ref" as ValueType, data: [index >= 0 ? `/nodes/${index}` : ""] };
+      } else if (socket === "controllerIndex") {
+        result = intValue([0]);
+      } else if (socket === "event") {
+        result = { type: "ref" as ValueType, data: [`event:${op === "event/onHoverIn" ? "onHoverIn" : "onHoverOut"}`] };
+      }
+      break;
+    }
+    case "event/onHover": {
+      if (socket === "hoveredNodeIndex") {
+        result = intValue([runtime.hoveredNodeIndex]);
+      } else if (socket === "hoverPoint") {
+        result = { type: "float3" as ValueType, data: [...runtime.hoverPoint] };
+      }
+      break;
+    }
     case "event/send":
     case "event/receive": {
       if (socket === "event") {
@@ -1876,10 +1913,6 @@ function buildEffectivePointer(
     out.push(segment);
   }
   return out.join("/");
-}
-
-function parsePointer(pointer: string, inputs: Record<string, number | string>) {
-  return buildEffectivePointer(pointer, inputs) ?? pointer;
 }
 
 function decodePointerToken(token: string) {
@@ -2264,6 +2297,21 @@ const RUNTIME_LIMITS: Record<string, number> = {
 };
 
 function resolveVirtualPointer(runtime: RuntimeGraph, resolved: string, signature: ValueType): { value: Value; isValid: boolean } | null {
+  // Host-fed virtual pointers: active camera pose.
+  if (resolved === "/extensions/KHR_interactivity/activeCamera/position") {
+    if (signature !== "float3") {
+      return { value: defaultValue(signature), isValid: false };
+    }
+    const value = runtime.activeCameraPosition ?? [NaN, NaN, NaN];
+    return { value: { type: "float3" as ValueType, data: [...value] }, isValid: true };
+  }
+  if (resolved === "/extensions/KHR_interactivity/activeCamera/rotation") {
+    if (signature !== "float4") {
+      return { value: defaultValue(signature), isValid: false };
+    }
+    const value = runtime.activeCameraRotation ?? [NaN, NaN, NaN, NaN];
+    return { value: { type: "float4" as ValueType, data: [...value] }, isValid: true };
+  }
   if (resolved === "/extensions/KHR_interactivity/asset/majorVersion"
     || resolved === "/extensions/KHR_interactivity/asset/minorVersion") {
     if (signature !== "int") {
@@ -2589,6 +2637,10 @@ function handlePointerSet(runtime: RuntimeGraph, nodeId: number, stack: Set<stri
     return false;
   }
   const ok = setPointerValue(runtime.gltf, resolved, value);
+  if (ok) {
+    runtime.onPointerSet?.(resolved, value as number[] | boolean[] | number | boolean);
+    runtime.onDirty?.();
+  }
   if (!ok && runtime.trace) {
     runtime.trace.push(-4000 - nodeId);
   }
@@ -2921,7 +2973,10 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
       if (socket !== "in") {
         break;
       }
-      const delayInput = getInput(runtime, nodeId, "delay", stack);
+      // Spec socket is "delay" (ref-typed); older assets used the int-typed
+      // "delayIndex" socket, so keep it as a fallback.
+      const delayInput = getInputOptional(runtime, nodeId, "delay", stack)
+        ?? getInput(runtime, nodeId, "delayIndex", stack);
       let delay: DelayItem | undefined;
       if (delayInput.type === "ref") {
         const ref = String(delayInput.data[0] ?? "");
@@ -3114,7 +3169,7 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
   }
 }
 
-function executeFlow(runtime: RuntimeGraph, nodeId: number, socket = "in") {
+export function executeFlow(runtime: RuntimeGraph, nodeId: number, socket = "in") {
   runtime.nodeOutputs.clear();
   const queue: Array<{ nodeId: number; socket: string }> = [{ nodeId, socket }];
   while (queue.length > 0) {
@@ -3126,7 +3181,7 @@ function executeFlow(runtime: RuntimeGraph, nodeId: number, socket = "in") {
   }
 }
 
-function advanceTime(runtime: RuntimeGraph, delta: number) {
+export function advanceTime(runtime: RuntimeGraph, delta: number) {
   runtime.time += delta;
   // Animation playback (KHR_interactivity Animation Control Operations).
   const finishedAnimations: Array<{ flow?: NodeRef }> = [];
@@ -3172,7 +3227,10 @@ function advanceTime(runtime: RuntimeGraph, delta: number) {
     }
     if (Number.isNaN(t) || t >= 1) {
       const target = interp.endValue.length === 1 ? interp.endValue[0] : interp.endValue;
-      setPointerValue(runtime.gltf, interp.pointer, target);
+      if (setPointerValue(runtime.gltf, interp.pointer, target)) {
+        runtime.onPointerSet?.(interp.pointer, target);
+        runtime.onDirty?.();
+      }
       finishedPointerInterps.push({ flow: interp.doneFlow });
       return false;
     }
@@ -3180,7 +3238,11 @@ function advanceTime(runtime: RuntimeGraph, delta: number) {
     const value = interp.isQuaternion
       ? quatSlerp(interp.startValue, interp.endValue, q)
       : interp.startValue.map((item, index) => item + (interp.endValue[index] - item) * q);
-    setPointerValue(runtime.gltf, interp.pointer, value.length === 1 ? value[0] : value);
+    const written = value.length === 1 ? value[0] : value;
+    if (setPointerValue(runtime.gltf, interp.pointer, written)) {
+      runtime.onPointerSet?.(interp.pointer, written);
+      runtime.onDirty?.();
+    }
     return true;
   });
   for (const finished of finishedPointerInterps) {
@@ -3266,7 +3328,7 @@ function runEntryPoint(runtime: RuntimeGraph, entry: { nodeId: number; delayedEx
   }
 }
 
-function compareValues(expected: Array<number | boolean>, actual: Value, type: ValueType, epsilon = 1e-4): boolean {
+export function compareValues(expected: Array<number | boolean>, actual: Value, type: ValueType, epsilon = 1e-4): boolean {
   if (type === "ref" || actual.type === "ref") {
     const data = actual.data as string[];
     return expected.every((item, index) => String(item) === String(data[index] ?? data[0] ?? ""));
@@ -3289,9 +3351,18 @@ function compareValues(expected: Array<number | boolean>, actual: Value, type: V
     });
 }
 
-function buildRuntime(glbPath: string): RuntimeGraph {
-  const { json: gltf, bin } = readGlb(glbPath);
-  const graph = resolveGraph(gltf);
+export function createRuntime(
+  graph: Graph,
+  gltf: any,
+  options: {
+    onPointerSet?: RuntimeGraph["onPointerSet"];
+    onDirty?: RuntimeGraph["onDirty"];
+    // Optional binary buffer chunk (e.g. GLB BIN) enabling animation channel
+    // sampling; without it, animation control ops still track playhead state
+    // and fire done flows, but skip writing sampled TRS/weights values.
+    binary?: Uint8Array | ArrayBuffer | null;
+  } = {}
+): RuntimeGraph {
   const variables = graph.variables.map((variable) => {
     const signature = graph.types[variable.type]?.signature ?? "float";
     if (!Array.isArray(variable.value)) {
@@ -3311,6 +3382,13 @@ function buildRuntime(glbPath: string): RuntimeGraph {
       }
     }
   });
+  let glbBin: DataView | null = null;
+  const binary = options.binary;
+  if (binary instanceof ArrayBuffer) {
+    glbBin = new DataView(binary);
+  } else if (binary) {
+    glbBin = new DataView(binary.buffer, binary.byteOffset, binary.byteLength);
+  }
   return {
     graph,
     variables,
@@ -3318,37 +3396,46 @@ function buildRuntime(glbPath: string): RuntimeGraph {
     nodeOutputs: new Map(),
     eventPayloads: new Map(),
     time: 0,
+    pointerX: 0,
+    pointerY: 0,
+    activeCameraPosition: null,
+    activeCameraRotation: null,
+    hoveredNodeIndex: -1,
+    hoverPoint: [NaN, NaN, NaN],
+    selectedNodeIndex: -1,
+    selectionPoint: [NaN, NaN, NaN],
+    selectionRayOrigin: [NaN, NaN, NaN],
     delays: [],
     interpolations: [],
     pointerInterpolations: [],
     animationStates: [],
     animationRuntimes: new Map(),
     gltf: prepareGltfData(gltf),
-    glbBin: bin,
+    glbBin,
     eventReceivers,
     randomState: 123456789,
     nextDelayId: 0,
     activeDelayRefs: new Set(),
     tickCount: 0,
     lastTickDelta: NaN,
-    stoppedEvents: new Set()
+    stoppedEvents: new Set(),
+    onPointerSet: options.onPointerSet,
+    onDirty: options.onDirty
   };
-}
-
-export function createRuntime(glbPath: string) {
-  return buildRuntime(glbPath);
 }
 
 // Follows the official protocol from glTF-Test-Assets-Interactivity: run the
 // whole graph once (all entry points fire together, as they would on load),
 // tick the runtime for the asset-advertised expectedDuration, then judge each
 // sub-test by the HasPassed boolean the graph computed itself. The expected
-// value from the oracle JSON is reported only as a diagnostic.
-export function evaluateTest(entry: TestEntry): TestResult {
-  const testJson = JSON.parse(fs.readFileSync(entry.testPath, "utf8")) as TestJson;
+// value from the oracle JSON is reported only as a diagnostic. `buildRuntime`
+// is invoked fresh for every `test` entry (matching the corpus protocol of
+// isolated sub-tests) and is the seam where env-specific asset loading plugs
+// in — see node.ts's evaluateTest for the file-based implementation.
+export function evaluateGraphTests(buildRuntime: () => RuntimeGraph, testJson: TestJson): TestResult {
   const failures: string[] = [];
   for (const test of testJson.tests) {
-    const runtime = buildRuntime(entry.glbPath);
+    const runtime = buildRuntime();
     // Per the corpus protocol, the whole graph runs on load: every
     // event/onStart node activates, in JSON order (the oracle's entryPoints
     // list is only a subset useful for driving sub-tests individually).
@@ -3386,11 +3473,4 @@ export function evaluateTest(entry: TestEntry): TestResult {
     }
   }
   return { ok: failures.length === 0, failures };
-}
-
-export function debugRun(glbPath: string, nodeId: number) {
-  const runtime = buildRuntime(glbPath);
-  runtime.trace = [];
-  executeFlow(runtime, nodeId);
-  return { variables: runtime.variables, trace: runtime.trace, gltf: runtime.gltf };
 }
