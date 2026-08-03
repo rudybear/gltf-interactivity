@@ -151,17 +151,116 @@ function CreateEngine(setup)
 
     local rt = {}
 
+    -- Additive object-shaped `rt.vars(...)` form (see @gltfi/emit-lua's
+    -- header note and docs/design/ir-and-transpiler.md's IR->Lua section):
+    -- an ARRAY (element order == variable index order, same load-bearing
+    -- contract the plain array form below always had) of `{ name = ...,
+    -- decl = rt.int(0)/rt.bool(false)/... }` entries — an object keyed by
+    -- name would NOT preserve declaration order (Lua table literals have no
+    -- guaranteed key-iteration order), so the name lives ALONGSIDE each
+    -- array element instead of being decls' own key. Returns a table of
+    -- named accessors (`V.counter1.get()`/`.set(v)`), one per entry, each
+    -- closing over its own numeric index exactly like engine.ts's
+    -- VarAccessor. The OLD plain form (array of bare `{type=,initial=}`
+    -- decls, still used by hand-written callers — see
+    -- packages/runtime-lua/test/lua-runtime.test.ts) returns nil, same as
+    -- before; distinguished by whether the first element itself has a
+    -- `name` field.
     function rt.vars(decls)
+      if decls[1] ~= nil and decls[1].name ~= nil then
+        local V = {}
+        for _, entry in ipairs(decls) do
+          local idx = #varTypes
+          varTypes[idx + 1] = entry.decl.type
+          varRaw[idx + 1] = entry.decl.initial
+          V[entry.name] = {
+            get = function() return varRaw[idx + 1] end,
+            set = function(v) varRaw[idx + 1] = v end
+          }
+        end
+        return V
+      end
       for _, decl in ipairs(decls) do
         varTypes[#varTypes + 1] = decl.type
         varRaw[#varRaw + 1] = decl.initial
       end
+      return nil
     end
     function rt.getVar(index) return varRaw[index + 1] end
     function rt.setVar(index, value) varRaw[index + 1] = value end
+    -- Additive object-shaped `rt.events(...)` form — same array-of-named-
+    -- entries shape/rationale as rt.vars above. Returns a plain name->index
+    -- map (a bare number, exactly what rt.send/rt.onReceive's first
+    -- parameter already accepts).
     function rt.events(decls)
+      if decls[1] ~= nil and decls[1].name ~= nil then
+        local E = {}
+        for _, entry in ipairs(decls) do
+          local idx = #eventDecls
+          eventDecls[idx + 1] = entry.decl
+          E[entry.name] = idx
+        end
+        return E
+      end
       for _, d in ipairs(decls) do eventDecls[#eventDecls + 1] = d end
+      return nil
     end
+    -- Variable-declaration-shorthand helpers, usable as `rt.vars({ { name =
+    -- "counter1", decl = rt.int(0.0) }, ... })` entries' `decl` field — each
+    -- just builds the same `{type=,initial=}` shape the plain array form's
+    -- elements always were. Mirrors engine.ts's int/bool/float/.../ref
+    -- helpers name-for-name and default-for-default.
+    function rt.int(x)
+      if x == nil then x = 0.0 end
+      return { type = "int", initial = m.trunc(x) }
+    end
+    function rt.bool(x)
+      if x == nil then x = false end
+      return { type = "bool", initial = x and true or false }
+    end
+    function rt.float(x)
+      if x == nil then x = 0.0 end
+      return { type = "float", initial = x }
+    end
+    function rt.float2(x, y)
+      return { type = "float2", initial = { x or 0.0, y or 0.0 } }
+    end
+    function rt.float3(x, y, z)
+      return { type = "float3", initial = { x or 0.0, y or 0.0, z or 0.0 } }
+    end
+    function rt.float4(x, y, z, w)
+      return { type = "float4", initial = { x or 0.0, y or 0.0, z or 0.0, w or 0.0 } }
+    end
+    function rt.float2x2(...)
+      local values = { ... }
+      if #values == 0 then values = { 1.0, 0.0, 0.0, 1.0 } end
+      return { type = "float2x2", initial = values }
+    end
+    function rt.float3x3(...)
+      local values = { ... }
+      if #values == 0 then values = { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0 } end
+      return { type = "float3x3", initial = values }
+    end
+    function rt.float4x4(...)
+      local values = { ... }
+      if #values == 0 then
+        values = { 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 }
+      end
+      return { type = "float4x4", initial = values }
+    end
+    function rt.ref(pointer)
+      if pointer == nil then pointer = "" end
+      return { type = "ref", initial = pointer }
+    end
+    -- State-slot factories — plain table literals with the exact shape
+    -- @gltfi/emit-lua used to write out literally (see emitStateSlots'
+    -- previous inline `{ count = 0.0 }`/etc — kept byte-for-byte identical
+    -- here, just centralized).
+    function rt.doNState() return { count = 0.0 } end
+    function rt.multiGateState() return { lastIndex = -1.0, used = {} } end
+    function rt.waitAllState() return { activated = {} } end
+    function rt.throttleState() return { remaining = (0/0) } end
+    function rt.delayState() return { lastId = -1.0, lastRef = "", ids = {} } end
     function rt.onStart(fn) onStartHandlers[#onStartHandlers + 1] = fn end
     function rt.onTick(fn) onTickHandlers[#onTickHandlers + 1] = fn end
     function rt.onReceive(eventIndex, fn)
@@ -172,7 +271,33 @@ function CreateEngine(setup)
       end
       list[#list + 1] = fn
     end
-    function rt.send(eventIndex, externalId, payload)
+    -- Combined signature covering three call shapes (mirrors engine.ts's
+    -- send exactly): the OLD `(eventIndex, externalId, payload)` (externalId
+    -- is IGNORED — it's looked up from this engine's own eventDecls table
+    -- instead, fully redundant with eventIndex/the `E.<name>` ref that names
+    -- it), the additive `(eventIndex, payload)`, and `(eventIndex)` alone
+    -- when every payload value equals the event's own declared default (see
+    -- @gltfi/emit-lua's emitEvent doc comment) — no second argument at all
+    -- in that case. Distinguished by VALUE shape, not position: a table
+    -- (`secondArg`/`thirdArg`) is always a payload; a string or nil never is.
+    function rt.send(eventIndex, secondArg, thirdArg)
+      local decl = eventDecls[eventIndex + 1]
+      local payload
+      if type(secondArg) == "table" then
+        payload = secondArg
+      elseif type(thirdArg) == "table" then
+        payload = thirdArg
+      else
+        local b, i, f, d = false, 0.0, 0.0, 0.0
+        if decl then
+          if decl.defaultBool ~= nil then b = decl.defaultBool end
+          if decl.defaultInt ~= nil then i = decl.defaultInt end
+          if decl.defaultFloat ~= nil then f = decl.defaultFloat end
+          if decl.expectedDuration ~= nil then d = decl.expectedDuration end
+        end
+        payload = { b, i, f, d }
+      end
+      local externalId = decl and decl.externalId
       sentEvents[#sentEvents + 1] = { eventIndex = eventIndex, externalId = externalId, payload = payload }
       lastPayloadByIndex[eventIndex] = payload
       local eventRef = "event:custom:" .. eventIndex
@@ -219,12 +344,27 @@ function CreateEngine(setup)
     end
     function rt.tickDelta() return scheduler.lastTickDelta end
     function rt.random() return stepRandom() / 4294967295 end
-    function rt.ptrGet(pointer, args, t)
-      local value, isValid = ptr_ptrGet(pointerHost, pointer, args, t)
+    -- Combined signature covering both the object-args form (unchanged) and
+    -- an additive args-less form for when every pointer-template parameter
+    -- is a compile-time constant (see @gltfi/emit-lua's pointerCall — it
+    -- inlines constant template args straight into the path string, so
+    -- there's nothing left to pass in an args table at all): `argsOrType`
+    -- is either the args table (3-arg form omitted) or, when it's a string,
+    -- IS the type signature and the args table was omitted entirely.
+    -- Mirrors engine.ts's identical ptrGet/ptrSet/ptrInterp dispatch.
+    function rt.ptrGet(pointer, argsOrType, t)
+      if type(argsOrType) == "string" then
+        local value, isValid = ptr_ptrGet(pointerHost, pointer, {}, argsOrType)
+        return { value = value, isValid = isValid }
+      end
+      local value, isValid = ptr_ptrGet(pointerHost, pointer, argsOrType, t)
       return { value = value, isValid = isValid }
     end
-    function rt.ptrSet(pointer, args, t, value)
-      return ptr_ptrSet(pointerHost, pointer, args, t, value)
+    function rt.ptrSet(pointer, argsOrType, typeOrValue, value)
+      if type(argsOrType) == "string" then
+        return ptr_ptrSet(pointerHost, pointer, {}, argsOrType, typeOrValue)
+      end
+      return ptr_ptrSet(pointerHost, pointer, argsOrType, typeOrValue, value)
     end
 
     -- -- async ops --------------------------------------------------
@@ -294,7 +434,17 @@ function CreateEngine(setup)
       })
       return { ok = true }
     end
-    function rt.ptrInterp(pointer, args, t, value, duration, p1, p2, done)
+    -- Combined signature — see rt.ptrGet/rt.ptrSet's identical dispatch
+    -- above for the args-less form this also accepts (every following
+    -- parameter shifts left by one when `argsOrType` is a string, i.e. IS
+    -- the type signature).
+    function rt.ptrInterp(pointer, argsOrType, typeOrValue, valueOrDuration, durationOrP1, p1OrP2, p2OrDone, doneMaybe)
+      local args, t, value, duration, p1, p2, done
+      if type(argsOrType) == "string" then
+        args, t, value, duration, p1, p2, done = {}, argsOrType, typeOrValue, valueOrDuration, durationOrP1, p1OrP2, p2OrDone
+      else
+        args, t, value, duration, p1, p2, done = argsOrType, typeOrValue, valueOrDuration, durationOrP1, p1OrP2, p2OrDone, doneMaybe
+      end
       local prep = ptr_ptrInterpPrepare(pointerHost, pointer, args, t)
       if not prep then return { ok = false } end
       if not engine_finiteNum(duration) or duration < 0 then return { ok = false } end
@@ -345,10 +495,17 @@ function CreateEngine(setup)
 
     -- -- stateful ops -------------------------------------------------
 
+    -- Returns the fire decision directly (not `{fire=...}`) — the only
+    -- non-additive shape change in this surface (mirrors engine.ts's
+    -- identical change exactly, including its doc comment's rationale):
+    -- every real call site checks this exactly once (`if rt.doN(...) then
+    -- ... end`), so there was never a reason to name an intermediate
+    -- result — see @gltfi/emit-lua's emitStateful, which now inlines the
+    -- call straight into the `if`.
     function rt.doN(slot, n)
       local decision = state_doNAdvance(slot.count, m.trunc(n))
       slot.count = decision.count
-      return { fire = decision.fire }
+      return decision.fire
     end
     function rt.multiGate(slot, outputCount, isRandom, isLoop)
       -- `count <= 0` guard: a degenerate flow/multiGate with zero wired

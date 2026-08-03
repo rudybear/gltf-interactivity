@@ -161,6 +161,42 @@ function asCall(call: CallExpression | undefined, base: string, name: string): C
   return c && c.base === base && c.name === name ? call : undefined;
 }
 
+// Matches EITHER the old bare `rt.<name>({...})` call-statement shape or the
+// new `local X = rt.<name>({...})` declaration shape — both accepted for
+// `vars`/`events` (mirrors @gltfi/parse-ts's identically-named helper).
+function matchNamedCall(stmt: Statement | undefined, base: string, name: string): { call: CallExpression; boundName?: string } | undefined {
+  if (!stmt) {
+    return undefined;
+  }
+  if (stmt.type === "CallStatement" && stmt.expression.type === "CallExpression") {
+    const call = asCall(stmt.expression, base, name);
+    return call ? { call } : undefined;
+  }
+  if (stmt.type === "LocalStatement" && stmt.variables.length === 1 && stmt.init.length === 1) {
+    const call = asCallExpr(stmt.init[0], base, name);
+    return call ? { call, boundName: stmt.variables[0].name } : undefined;
+  }
+  return undefined;
+}
+
+// `not <inner>` unwrap — used by the negated-condition shapes (empty-then
+// `if`, async/setPointer err-only) exactly like emit-lua's own negateCond
+// produces. luaparse has no parenthesized-expression node (see this file's
+// header note), so there is no analog to parse-ts's extra paren-stripping.
+function unwrapNot(cond: Expression): { negated: boolean; inner: Expression } {
+  if (cond.type === "UnaryExpression" && cond.operator === "not") {
+    return { negated: true, inner: cond.argument };
+  }
+  return { negated: false, inner: cond };
+}
+
+// `<expr>.<field>` bare member access (used to recognize an INLINE call
+// result read directly in an `if` condition, e.g. `rt.setDelay(...).ok`,
+// with no named local backing it at all).
+function fieldOf(expr: Expression, field: string): Expression | undefined {
+  return expr.type === "MemberExpression" && expr.indexer === "." && expr.identifier.name === field ? expr.base : undefined;
+}
+
 // Expression-level counterpart to `asCall`: `expr` might not even be a call
 // at all (e.g. a plain identifier or literal reached the same dispatch
 // point), so this checks the node kind first.
@@ -309,23 +345,28 @@ class ModuleParser {
   private stateSlotIndexByName = new Map<string, number>();
   private procIndexByName = new Map<string, number>();
   private tempTypeByName = new Map<string, IRType>();
+  // Object-form accessor lookup: `"<boundName>.<propName>"` -> variable/
+  // event index (see matchNamedCall/parseVars/parseEvents's population) —
+  // identical convention to @gltfi/parse-ts's varIndexByProp/eventIndexByProp.
+  private varIndexByProp = new Map<string, number>();
+  private eventIndexByProp = new Map<string, number>();
 
   run(topStmts: Statement[]): IRModule {
     const stmts = this.findFactoryBody(topStmts);
     let i = 0;
 
-    const vars = this.exprOf(stmts[i]);
-    if (stmts.length === 0 || !asCall(vars, "rt", "vars")) {
+    const varsMatch = matchNamedCall(stmts[i], "rt", "vars");
+    if (!varsMatch) {
       fail("GL101", stmts[i], "expected rt.vars({...}) as the first statement");
     }
-    this.parseVars(asCall(vars, "rt", "vars")!);
+    this.parseVars(varsMatch);
     i += 1;
 
-    const events = this.exprOf(stmts[i]);
-    if (i >= stmts.length || !asCall(events, "rt", "events")) {
+    const eventsMatch = matchNamedCall(stmts[i], "rt", "events");
+    if (!eventsMatch) {
       fail("GL102", stmts[i], "expected rt.events({...}) as the second statement");
     }
-    this.parseEvents(asCall(events, "rt", "events")!);
+    this.parseEvents(eventsMatch);
     i += 1;
 
     // State slots: a run of `local X = N` / `local X = {...}` declarations
@@ -380,9 +421,9 @@ class ModuleParser {
       } else if (onTick) {
         handlerDescs.push({ kind: "onTick", bodyStmts: this.handlerFnBody(onTick.arguments[0]) });
       } else if (onReceive) {
-        const idx = readNumberLiteral(onReceive.arguments[0]);
+        const idx = this.readEventIndex(onReceive.arguments[0]);
         if (idx === undefined) {
-          fail("GL104", onReceive.arguments[0], "rt.onReceive's first argument must be a numeric event index literal");
+          fail("GL104", onReceive.arguments[0], "rt.onReceive's first argument must be a numeric event index literal or `E.<name>`");
         }
         handlerDescs.push({ kind: "receive", eventRef: idx, bodyStmts: this.handlerFnBody(onReceive.arguments[1]) });
       } else {
@@ -457,10 +498,24 @@ class ModuleParser {
   // vars / events / state slots
   // -------------------------------------------------------------------
 
-  private parseVars(call: CallExpression) {
-    const arr = call.arguments[0];
+  // Both `rt.vars` shapes are a single ARRAY argument (see emit-lua's
+  // emitVars doc comment for why: a Lua table literal's key/value pairs have
+  // no guaranteed iteration order, so the new named form has to keep the
+  // outer array-of-entries shape too, unlike parse-ts's object-keyed form).
+  // Distinguished element-by-element: a `{ name = ..., decl = ... }` entry
+  // is the new form, a bare `{ type = ..., initial = ... }` entry is the old
+  // one — dispatched once from the FIRST element (mixing shapes within one
+  // call is never emitted, so this is an unambiguous, cheap check).
+  private parseVars(match: { call: CallExpression; boundName?: string }) {
+    const arr = match.call.arguments[0];
     if (!arr || arr.type !== "TableConstructorExpression") {
       fail("GL101", arr, "rt.vars expects a table-literal argument");
+    }
+    const firstField = arr.fields[0];
+    const firstEl = firstField && firstField.type === "TableValue" && firstField.value.type === "TableConstructorExpression" ? firstField.value : undefined;
+    if (firstEl && getTableKeyString(firstEl, "name")) {
+      this.parseVarsNamedArray(arr, match.boundName ?? "V");
+      return;
     }
     arr.fields.forEach((field, idx) => {
       if (field.type !== "TableValue" || field.value.type !== "TableConstructorExpression") {
@@ -481,36 +536,161 @@ class ModuleParser {
     });
   }
 
-  private parseEvents(call: CallExpression) {
-    const arr = call.arguments[0];
+  // `{ { name = "counter1", decl = rt.int(0.0) }, ... }` — element order is
+  // the variable index order (the load-bearing contract — see emit-lua's
+  // emitVars/engine.lua's rt.vars doc comments). Each entry's real name
+  // round-trips exactly (unlike the plain-array form's synthetic `var<N>`).
+  private parseVarsNamedArray(arr: TableConstructorExpression, boundName: string) {
+    arr.fields.forEach((field) => {
+      if (field.type !== "TableValue" || field.value.type !== "TableConstructorExpression") {
+        fail("GL101", field, "rt.vars element must be a table literal");
+      }
+      const el = field.value;
+      const name = stringLiteralValue(getTableKeyString(el, "name"));
+      if (!name) {
+        fail("GL101", el, "rt.vars named element missing string `name`");
+      }
+      const declExpr = getTableKeyString(el, "decl");
+      if (!declExpr) {
+        fail("GL101", el, "rt.vars named element missing `decl`");
+      }
+      const decl = this.parseVarDeclShorthand(declExpr);
+      const idx = this.variables.length;
+      this.variables.push({ name, type: decl.type, initial: { type: decl.type, data: decl.data as never } });
+      this.varIndexByProp.set(`${boundName}.${name}`, idx);
+    });
+  }
+
+  // `rt.int(0.0)`/`rt.bool(false)`/`rt.float(0.0)`/`rt.float2(x,y)`/../
+  // `rt.ref(s)` — inverse of emit-lua's varDeclCall, mirrors engine.lua's
+  // int/bool/float/.../ref factory functions' own defaults.
+  private parseVarDeclShorthand(init: Expression): { type: IRType; data: Array<number | boolean | string> } {
+    const c = init.type === "CallExpression" ? calleeOf(init) : undefined;
+    if (!c || c.base !== "rt") {
+      fail("GL101", init, "rt.vars named element's `decl` must be an rt.<type>(...) declaration helper call");
+    }
+    const args = (init as CallExpression).arguments;
+    const type = c.name;
+    if (type === "bool") {
+      return { type: "bool", data: [args[0] ? readBoolLiteral(args[0]) ?? false : false] };
+    }
+    if (type === "ref") {
+      return { type: "ref", data: [args[0] ? stringLiteralValue(args[0]) ?? "" : ""] };
+    }
+    if (type === "int") {
+      return { type: "int", data: [args[0] ? Math.trunc(readNumberLiteral(args[0]) ?? 0) : 0] };
+    }
+    if (type === "float") {
+      return { type: "float", data: [args[0] ? readNumberLiteral(args[0]) ?? 0 : 0] };
+    }
+    const VECTOR_MATRIX_DEFAULTS: Record<string, number[]> = {
+      float2: [0, 0],
+      float3: [0, 0, 0],
+      float4: [0, 0, 0, 0],
+      float2x2: [1, 0, 0, 1],
+      float3x3: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+      float4x4: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+    };
+    if (!(type in VECTOR_MATRIX_DEFAULTS)) {
+      fail("GL101", init, `unknown rt.${type}(...) variable-declaration helper`);
+    }
+    const nums = args.map((a) => readNumberLiteral(a) ?? 0);
+    return { type: type as IRType, data: nums.length > 0 ? nums : VECTOR_MATRIX_DEFAULTS[type] };
+  }
+
+  private parseEvents(match: { call: CallExpression; boundName?: string }) {
+    const arr = match.call.arguments[0];
     if (!arr || arr.type !== "TableConstructorExpression") {
       fail("GL102", arr, "rt.events expects a table-literal argument");
+    }
+    const firstField = arr.fields[0];
+    const firstEl = firstField && firstField.type === "TableValue" && firstField.value.type === "TableConstructorExpression" ? firstField.value : undefined;
+    if (firstEl && getTableKeyString(firstEl, "name")) {
+      this.parseEventsNamedArray(arr, match.boundName ?? "E");
+      return;
     }
     arr.fields.forEach((field, idx) => {
       if (field.type !== "TableValue" || field.value.type !== "TableConstructorExpression") {
         fail("GL102", field, "rt.events element must be a table literal");
       }
-      const el = field.value;
-      const externalId = stringLiteralValue(getTableKeyString(el, "externalId"));
-      const values: IREventValue[] = [];
-      const boolExpr = getTableKeyString(el, "defaultBool");
-      if (boolExpr) {
-        values.push({ name: "boolParameter", type: "bool", default: { type: "bool", data: [readBoolLiteral(boolExpr) ?? false] } });
-      }
-      const intExpr = getTableKeyString(el, "defaultInt");
-      if (intExpr) {
-        values.push({ name: "intParameter", type: "int", default: { type: "int", data: [readNumberLiteral(intExpr) ?? 0] } });
-      }
-      const floatExpr = getTableKeyString(el, "defaultFloat");
-      if (floatExpr) {
-        values.push({ name: "floatParameter", type: "float", default: { type: "float", data: [readNumberLiteral(floatExpr) ?? 0] } });
-      }
-      const durExpr = getTableKeyString(el, "expectedDuration");
-      if (durExpr) {
-        values.push({ name: "expectedDuration", type: "float", default: { type: "float", data: [readNumberLiteral(durExpr) ?? 0] } });
-      }
+      const { externalId, values } = this.parseEventValues(field.value);
       this.events.push({ name: `event${idx}`, id: externalId, values });
     });
+  }
+
+  private parseEventValues(el: TableConstructorExpression): { externalId: string | undefined; values: IREventValue[] } {
+    const externalId = stringLiteralValue(getTableKeyString(el, "externalId"));
+    const values: IREventValue[] = [];
+    const boolExpr = getTableKeyString(el, "defaultBool");
+    if (boolExpr) {
+      values.push({ name: "boolParameter", type: "bool", default: { type: "bool", data: [readBoolLiteral(boolExpr) ?? false] } });
+    }
+    const intExpr = getTableKeyString(el, "defaultInt");
+    if (intExpr) {
+      values.push({ name: "intParameter", type: "int", default: { type: "int", data: [readNumberLiteral(intExpr) ?? 0] } });
+    }
+    const floatExpr = getTableKeyString(el, "defaultFloat");
+    if (floatExpr) {
+      values.push({ name: "floatParameter", type: "float", default: { type: "float", data: [readNumberLiteral(floatExpr) ?? 0] } });
+    }
+    const durExpr = getTableKeyString(el, "expectedDuration");
+    if (durExpr) {
+      values.push({ name: "expectedDuration", type: "float", default: { type: "float", data: [readNumberLiteral(durExpr) ?? 0] } });
+    }
+    return { externalId, values };
+  }
+
+  // `{ name = "Explode", decl = { externalId = ..., ... } }` — same
+  // insertion-order-is-index-order contract as parseVarsNamedArray.
+  private parseEventsNamedArray(arr: TableConstructorExpression, boundName: string) {
+    arr.fields.forEach((field) => {
+      if (field.type !== "TableValue" || field.value.type !== "TableConstructorExpression") {
+        fail("GL102", field, "rt.events element must be a table literal");
+      }
+      const el = field.value;
+      const name = stringLiteralValue(getTableKeyString(el, "name"));
+      if (!name) {
+        fail("GL102", el, "rt.events named element missing string `name`");
+      }
+      const declExpr = getTableKeyString(el, "decl");
+      if (!declExpr || declExpr.type !== "TableConstructorExpression") {
+        fail("GL102", el, "rt.events named element missing table `decl`");
+      }
+      const { externalId, values } = this.parseEventValues(declExpr);
+      const idx = this.events.length;
+      this.events.push({ name, id: externalId, values });
+      this.eventIndexByProp.set(`${boundName}.${name}`, idx);
+    });
+  }
+
+  // Reconstructs `rt.send`'s 4 fixed payload args (bool,int,float,duration)
+  // from the event's OWN declared defaults, for the args-less `rt.send(idx)`
+  // shape — see emit-lua's emitEvent/matchesEventDefaults doc comment.
+  private eventDefaultArgs(eventId: number): IRExpr[] {
+    const e = this.events[eventId];
+    const boolDefault = e?.values.find((v) => v.name === "boolParameter");
+    const intDefault = e?.values.find((v) => v.name === "intParameter");
+    const floatDefault = e?.values.find((v) => v.name === "floatParameter");
+    const duration = e?.values.find((v) => v.name === "expectedDuration");
+    return [
+      { k: "const", type: "bool", data: [Boolean(boolDefault?.default.data[0] ?? false)] },
+      { k: "const", type: "int", data: [Math.trunc(Number(intDefault?.default.data[0] ?? 0))] },
+      { k: "const", type: "float", data: [Number(floatDefault?.default.data[0] ?? 0)] },
+      { k: "const", type: "float", data: [Number(duration?.default.data[0] ?? 0)] }
+    ];
+  }
+
+  // `E.<name>` (named form) resolves through eventIndexByProp; a bare
+  // numeric literal (plain-array form, unchanged) resolves directly.
+  private readEventIndex(node: Expression | undefined): number | undefined {
+    const n = readNumberLiteral(node);
+    if (n !== undefined) {
+      return n;
+    }
+    if (node && node.type === "MemberExpression" && node.indexer === "." && node.base.type === "Identifier") {
+      return this.eventIndexByProp.get(`${node.base.name}.${node.identifier.name}`);
+    }
+    return undefined;
   }
 
   // Returns true and registers a state slot iff `stmt` matches one of the
@@ -527,6 +707,27 @@ class ModuleParser {
       this.stateSlots.push({ name, kind: "for", config: { initialIndex: Math.trunc(num) } });
       this.stateSlotIndexByName.set(name, idx);
       return true;
+    }
+    // New state-slot factory-call shape: `local name = rt.doNState()`/etc —
+    // see engine.lua's rt.doNState/multiGateState/waitAllState/
+    // throttleState/delayState.
+    if (init.type === "CallExpression") {
+      const c = calleeOf(init);
+      const FACTORY_KIND: Record<string, StateKind> = {
+        doNState: "doN",
+        multiGateState: "multiGate",
+        waitAllState: "waitAll",
+        throttleState: "throttle",
+        delayState: "delay"
+      };
+      const kind = c && c.base === "rt" ? FACTORY_KIND[c.name] : undefined;
+      if (kind) {
+        const idx = this.stateSlots.length;
+        this.stateSlots.push({ name, kind, config: {} });
+        this.stateSlotIndexByName.set(name, idx);
+        return true;
+      }
+      return false;
     }
     if (init.type !== "TableConstructorExpression") {
       return false;
@@ -605,6 +806,26 @@ class ModuleParser {
     return cond.type === "MemberExpression" && cond.indexer === "." && cond.base.type === "Identifier" && cond.base.name === name && cond.identifier.name === field;
   }
 
+  // `<boundName>.<name>.get()` / `<boundName>.<name>.set(value)` — the
+  // object-form accessor call shape (see engine.lua's rt.vars doc comment).
+  // Returns the `"<base>.<prop>"` lookup key (checked against
+  // varIndexByProp by the two call sites) plus the call's own arguments
+  // (empty for "get", one value for "set").
+  private matchAccessorCall(expr: Expression, method: "get" | "set"): { key: string; args: Expression[] } | undefined {
+    if (expr.type !== "CallExpression") {
+      return undefined;
+    }
+    const callee = expr.base;
+    if (callee.type !== "MemberExpression" || callee.indexer !== "." || callee.identifier.name !== method) {
+      return undefined;
+    }
+    const objExpr = callee.base;
+    if (objExpr.type !== "MemberExpression" || objExpr.indexer !== "." || objExpr.base.type !== "Identifier") {
+      return undefined;
+    }
+    return { key: `${objExpr.base.name}.${objExpr.identifier.name}`, args: expr.arguments };
+  }
+
   private isFieldEqCond(cond: Expression, name: string, field: string): boolean {
     return (
       cond.type === "BinaryExpression" &&
@@ -620,7 +841,8 @@ class ModuleParser {
   private parseOne(stmts: Statement[], i: number, ctx: Ctx): { stmt: IRStmt | null; consumed: number } {
     const stmt = stmts[i];
 
-    // --- setPointer: `do local ok = rt.ptrSet(...); if ok then {...} else {...} end end`
+    // --- setPointer, OLD block-wrapped shape:
+    // `do local ok = rt.ptrSet(...); if ok then {...} else {...} end end`
     if (stmt.type === "DoStatement") {
       const inner = (stmt as DoStatement).body;
       const decl0 = inner[0];
@@ -633,25 +855,20 @@ class ModuleParser {
       fail("GL121", stmt, "unrecognized bare do...end block (expected a pointer/set wrapper)");
     }
 
-    // --- async: optional `local function __contN() ... end` then `local R = rt.<asyncFn>(...)`
-    if (stmt.type === "FunctionDeclaration" && stmt.isLocal && stmt.identifier !== null) {
-      const next = stmts[i + 1];
-      if (next && next.type === "LocalStatement" && next.variables.length === 1 && next.init.length === 1) {
-        const asyncCall = matchAsyncCall(next.init[0]);
-        if (asyncCall) {
-          return this.parseAsync(stmts, i, stmt, next.variables[0].name, asyncCall, ctx);
-        }
-      }
-      fail("GL122", stmt, "unrecognized local function declaration (expected an async done-continuation)");
+    // --- async ops: optional `local function __contN() ... end` then either
+    // shape (see tryParseAsync's own doc comment for the full old/new shape
+    // matrix). Checked early since it can match a bare FunctionDeclaration
+    // (always an async done-continuation in this parser), a `local R =
+    // rt.<fn>(...)` declaration, a bare `rt.<fn>(...)` statement, or a bare
+    // `if rt.<fn>(...).ok then ... end`.
+    const asyncResult = this.tryParseAsync(stmts, i, ctx);
+    if (asyncResult) {
+      return asyncResult;
     }
 
     if (stmt.type === "LocalStatement" && stmt.variables.length === 1 && stmt.init.length === 1) {
       const name = stmt.variables[0].name;
       const init = stmt.init[0];
-      const asyncCall = matchAsyncCall(init);
-      if (asyncCall) {
-        return this.parseAsync(stmts, i, undefined, name, asyncCall, ctx);
-      }
       const doN = asCallExpr(init, "rt", "doN");
       if (doN) return this.parseDoN(stmts, i, name, doN, ctx);
       const multiGate = asCallExpr(init, "rt", "multiGate");
@@ -692,6 +909,37 @@ class ModuleParser {
         // model.ts/emit.ts's crossHandlerReads note); safe to drop.
         return { stmt: null, consumed: 1 };
       }
+      // setPointer, new bare-statement shape (no out/err at all — see
+      // emit-lua's emitSetPointer doc comment).
+      const ptrSetBare = asCall(expr, "rt", "ptrSet");
+      if (ptrSetBare) {
+        return { stmt: this.buildSetPointerStmt(ptrSetBare, undefined, undefined, ctx), consumed: 1 };
+      }
+      // Stateful ops with NO branch at all wired still MUST run (they
+      // advance state) — emit-lua emits a bare, return-value-discarding call
+      // statement for exactly this case (see emitStateful's `else` branches).
+      const doNBare = asCall(expr, "rt", "doN");
+      if (doNBare) {
+        const [slotExpr, nExpr] = doNBare.arguments;
+        const slot = this.slotRefOf(slotExpr);
+        const args = [this.lowerExpr(nExpr, "int", ctx)];
+        return { stmt: { k: "stateful", kind: "doN", slot, port: "in", args, outs: {} }, consumed: 1 };
+      }
+      const multiGateBare = asCall(expr, "rt", "multiGate");
+      if (multiGateBare) {
+        return { stmt: this.buildMultiGateStmt(multiGateBare, ctx), consumed: 1 };
+      }
+      const waitAllBare = asCall(expr, "rt", "waitAll");
+      if (waitAllBare) {
+        return { stmt: this.buildWaitAllStmt(waitAllBare, undefined, undefined, ctx), consumed: 1 };
+      }
+      const throttleBare = asCall(expr, "rt", "throttle");
+      if (throttleBare) {
+        const [slotExpr, durationExpr] = throttleBare.arguments;
+        const slot = this.slotRefOf(slotExpr);
+        const args = [this.lowerExpr(durationExpr, "float", ctx)];
+        return { stmt: { k: "stateful", kind: "throttle", slot, port: "in", args, outs: {} }, consumed: 1 };
+      }
       const setVar = asCall(expr, "rt", "setVar");
       if (setVar) {
         const [idxExpr, valExpr] = setVar.arguments;
@@ -700,17 +948,35 @@ class ModuleParser {
         const varType = this.variables[varId]?.type ?? fail("GL123", idxExpr, `rt.setVar references out-of-range var ${varId}`);
         return { stmt: { k: "setVar", varId, expr: this.lowerExpr(valExpr, varType, ctx) }, consumed: 1 };
       }
+      // Object form: `V.<name>.set(value)` — see matchAccessorCall's doc
+      // comment and parseVarsNamedArray's varIndexByProp population.
+      const setAccessor = this.matchAccessorCall(expr, "set");
+      if (setAccessor && this.varIndexByProp.has(setAccessor.key)) {
+        const varId = this.varIndexByProp.get(setAccessor.key)!;
+        const varType = this.variables[varId]?.type ?? "float";
+        return { stmt: { k: "setVar", varId, expr: this.lowerExpr(setAccessor.args[0], varType, ctx) }, consumed: 1 };
+      }
       const send = asCall(expr, "rt", "send");
       if (send) {
-        const [idxExpr, , payloadExpr] = send.arguments;
-        const eventId = readNumberLiteral(idxExpr);
-        if (eventId === undefined) fail("GL124", idxExpr, "rt.send's first argument must be a numeric literal");
-        const elems = tableArrayValues(payloadExpr);
-        if (!elems || elems.length !== 4) {
-          fail("GL124", payloadExpr, "rt.send's payload argument must be a 4-element table literal");
-        }
+        const sendArgs = send.arguments;
+        const eventId = this.readEventIndex(sendArgs[0]);
+        if (eventId === undefined) fail("GL124", sendArgs[0], "rt.send's first argument must be a numeric literal or `E.<name>`");
+        // Three call shapes (see engine.lua's rt.send doc comment): OLD
+        // `(idx, externalId, payload)` (3 args — payload is args[2],
+        // externalId is ignored), NEW `(idx, payload)` (2 args), and NEW
+        // `(idx)` alone (1 arg — every value equals the event's own
+        // declared default, reconstructed by eventDefaultArgs).
+        const payloadExpr = sendArgs.length >= 3 ? sendArgs[2] : sendArgs.length === 2 ? sendArgs[1] : undefined;
         const types: IRType[] = ["bool", "int", "float", "float"];
-        const args = elems.map((e, k) => this.lowerExpr(e, types[k], ctx));
+        const args = payloadExpr
+          ? (() => {
+              const elems = tableArrayValues(payloadExpr);
+              if (!elems || elems.length !== 4) {
+                fail("GL124", payloadExpr, "rt.send's payload argument must be a 4-element table literal");
+              }
+              return elems.map((e, k) => this.lowerExpr(e, types[k], ctx));
+            })()
+          : this.eventDefaultArgs(eventId);
         return { stmt: { k: "emitEvent", eventId, args }, consumed: 1 };
       }
       const stopProp = asCall(expr, "rt", "stopPropagation");
@@ -748,21 +1014,96 @@ class ModuleParser {
     }
 
     if (stmt.type === "IfStatement") {
+      // `if rt.doN(slot, n) then ... end` — doN's fire decision is now a
+      // bare boolean (see engine.lua's rt.doN doc comment), inlined
+      // directly into the condition with no result variable at all (there's
+      // no "no-fire" flow branch to speak of, so an `else`/`elseif` here is
+      // never emitted for this shape).
+      const firstClause0 = stmt.clauses[0];
+      if (firstClause0 && firstClause0.type === "IfClause" && (stmt.clauses.length === 1 || (stmt.clauses.length === 2 && stmt.clauses[1].type === "ElseClause"))) {
+        const doNCall = stmt.clauses.length === 1 ? asCallExpr(firstClause0.condition, "rt", "doN") : undefined;
+        if (doNCall) {
+          const [slotExpr, nExpr] = doNCall.arguments;
+          const slot = this.slotRefOf(slotExpr);
+          const args = [this.lowerExpr(nExpr, "int", ctx)];
+          const outs: Record<string, IRStmt> = {};
+          const block = this.lowerOptionalBlock(firstClause0.body, ctx);
+          if (block) outs.out = block;
+          return { stmt: { k: "stateful", kind: "doN", slot, port: "in", args, outs }, consumed: 1 };
+        }
+        // setPointer, new bare-`if` shape (no wrapping block, no named
+        // result — see emit-lua's emitSetPointer doc comment).
+        const ptrSetIfCall = asCallExpr(firstClause0.condition, "rt", "ptrSet");
+        if (ptrSetIfCall) {
+          const elseClause0 = stmt.clauses[1];
+          const errStmts = elseClause0 && elseClause0.type === "ElseClause" ? elseClause0.body : undefined;
+          return { stmt: this.buildSetPointerStmt(ptrSetIfCall, firstClause0.body, errStmts, ctx), consumed: 1 };
+        }
+        // waitAll, new bare-`if` shape (no named result — `.completed` read
+        // at most once, see emit-lua's emitStateful's waitAll case).
+        const completedBase = fieldOf(firstClause0.condition, "completed");
+        const waitAllCall = completedBase ? asCallExpr(completedBase, "rt", "waitAll") : undefined;
+        if (waitAllCall) {
+          const elseClause0 = stmt.clauses[1];
+          const outStmts = elseClause0 && elseClause0.type === "ElseClause" ? elseClause0.body : undefined;
+          return { stmt: this.buildWaitAllStmt(waitAllCall, firstClause0.body, outStmts, ctx), consumed: 1 };
+        }
+        // multiGate, new single-wired-output bare-`if` shape: `if
+        // rt.multiGate(...).index == 0 then ... end` (no elseif chain — see
+        // emit-lua's emitStateful's multiGate case: 2+ outputs instead use a
+        // named result + elseif chain, structurally identical to the OLD
+        // shape parseMultiGate already handles unchanged).
+        if (stmt.clauses.length === 1 && firstClause0.condition.type === "BinaryExpression" && firstClause0.condition.operator === "==") {
+          const indexBase = fieldOf(firstClause0.condition.left, "index");
+          const multiGateCall = indexBase ? asCallExpr(indexBase, "rt", "multiGate") : undefined;
+          const caseNum = readNumberLiteral(firstClause0.condition.right);
+          if (multiGateCall && caseNum !== undefined) {
+            const stmtNode = this.buildMultiGateStmt(multiGateCall, ctx);
+            stmtNode.outs[String(caseNum)] = this.lowerBlock(firstClause0.body, ctx);
+            return { stmt: stmtNode, consumed: 1 };
+          }
+        }
+        // setPointer, negated empty-"out" bare-`if` shape: `if not
+        // rt.ptrSet(...) then errBody end` (no else) — see emit-lua's
+        // emitSetPointer doc comment. A bare function-call result is always
+        // atomic, so the negated operand is exactly the same CallExpression
+        // as the non-negated case.
+        if (!stmt.clauses[1]) {
+          const { negated, inner } = unwrapNot(firstClause0.condition);
+          if (negated) {
+            const negPtrSetCall = asCallExpr(inner, "rt", "ptrSet");
+            if (negPtrSetCall) {
+              return { stmt: this.buildSetPointerStmt(negPtrSetCall, undefined, firstClause0.body, ctx), consumed: 1 };
+            }
+            // Generic empty-"then" negated-condition shape: `if not cond
+            // then elseBody end` (no else at all) — see emit-lua's emitStmt
+            // "if" case's thenEmpty branch. Reconstructs the ORIGINAL
+            // (un-negated) cond, an empty "then", and the printed body as
+            // "else" — the exact inverse of that transform. Checked last
+            // (after every more-specific negated shape above) since it's
+            // the most general match on a bare `not <expr>` condition with
+            // no else.
+            const cond = this.lowerExpr(inner, "bool", ctx);
+            const elseBody = this.lowerBlock(firstClause0.body, ctx);
+            return { stmt: { k: "if", cond, then: { k: "seq", stmts: [] }, else: elseBody }, consumed: 1 };
+          }
+        }
+      }
       const first = stmt.clauses[0];
-      // Native `==` in an `if` condition is the exclusive signature of a
-      // flow/switch or multiGate dispatch (math/eq always goes through an
-      // `m.eq*` CALL, never a native `==` operator — see emit.ts's
-      // mFunctionName). Both are always consumed via LOOKAHEAD from their
-      // preceding `local` statement — flow/switch from
-      // `tryParseSwitchAfterLet` (folding the selector-hoisting `local
-      // selVar = ...` back into the switch node directly, since emit-lua
-      // unconditionally hoists the selector into a temp even when it's a
-      // bare literal — see that method's own doc comment), multiGate from
-      // `parseMultiGate` — so a raw `==`-headed IfStatement reaching this
-      // generic dispatch point (not consumed by either lookahead) is always
-      // a genuine shape mismatch, not a case this dispatch needs to handle.
-      if (!first || first.type !== "IfClause" || (first.condition.type === "BinaryExpression" && first.condition.operator === "==")) {
-        fail("GL110", stmt, "unrecognized if-statement shape (an `==`-headed chain not consumed by a preceding switch/multiGate lookahead)");
+      // NOTE: a native `==` in an `if` condition is NOT necessarily a
+      // flow/switch or multiGate dispatch — since the readability pass's
+      // native-operator substitution renders float/bool math/eq as a plain
+      // `==` too (see emit-lua's nativeOpInfo), an ordinary flow/branch
+      // condition can legitimately be `==`-headed (e.g. `if t1 - t1 == 0.0
+      // then`). flow/switch (`tryParseSwitchAfterLet`) and OLD-shape
+      // multiGate (`parseMultiGate`) are both still always consumed via
+      // LOOKAHEAD from their preceding `local` statement, and the NEW bare/
+      // single-output multiGate shape is consumed by this same IfStatement
+      // dispatch's own earlier branch (above) — so by construction, an
+      // `==`-headed IfStatement reaching this point is always a genuine
+      // plain-boolean condition, lowered the same as any other.
+      if (!first || first.type !== "IfClause") {
+        fail("GL110", stmt, "unrecognized if-statement shape");
       }
       if (stmt.clauses.length > 2 || (stmt.clauses[1] && stmt.clauses[1].type === "ElseifClause")) {
         fail("GL110", stmt, "unrecognized if-statement shape (unexpected elseif chain for a plain flow/branch)");
@@ -787,16 +1128,12 @@ class ModuleParser {
   // setPointer
   // -------------------------------------------------------------------
 
+  // OLD block-wrapped shape: `do local ok = rt.ptrSet(...); if ok then {...}
+  // else {...} end end`.
   private parseSetPointer(decl: LocalStatement, call: CallExpression, inner: Statement[], ctx: Ctx): IRStmt {
-    const [pointerExpr, argsObjExpr, typeExpr, valueExpr] = call.arguments;
-    const pointerLit = stringLiteralValue(pointerExpr) ?? fail("GL125", pointerExpr, "pointer must be a string literal");
-    const template = parsePointerTemplate(pointerLit);
-    const type = (stringLiteralValue(typeExpr) as IRType | undefined) ?? fail("GL125", typeExpr, "pointer type must be a string literal");
-    const args = this.lowerPointerArgs(argsObjExpr, template, ctx);
-    const value = this.lowerExpr(valueExpr, type, ctx);
     const okName = decl.variables[0].name;
-    let out: IRStmt | undefined;
-    let err: IRStmt | undefined;
+    let outStmts: Statement[] | undefined;
+    let errStmts: Statement[] | undefined;
     const ifStmt = inner[1];
     if (ifStmt) {
       const firstClause = ifStmt.type === "IfStatement" ? ifStmt.clauses[0] : undefined;
@@ -804,18 +1141,48 @@ class ModuleParser {
       if (ifStmt.type !== "IfStatement" || !firstClause || firstClause.type !== "IfClause" || !cond || cond.type !== "Identifier" || cond.name !== okName) {
         fail("GL125", ifStmt, "expected `if ok then ... else ... end` following a pointer/set call");
       }
-      out = this.lowerOptionalBlock(firstClause.body, ctx);
+      outStmts = firstClause.body;
       const elseClause = ifStmt.clauses[1];
-      err = elseClause ? this.lowerOptionalBlock(elseClause.body, ctx) : undefined;
+      errStmts = elseClause ? elseClause.body : undefined;
     }
+    return this.buildSetPointerStmt(call, outStmts, errStmts, ctx);
+  }
+
+  // Shared arg-extraction for every pointer/set shape (old block-wrapped,
+  // new bare-call, new bare-`if`) — `call`'s own arguments alone (a 3-arg
+  // args-less form vs the 4-arg args-object form, disambiguated the same
+  // way pointerCall's counterpart on the emit side infers it: position 1 is
+  // either the args table or, when it's a string, the type signature and
+  // the whole args table was omitted — see emit-lua's pointerCall doc
+  // comment) determine everything except out/err, which the three call
+  // sites derive differently from their own surrounding syntax.
+  private buildSetPointerStmt(call: CallExpression, outStmts: Statement[] | undefined, errStmts: Statement[] | undefined, ctx: Ctx): IRStmt {
+    const argNodes = call.arguments;
+    const hasArgsObj = argNodes.length >= 2 && argNodes[1].type === "TableConstructorExpression";
+    const [pointerExpr, argsObjExpr, typeExpr, valueExpr] = hasArgsObj ? argNodes : [argNodes[0], undefined, argNodes[1], argNodes[2]];
+    const pointerLit = stringLiteralValue(pointerExpr) ?? fail("GL125", pointerExpr, "pointer must be a string literal");
+    const template = parsePointerTemplate(pointerLit);
+    const type = (stringLiteralValue(typeExpr) as IRType | undefined) ?? fail("GL125", typeExpr, "pointer type must be a string literal");
+    const args = this.lowerPointerArgs(argsObjExpr, template, ctx);
+    const value = this.lowerExpr(valueExpr, type, ctx);
+    const out = outStmts ? this.lowerOptionalBlock(outStmts, ctx) : undefined;
+    const err = errStmts ? this.lowerOptionalBlock(errStmts, ctx) : undefined;
     return { k: "setPointer", template, args, value, type, out, err };
   }
 
+  // `objExpr` is undefined both when the template has zero dynamic params
+  // (args-less form — see emit-lua's pointerCall) and, defensively, whenever
+  // there's genuinely nothing left to look up; only fail on a MISSING table
+  // literal when the template actually still has params to resolve.
   private lowerPointerArgs(objExpr: Expression | undefined, template: PtrTemplate, ctx: Ctx): IRExpr[] {
+    const params = pointerTemplateParams(template);
+    if (params.length === 0) {
+      return [];
+    }
     if (!objExpr || objExpr.type !== "TableConstructorExpression") {
       fail("GL125", objExpr, "pointer args must be a table literal");
     }
-    return pointerTemplateParams(template).map((p) => {
+    return params.map((p) => {
       const init = getTableKeyString(objExpr, p.name);
       if (!init) {
         fail("GL125", objExpr, `pointer args table missing param "${p.name}"`);
@@ -828,14 +1195,99 @@ class ModuleParser {
   // async ops
   // -------------------------------------------------------------------
 
-  private parseAsync(
-    stmts: Statement[],
-    i: number,
-    contFn: FunctionDeclaration | undefined,
-    resName: string,
+  // Entry point for both async-op shapes: the OLD `[contFn?] local R =
+  // rt.<fn>(...); [if R.ok then ... else ... end]` and the NEW `[contFn?]
+  // (rt.<fn>(...) | if rt.<fn>(...).ok then ... else ... end)` — the latter
+  // has no named result variable at all (`.ok` is read at most once, so
+  // emit-lua inlines the call straight into the check — see emit-lua's
+  // emitAsync doc comment). Returns undefined (falling through to the rest
+  // of parseOne's dispatch) when `stmts[i]` isn't a local-function AND
+  // doesn't otherwise start a recognizable async site; still `fail()`s when
+  // `stmts[i]` IS a local-function declaration but nothing valid follows it,
+  // since every local function declaration this parser can reach is, by
+  // construction, an async-op's lifted inline continuation.
+  private tryParseAsync(stmts: Statement[], i: number, ctx: Ctx): { stmt: IRStmt; consumed: number } | undefined {
+    const stmt = stmts[i];
+    const contFn = stmt.type === "FunctionDeclaration" && stmt.isLocal && stmt.identifier !== null ? stmt : undefined;
+    const offset = contFn ? 1 : 0;
+    const site = stmts[i + offset];
+    if (!site) {
+      if (contFn) fail("GL122", stmt, "unrecognized local function declaration (expected an async done-continuation)");
+      return undefined;
+    }
+
+    // OLD shape: `local R = rt.<fn>(...)` [+ `if R.ok then ... else ... end`]
+    if (site.type === "LocalStatement" && site.variables.length === 1 && site.init.length === 1) {
+      const matched = matchAsyncCall(site.init[0]);
+      if (matched) {
+        const resName = site.variables[0].name;
+        let consumed = offset + 1;
+        const nextStmt = stmts[i + consumed];
+        const firstClause = nextStmt && nextStmt.type === "IfStatement" ? nextStmt.clauses[0] : undefined;
+        let outStmts: Statement[] | undefined;
+        let errStmts: Statement[] | undefined;
+        if (nextStmt && nextStmt.type === "IfStatement" && firstClause && firstClause.type === "IfClause" && this.isFieldTruthyCond(firstClause.condition, resName, "ok")) {
+          outStmts = firstClause.body;
+          const elseClause = nextStmt.clauses[1];
+          errStmts = elseClause && elseClause.type === "ElseClause" ? elseClause.body : undefined;
+          consumed += 1;
+        }
+        return { stmt: this.buildAsyncStmt(matched, contFn, outStmts, errStmts, ctx), consumed };
+      }
+    }
+
+    // NEW shape: bare `rt.<fn>(...)` (no out/err — the call's return value
+    // is discarded entirely, matching the always-runs semantics exactly).
+    if (site.type === "CallStatement" && site.expression.type === "CallExpression") {
+      const matched = matchAsyncCall(site.expression);
+      if (matched) {
+        return { stmt: this.buildAsyncStmt(matched, contFn, undefined, undefined, ctx), consumed: offset + 1 };
+      }
+    }
+
+    // NEW shape: `if rt.<fn>(...).ok then ... else ... end`.
+    if (site.type === "IfStatement") {
+      const first = site.clauses[0];
+      if (first && first.type === "IfClause") {
+        const okBase = fieldOf(first.condition, "ok");
+        const matched = okBase ? matchAsyncCall(okBase) : undefined;
+        if (matched) {
+          const elseClause = site.clauses[1];
+          const err = elseClause && elseClause.type === "ElseClause" ? elseClause.body : undefined;
+          return { stmt: this.buildAsyncStmt(matched, contFn, first.body, err, ctx), consumed: offset + 1 };
+        }
+        // Negated empty-"out" shape: `if not rt.<fn>(...).ok then errBody
+        // end` (no else) — see emit-lua's emitAsync doc comment for the
+        // negation this inverts. `not x.ok` always parses as `not (x.ok)`
+        // (member access binds tighter than `not`), so the operand here is
+        // exactly the same `<call>.ok` MemberExpression as the non-negated
+        // case above.
+        if (!site.clauses[1]) {
+          const { negated, inner } = unwrapNot(first.condition);
+          if (negated) {
+            const innerOkBase = fieldOf(inner, "ok");
+            const negMatched = innerOkBase ? matchAsyncCall(innerOkBase) : undefined;
+            if (negMatched) {
+              return { stmt: this.buildAsyncStmt(negMatched, contFn, undefined, first.body, ctx), consumed: offset + 1 };
+            }
+          }
+        }
+      }
+    }
+
+    if (contFn) {
+      fail("GL122", stmt, "unrecognized local function declaration (expected an async done-continuation)");
+    }
+    return undefined;
+  }
+
+  private buildAsyncStmt(
     matched: { fn: string; call: CallExpression },
+    contFn: FunctionDeclaration | undefined,
+    outStmts: Statement[] | undefined,
+    errStmts: Statement[] | undefined,
     ctx: Ctx
-  ): { stmt: IRStmt; consumed: number } {
+  ): IRStmt {
     const args = matched.call.arguments;
     const kind = matched.fn as "setDelay" | "varInterp" | "ptrInterp" | "animStart" | "animStop" | "animStopAt";
 
@@ -860,7 +1312,10 @@ class ModuleParser {
       ];
       lastArg = doneExpr;
     } else if (kind === "ptrInterp") {
-      const [pointerExpr, argsObjExpr, typeExpr, valueExpr, durationExpr, p1Expr, p2Expr, doneExpr] = args;
+      const hasArgsObj = args.length >= 2 && args[1].type === "TableConstructorExpression";
+      const [pointerExpr, argsObjExpr, typeExpr, valueExpr, durationExpr, p1Expr, p2Expr, doneExpr] = hasArgsObj
+        ? args
+        : [args[0], undefined, args[1], args[2], args[3], args[4], args[5], args[6]];
       const pointerLit = stringLiteralValue(pointerExpr) ?? fail("GL126", pointerExpr, "ptrInterp pointer must be a string literal");
       const template = parsePointerTemplate(pointerLit);
       const type = (stringLiteralValue(typeExpr) as IRType | undefined) ?? fail("GL126", typeExpr, "ptrInterp type must be a string literal");
@@ -894,16 +1349,9 @@ class ModuleParser {
       }
     }
 
-    let consumed = (contFn ? 1 : 0) + 1;
-    const nextIdx = i + consumed;
-    const ifRes = this.tryReadIfElseOn(stmts[nextIdx], resName, "ok", ctx);
-    if (ifRes) {
-      baseStmt.out = ifRes.out;
-      baseStmt.err = ifRes.err;
-      consumed += 1;
-    }
-
-    return { stmt: baseStmt as IRStmt, consumed };
+    baseStmt.out = outStmts ? this.lowerOptionalBlock(outStmts, ctx) : undefined;
+    baseStmt.err = errStmts ? this.lowerOptionalBlock(errStmts, ctx) : undefined;
+    return baseStmt as IRStmt;
   }
 
   // -------------------------------------------------------------------
@@ -960,7 +1408,25 @@ class ModuleParser {
     return { stmt: { k: "stateful", kind: "throttle", slot, port: "in", args, outs }, consumed };
   }
 
+  // OLD shape: `local R = rt.waitAll(...); if R.completed then ... else ...
+  // end`. The NEW bare-`if` shape (no named result at all) is dispatched
+  // straight to buildWaitAllStmt from parseOne's own IfStatement handling.
   private parseWaitAll(stmts: Statement[], i: number, resName: string, call: CallExpression, ctx: Ctx): { stmt: IRStmt; consumed: number } {
+    const next = stmts[i + 1];
+    const firstClause = next && next.type === "IfStatement" ? next.clauses[0] : undefined;
+    if (next && next.type === "IfStatement" && firstClause && firstClause.type === "IfClause" && this.isFieldTruthyCond(firstClause.condition, resName, "completed")) {
+      const elseClause = next.clauses[1];
+      const outStmts = elseClause && elseClause.type === "ElseClause" ? elseClause.body : undefined;
+      return { stmt: this.buildWaitAllStmt(call, firstClause.body, outStmts, ctx), consumed: 2 };
+    }
+    return { stmt: this.buildWaitAllStmt(call, undefined, undefined, ctx), consumed: 1 };
+  }
+
+  // Shared arg-parsing (+ config back-fill) for both waitAll shapes: the OLD
+  // named-result form and the NEW bare `if rt.waitAll(...).completed then
+  // ... else ... end` form (`.completed` read at most once — see emit-lua's
+  // emitStateful's waitAll case).
+  private buildWaitAllStmt(call: CallExpression, completedStmts: Statement[] | undefined, outStmts: Statement[] | undefined, ctx: Ctx): IRStmt {
     const [slotExpr, inputFlowsExpr, indexExpr] = call.arguments;
     const slot = this.slotRefOf(slotExpr);
     const inputFlows = readNumberLiteral(inputFlowsExpr);
@@ -969,23 +1435,27 @@ class ModuleParser {
     }
     const index = readNumberLiteral(indexExpr) ?? 0;
     const outs: Record<string, IRStmt> = {};
-    let consumed = 1;
-    const ifRes = this.tryReadIfElseOn(stmts[i + 1], resName, "completed", ctx);
-    if (ifRes) {
-      if (ifRes.out) outs.completed = ifRes.out;
-      if (ifRes.err) outs.out = ifRes.err;
-      consumed = 2;
+    if (completedStmts) {
+      const completedBlock = this.lowerOptionalBlock(completedStmts, ctx);
+      if (completedBlock) outs.completed = completedBlock;
     }
-    return { stmt: { k: "stateful", kind: "waitAll", slot, port: Math.trunc(index), args: [], outs }, consumed };
+    if (outStmts) {
+      const outBlock = this.lowerOptionalBlock(outStmts, ctx);
+      if (outBlock) outs.out = outBlock;
+    }
+    return { k: "stateful", kind: "waitAll", slot, port: Math.trunc(index), args: [], outs };
   }
 
+  // OLD shape: `local R = rt.multiGate(...); if R.index == 0 then ... elseif
+  // ... end` (also reused, UNCHANGED, for the new 2+-output named-result
+  // shape — see emit-lua's emitStateful's multiGate case: only a SINGLE
+  // wired output ever inlines the call directly with no named result, since
+  // an if/elseif chain re-evaluating a literal call expression 2+ times
+  // would re-invoke — and re-mutate — this stateful op; that bare-`if`
+  // single-output shape is dispatched straight to buildMultiGateStmt from
+  // parseOne's own IfStatement handling instead).
   private parseMultiGate(stmts: Statement[], i: number, resName: string, call: CallExpression, ctx: Ctx): { stmt: IRStmt; consumed: number } {
-    const [slotExpr, , isRandomExpr, isLoopExpr] = call.arguments;
-    const slot = this.slotRefOf(slotExpr);
-    const isRandom = readBoolLiteral(isRandomExpr) ?? false;
-    const isLoop = readBoolLiteral(isLoopExpr) ?? false;
-    this.stateSlots[slot.slot] = { ...this.stateSlots[slot.slot], config: { isRandom, isLoop } };
-    const outs: Record<string, IRStmt> = {};
+    const base = this.buildMultiGateStmt(call, ctx);
     let consumed = 1;
     const next = stmts[i + 1];
     if (next && next.type === "IfStatement" && next.clauses.every((c) => c.type !== "ElseClause" && this.isFieldEqCond(c.condition, resName, "index"))) {
@@ -997,11 +1467,24 @@ class ModuleParser {
         if (num === undefined) {
           fail("GL128", clause, "multiGate switch case must be a numeric literal");
         }
-        outs[String(num)] = this.lowerBlock(clause.body, ctx);
+        base.outs[String(num)] = this.lowerBlock(clause.body, ctx);
       });
       consumed = 2;
     }
-    return { stmt: { k: "stateful", kind: "multiGate", slot, port: "in", args: [], outs }, consumed };
+    return { stmt: base, consumed };
+  }
+
+  // Shared arg-parsing (+ config back-fill) for every multiGate shape — see
+  // parseMultiGate's own doc comment for which surrounding syntax each
+  // caller derives `outs` from.
+  private buildMultiGateStmt(call: CallExpression, ctx: Ctx): Extract<IRStmt, { k: "stateful" }> {
+    void ctx;
+    const [slotExpr, , isRandomExpr, isLoopExpr] = call.arguments;
+    const slot = this.slotRefOf(slotExpr);
+    const isRandom = readBoolLiteral(isRandomExpr) ?? false;
+    const isLoop = readBoolLiteral(isLoopExpr) ?? false;
+    this.stateSlots[slot.slot] = { ...this.stateSlots[slot.slot], config: { isRandom, isLoop } };
+    return { k: "stateful", kind: "multiGate", slot, port: "in", args: [], outs: {} };
   }
 
   private tryParseReset(stmts: Statement[], i: number): { stmt: IRStmt; consumed: number } | null {
@@ -1144,6 +1627,84 @@ class ModuleParser {
   // Expression lowering
   // -------------------------------------------------------------------
 
+  // ---------------------------------------------------------------------
+  // Native-operator forms — the inverse of emit-lua's nativeOpInfo/
+  // emitNativeOp. Deliberately narrower than @gltfi/parse-ts's identical-
+  // purpose tryLowerNativeOp: this backend's emitter never natively
+  // substitutes int arithmetic/comparisons or division (see emit-lua's
+  // nativeOpInfo doc comment), so there is no `(...) | 0`/`Math.imul`-style
+  // int-wrap unwrapping to do here, and every comparison/eq this dispatch
+  // reaches is unambiguously float-or-bool typed.
+  // ---------------------------------------------------------------------
+
+  private tryLowerNativeOp(expr: Expression, ctx: Ctx): IRExpr | undefined {
+    if (expr.type === "UnaryExpression") {
+      if (expr.operator === "-") {
+        // A bare negative NUMERIC LITERAL is caught earlier by
+        // readNumberLiteral (lowerExpr's very first check) — reaching here
+        // means the operand isn't a literal, so this is always float neg.
+        const a = this.lowerExpr(expr.argument, "float", ctx);
+        const overload = resolveOverload("math/neg", { a: "float" });
+        if (!overload) fail("GL161", expr, "could not resolve native float neg overload");
+        return { k: "op", op: "math/neg", overload, args: [a] };
+      }
+      if (expr.operator === "not") {
+        const a = this.lowerExpr(expr.argument, "bool", ctx);
+        const overload = resolveOverload("math/not", { a: "bool" });
+        if (!overload) fail("GL161", expr, "could not resolve native bool not overload");
+        return { k: "op", op: "math/not", overload, args: [a] };
+      }
+      return undefined;
+    }
+    if (expr.type === "LogicalExpression") {
+      if (expr.operator === "and") return this.buildBinaryOp("math/and", "bool", expr.left, expr.right, ctx);
+      if (expr.operator === "or") return this.buildBinaryOp("math/or", "bool", expr.left, expr.right, ctx);
+      return undefined;
+    }
+    if (expr.type !== "BinaryExpression") {
+      return undefined;
+    }
+    const { left, right, operator } = expr;
+    if (operator === "+") return this.buildBinaryOp("math/add", "float", left, right, ctx);
+    if (operator === "-") return this.buildBinaryOp("math/sub", "float", left, right, ctx);
+    if (operator === "*") return this.buildBinaryOp("math/mul", "float", left, right, ctx);
+    if (operator === "~=") return this.buildBinaryOp("math/xor", "bool", left, right, ctx);
+    if (operator === "==") return this.buildBinaryOp("math/eq", this.inferScalarKind(left, right, ctx, ["bool", "float"]), left, right, ctx);
+    if (operator === "<") return this.buildBinaryOp("math/lt", "float", left, right, ctx);
+    if (operator === "<=") return this.buildBinaryOp("math/le", "float", left, right, ctx);
+    if (operator === ">") return this.buildBinaryOp("math/gt", "float", left, right, ctx);
+    if (operator === ">=") return this.buildBinaryOp("math/ge", "float", left, right, ctx);
+    return undefined;
+  }
+
+  private buildBinaryOp(op: string, kind: IRType, leftNode: Expression, rightNode: Expression, ctx: Ctx): IRExpr {
+    const a = this.lowerExpr(leftNode, kind, ctx);
+    const b = this.lowerExpr(rightNode, kind, ctx);
+    const overload = resolveOverload(op, { a: kind, b: kind } as Record<string, TypeSig>);
+    if (!overload) {
+      fail("GL161", leftNode, `could not resolve native overload for "${op}" with operand type "${kind}"`);
+    }
+    return { k: "op", op, overload, args: [a, b] };
+  }
+
+  // Bottom-up peek at whichever operand isn't literal-ish (mirrors
+  // disambiguateOverload's identical strategy) to pick which of `allowed`'s
+  // concrete types this native `==` was over (math/eq is the only native op
+  // this backend ever renders for BOTH float and bool — see nativeOpInfo);
+  // falls back to "float".
+  private inferScalarKind(a: Expression, b: Expression, ctx: Ctx, allowed: IRType[]): IRType {
+    for (const n of [a, b]) {
+      if (isLiteralish(n)) {
+        continue;
+      }
+      const t = this.typeOfExpr(this.lowerExpr(n, undefined, ctx));
+      if (allowed.includes(t)) {
+        return t;
+      }
+    }
+    return allowed.includes("float") ? "float" : allowed[0];
+  }
+
   private lowerExpr(expr: Expression, expected: IRType | undefined, ctx: Ctx): IRExpr {
     // Literals.
     const num = readNumberLiteral(expr);
@@ -1170,6 +1731,37 @@ class ModuleParser {
       const varId = readNumberLiteral(getVar.arguments[0]) ?? fail("GL141", expr, "rt.getVar's argument must be a numeric literal");
       return { k: "varGet", varId };
     }
+    // Object form: `V.<name>.get()` — see matchAccessorCall's doc comment.
+    const getAccessor = this.matchAccessorCall(expr, "get");
+    if (getAccessor && this.varIndexByProp.has(getAccessor.key)) {
+      return { k: "varGet", varId: this.varIndexByProp.get(getAccessor.key)! };
+    }
+    // `(slot.remaining or N)` — Lua idiom for TS's `slot.remaining ?? N`
+    // (see emit-ts's emitStateRead waitAll case's own doc comment on why
+    // this substitution is safe: the LHS is never boolean `false`, only a
+    // number or `nil`). Checked BEFORE tryLowerNativeOp below, since a bare
+    // `or` LogicalExpression is otherwise indistinguishable from a genuine
+    // native bool-or — this idiom's very specific left-hand shape (a state-
+    // slot's own `.remaining` field) never collides with an actual bool/bool
+    // `math/or` operand. No parens node exists in Lua's AST (see this
+    // file's header note), so this is just a bare LogicalExpression here.
+    if (expr.type === "LogicalExpression" && expr.operator === "or" && expr.left.type === "MemberExpression" && expr.left.indexer === "." && expr.left.base.type === "Identifier") {
+      const slotIdx = this.stateSlotIndexByName.get(expr.left.base.name);
+      if (slotIdx !== undefined && expr.left.identifier.name === "remaining" && this.stateSlots[slotIdx].kind === "waitAll") {
+        const inputFlows = readNumberLiteral(expr.right);
+        if (inputFlows !== undefined) {
+          this.stateSlots[slotIdx] = { ...this.stateSlots[slotIdx], config: { ...this.stateSlots[slotIdx].config, inputFlows: Math.trunc(inputFlows) } };
+        }
+        return { k: "stateRead", slot: { slot: slotIdx }, field: "remainingInputs", type: "int" };
+      }
+    }
+    // Native-operator forms (`a + b`, `a == b`, `a < b`, `a and b`, `not a`,
+    // ...) — see emit-lua's nativeOpInfo for exactly which op/type
+    // combinations these can come from.
+    const native = this.tryLowerNativeOp(expr, ctx);
+    if (native) {
+      return native;
+    }
     // rt.random
     if (asCallExpr(expr, "rt", "random")) {
       const overload = resolveOverload("math/random", {})!;
@@ -1194,7 +1786,7 @@ class ModuleParser {
     if (expr.type === "IndexExpression") {
       const payloadCall = asCallExpr(expr.base, "rt", "eventPayload");
       if (payloadCall) {
-        const eventIndex = readNumberLiteral(payloadCall.arguments[0]) ?? 0;
+        const eventIndex = this.readEventIndex(payloadCall.arguments[0]) ?? 0;
         const fieldIdx = (readNumberLiteral(expr.index) ?? 1) - 1;
         const field = PAYLOAD_FIELDS[fieldIdx] ?? "boolParameter";
         return { k: "intrinsic", op: "event/receive#payload", config: { eventIndex, field }, args: [], type: field === "boolParameter" ? "bool" : field === "intParameter" ? "int" : "float" };
@@ -1273,22 +1865,6 @@ class ModuleParser {
       }
     }
 
-    // `(slot.remaining or N)` — Lua idiom for TS's `slot.remaining ?? N`
-    // (see emit.ts's emitStateRead waitAll case's own doc comment on why
-    // this substitution is safe: the LHS is never boolean `false`, only a
-    // number or `nil`). No parens node exists in Lua's AST (see this file's
-    // header note), so this is just a bare LogicalExpression here.
-    if (expr.type === "LogicalExpression" && expr.operator === "or" && expr.left.type === "MemberExpression" && expr.left.indexer === "." && expr.left.base.type === "Identifier") {
-      const slotIdx = this.stateSlotIndexByName.get(expr.left.base.name);
-      if (slotIdx !== undefined && expr.left.identifier.name === "remaining") {
-        const inputFlows = readNumberLiteral(expr.right);
-        if (inputFlows !== undefined) {
-          this.stateSlots[slotIdx] = { ...this.stateSlots[slotIdx], config: { ...this.stateSlots[slotIdx].config, inputFlows: Math.trunc(inputFlows) } };
-        }
-        return { k: "stateRead", slot: { slot: slotIdx }, field: "remainingInputs", type: "int" };
-      }
-    }
-
     fail("GL140", expr, `unrecognized expression shape (kind ${expr.type})`);
   }
 
@@ -1310,7 +1886,17 @@ class ModuleParser {
   }
 
   private lowerPtrGet(call: CallExpression, wantIsValid: boolean): IRExpr {
-    const [pointerExpr, argsObjExpr, typeExpr] = call.arguments;
+    const argNodes = call.arguments;
+    // Args-less form (see emit-lua's pointerCall doc comment): every
+    // template param was a compile-time constant, already inlined into the
+    // path string, so the whole args table is omitted and `type` shifts
+    // into position 1 — disambiguated the same way engine.lua's rt.ptrGet
+    // does: position 1 is either the args table or, when it's a string, IS
+    // the type signature.
+    const hasArgsObj = argNodes.length >= 2 && argNodes[1].type === "TableConstructorExpression";
+    const pointerExpr = argNodes[0];
+    const argsObjExpr = hasArgsObj ? argNodes[1] : undefined;
+    const typeExpr = hasArgsObj ? argNodes[2] : argNodes[1];
     const pointerLit = stringLiteralValue(pointerExpr) ?? fail("GL141", pointerExpr, "pointer must be a string literal");
     const template = parsePointerTemplate(pointerLit);
     const valueType = (stringLiteralValue(typeExpr) as IRType | undefined) ?? fail("GL141", typeExpr, "pointer type must be a string literal");

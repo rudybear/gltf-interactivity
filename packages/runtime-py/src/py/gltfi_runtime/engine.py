@@ -84,6 +84,25 @@ def _parse_animation_ref(gltf, ref):
     return None
 
 
+class _VarAccessor:
+    """Named accessor returned per-entry by the dict-form `vars()` (see
+    Engine.vars) — closes over its own numeric index exactly like engine.ts's
+    VarAccessor, so emit-py's `V["<name>"].get()/.set(v)` calls need no index
+    at all in the generated text."""
+
+    __slots__ = ("_engine", "_index")
+
+    def __init__(self, engine: "Engine", index: int):
+        self._engine = engine
+        self._index = index
+
+    def get(self):
+        return self._engine._var_raw[self._index]
+
+    def set(self, value) -> None:
+        self._engine._var_raw[self._index] = value
+
+
 class Engine:
     def __init__(self, setup, gltf=None, glb_bin=None, seed: float = _DEFAULT_SEED, on_pointer_set=None):
         self._var_types: list = []
@@ -159,10 +178,32 @@ class Engine:
 
     # -- builder ("rt.*") API, snake_case, called only from setup() --------
 
-    def vars(self, decls) -> None:
+    # Additive dict-shaped `rt.vars(...)` form (see docs/design/ir-and-
+    # transpiler.md's IR->Python section and @gltfi/emit-py's emitVars doc
+    # comment): `rt.vars({"counter1": rt.int_(0), ...})` — dict insertion
+    # order IS the variable index order in Python 3.7+ (the load-bearing
+    # contract this relies on, same as the array form's element order).
+    # Returns a plain dict of named accessors, one per key
+    # (`V["counter1"].get()`/`.set(v)` — subscript, not attribute, access:
+    # unlike Lua/TS identifiers, a variable's display name is never
+    # guaranteed usable as a Python attribute name verbatim, so this always
+    # goes through a dict rather than dynamic attributes); the OLD array
+    # form (list of bare `{"type":...,"initial":...}` dicts, still used by
+    # hand-written callers — see packages/runtime-py/test/harness.test.ts)
+    # returns None.
+    def vars(self, decls):
+        if isinstance(decls, dict):
+            accessors = {}
+            for name, decl in decls.items():
+                idx = len(self._var_types)
+                self._var_types.append(decl["type"])
+                self._var_raw.append(decl["initial"])
+                accessors[name] = _VarAccessor(self, idx)
+            return accessors
         for decl in decls:
             self._var_types.append(decl["type"])
             self._var_raw.append(decl["initial"])
+        return None
 
     def get_var(self, index: int):
         return self._var_raw[index]
@@ -170,8 +211,82 @@ class Engine:
     def set_var(self, index: int, value) -> None:
         self._var_raw[index] = value
 
-    def events(self, decls) -> None:
+    # Additive dict-shaped `rt.events(...)` form — same insertion-order-is-
+    # index-order contract as vars() above. Returns a plain name->index dict
+    # (a bare `int`, exactly what send()/on_receive()'s first parameter
+    # already accepts).
+    def events(self, decls):
+        if isinstance(decls, dict):
+            out = {}
+            for name, decl in decls.items():
+                idx = len(self._event_decls)
+                self._event_decls.append(decl)
+                out[name] = idx
+            return out
         self._event_decls.extend(decls)
+        return None
+
+    # Variable-declaration-shorthand helpers, usable as `rt.vars({"counter1":
+    # rt.int_(0), ...})` values — each just builds the same
+    # `{"type":...,"initial":...}` dict the array form's elements always
+    # were. Named with a trailing underscore (`int_`, `float_`, `bool_`,
+    # `ref_`) since `int`/`float`/`bool` are Python builtins — mirrors
+    # emit-py's own PY_RENAME convention for m.* function names, applied
+    # here too for the same reason. Defaults match engine.ts's identical
+    # helpers.
+    def int_(self, x: int = 0) -> dict:
+        return {"type": "int", "initial": int(x)}
+
+    def bool_(self, x: bool = False) -> dict:
+        return {"type": "bool", "initial": bool(x)}
+
+    def float_(self, x: float = 0.0) -> dict:
+        return {"type": "float", "initial": float(x)}
+
+    def float2(self, x: float = 0.0, y: float = 0.0) -> dict:
+        return {"type": "float2", "initial": [x, y]}
+
+    def float3(self, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> dict:
+        return {"type": "float3", "initial": [x, y, z]}
+
+    def float4(self, x: float = 0.0, y: float = 0.0, z: float = 0.0, w: float = 0.0) -> dict:
+        return {"type": "float4", "initial": [x, y, z, w]}
+
+    def float2x2(self, *values: float) -> dict:
+        return {"type": "float2x2", "initial": list(values) if values else [1.0, 0.0, 0.0, 1.0]}
+
+    def float3x3(self, *values: float) -> dict:
+        return {"type": "float3x3", "initial": list(values) if values else [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]}
+
+    def float4x4(self, *values: float) -> dict:
+        return {
+            "type": "float4x4",
+            "initial": list(values)
+            if values
+            else [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+        }
+
+    def ref_(self, pointer: str = "") -> dict:
+        return {"type": "ref", "initial": pointer}
+
+    # State-slot factories — plain dicts with the exact shape @gltfi/emit-py
+    # used to write out literally (see emitStateSlots' previous inline
+    # `{"count": 0.0}`/etc — kept byte-for-byte identical here, just
+    # centralized).
+    def do_n_state(self) -> dict:
+        return {"count": 0.0}
+
+    def multi_gate_state(self) -> dict:
+        return {"lastIndex": -1.0, "used": []}
+
+    def wait_all_state(self) -> dict:
+        return {"activated": []}
+
+    def throttle_state(self) -> dict:
+        return {"remaining": float("nan")}
+
+    def delay_state(self) -> dict:
+        return {"lastId": -1.0, "lastRef": "", "ids": []}
 
     def on_start(self, fn) -> None:
         self._on_start_handlers.append(fn)
@@ -182,7 +297,30 @@ class Engine:
     def on_receive(self, event_index: int, fn) -> None:
         self._on_receive_handlers.setdefault(event_index, []).append(fn)
 
-    def send(self, event_index: int, external_id, payload) -> None:
+    # Combined signature covering three call shapes (mirrors engine.ts's
+    # send exactly): the OLD `(event_index, external_id, payload)`
+    # (external_id is IGNORED — it's looked up from this engine's own
+    # eventDecls table instead, fully redundant with event_index/the
+    # `E["<name>"]` ref that names it), the additive `(event_index,
+    # payload)`, and `(event_index)` alone when every payload value equals
+    # the event's own declared default (see emit-py's emitEvent doc
+    # comment) — no second argument at all in that case. Distinguished by
+    # VALUE shape (a list is always a payload; a str or None never is), not
+    # position.
+    def send(self, event_index: int, second_arg=None, third_arg=None) -> None:
+        decl = self._event_decls[event_index] if event_index < len(self._event_decls) else None
+        if isinstance(second_arg, list):
+            payload = second_arg
+        elif isinstance(third_arg, list):
+            payload = third_arg
+        else:
+            payload = [
+                (decl or {}).get("defaultBool", False),
+                (decl or {}).get("defaultInt", 0),
+                (decl or {}).get("defaultFloat", 0.0),
+                (decl or {}).get("expectedDuration", 0.0),
+            ]
+        external_id = (decl or {}).get("externalId")
         self._sent_events.append({"eventIndex": event_index, "externalId": external_id, "payload": payload})
         self._last_payload_by_index[event_index] = payload
         event_ref = f"event:custom:{event_index}"
@@ -193,7 +331,7 @@ class Engine:
             handler(payload)
         self._stopped_events.discard(event_ref)
 
-    def log(self, template, args) -> None:
+    def log(self, template, args=None) -> None:
         pass  # debug/log has no effect on pass/fail; intentionally a no-op.
 
     def stop_propagation(self, event_ref, stop_immediate) -> None:
@@ -226,11 +364,22 @@ class Engine:
     def random(self) -> float:
         return self._step_random() / 4294967295
 
-    def ptr_get(self, pointer: str, args: dict, t: str) -> dict:
-        return ptr.ptr_get(self._pointer_host, pointer, args, t)
+    # Combined signature covering both the dict-args form (unchanged) and an
+    # additive args-less form for when every pointer-template parameter is a
+    # compile-time constant (see emit-py's pointerCall — it inlines constant
+    # template args straight into the path string, so there's nothing left
+    # to pass in an args dict at all): `args_or_type` is either the args
+    # dict (3-arg form omitted) or, when it's a `str`, IS the type signature
+    # and the args dict was omitted entirely.
+    def ptr_get(self, pointer: str, args_or_type, t: str = None) -> dict:
+        if isinstance(args_or_type, str):
+            return ptr.ptr_get(self._pointer_host, pointer, {}, args_or_type)
+        return ptr.ptr_get(self._pointer_host, pointer, args_or_type, t)
 
-    def ptr_set(self, pointer: str, args: dict, t: str, value) -> bool:
-        return ptr.ptr_set(self._pointer_host, pointer, args, t, value)
+    def ptr_set(self, pointer: str, args_or_type, type_or_value, value=None) -> bool:
+        if isinstance(args_or_type, str):
+            return ptr.ptr_set(self._pointer_host, pointer, {}, args_or_type, type_or_value)
+        return ptr.ptr_set(self._pointer_host, pointer, args_or_type, type_or_value, value)
 
     # -- async ops (flow/setDelay, variable/interpolate, pointer/interpolate,
     # animation/start|stop|stopAt) ------------------------------------------
@@ -294,7 +443,17 @@ class Engine:
         })
         return {"ok": True}
 
-    def ptr_interp(self, pointer: str, args: dict, t: str, value, duration: float, p1: list, p2: list, done=None) -> dict:
+    # Combined signature — see ptr_get/ptr_set's identical dispatch above for
+    # the args-less form this also accepts (every following positional
+    # parameter shifts left by one when `args_or_type` is a `str`, i.e. IS
+    # the type signature).
+    def ptr_interp(
+        self, pointer: str, args_or_type, type_or_value, value_or_duration=None, duration_or_p1=None, p1_or_p2=None, p2_or_done=None, done_maybe=None
+    ) -> dict:
+        if isinstance(args_or_type, str):
+            args, t, value, duration, p1, p2, done = {}, args_or_type, type_or_value, value_or_duration, duration_or_p1, p1_or_p2, p2_or_done
+        else:
+            args, t, value, duration, p1, p2, done = args_or_type, type_or_value, value_or_duration, duration_or_p1, p1_or_p2, p2_or_done, done_maybe
         prep = ptr.ptr_interp_prepare(self._pointer_host, pointer, args, t)
         if not prep:
             return {"ok": False}
@@ -345,10 +504,16 @@ class Engine:
 
     # -- stateful ops (flow/doN, flow/multiGate, flow/waitAll, flow/throttle)
 
-    def do_n(self, slot: dict, n: float) -> dict:
+    # Returns the fire decision directly (not `{"fire": ...}`) — the only
+    # non-additive shape change in this surface (mirrors engine.ts's
+    # identical change exactly): every real call site checks this exactly
+    # once (`if rt.do_n(...):`), so there was never a reason to name an
+    # intermediate result — see emit-py's emitStateful, which now inlines
+    # the call straight into the `if`.
+    def do_n(self, slot: dict, n: float) -> bool:
         decision = do_n_advance(slot["count"], safe_trunc(n))
         slot["count"] = decision["count"]
-        return {"fire": decision["fire"]}
+        return decision["fire"]
 
     def multi_gate(self, slot: dict, output_count: int, is_random: bool, is_loop: bool) -> dict:
         def random_index(count: int) -> int:

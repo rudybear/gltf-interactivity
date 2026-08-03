@@ -269,6 +269,44 @@ function isNoneConstant(node: PyNode | undefined): boolean {
   return constPType(node) === "none";
 }
 
+// Matches EITHER the old bare `rt.<name>([...])` expression-statement shape
+// or the new `X = rt.<name>({...})` assignment shape — both accepted for
+// `vars`/`events` (mirrors @gltfi/parse-lua's identically-named helper).
+function matchNamedCall(stmt: PyNode | undefined, attr: string): { call: PyNode; boundName?: string } | undefined {
+  if (!stmt) {
+    return undefined;
+  }
+  if (isType(stmt, "Expr")) {
+    const call = asAttrCall(stmt.value as PyNode, "rt", attr);
+    return call ? { call } : undefined;
+  }
+  if (isType(stmt, "Assign") && nodeList(stmt.targets).length === 1 && isType(nodeList(stmt.targets)[0], "Name")) {
+    const call = asAttrCall(stmt.value as PyNode, "rt", attr);
+    return call ? { call, boundName: (nodeList(stmt.targets)[0] as PyNode).id as string } : undefined;
+  }
+  return undefined;
+}
+
+// `not <inner>` unwrap — used by the negated-condition shapes (empty-then
+// `if`, async/setPointer err-only) exactly like emit-py's own negateCond
+// produces.
+function unwrapNot(cond: PyNode): { negated: boolean; inner: PyNode } {
+  if (isType(cond, "UnaryOp") && isType(cond.op as PyNode, "Not")) {
+    return { negated: true, inner: cond.operand as PyNode };
+  }
+  return { negated: false, inner: cond };
+}
+
+// `<expr>[<field>]` bare string-keyed subscript (used to recognize an
+// INLINE call result read directly in an `if` condition, e.g.
+// `rt.set_delay(...)["ok"]`, with no named local backing it at all).
+function fieldOf(expr: PyNode, field: string): PyNode | undefined {
+  if (!isType(expr, "Subscript")) {
+    return undefined;
+  }
+  return stringLiteralValue(expr.slice as PyNode) === field ? (expr.value as PyNode) : undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Parser
 // ---------------------------------------------------------------------------
@@ -287,25 +325,28 @@ class ModuleParser {
   private stateSlotIndexByName = new Map<string, number>();
   private procIndexByName = new Map<string, number>();
   private tempTypeByName = new Map<string, IRType>();
+  // Dict-form accessor lookup: `"<boundName>.<propName>"` -> variable/event
+  // index (see matchNamedCall/parseVars/parseEvents's population) —
+  // identical convention to @gltfi/parse-lua's varIndexByProp/eventIndexByProp.
+  private varIndexByProp = new Map<string, number>();
+  private eventIndexByProp = new Map<string, number>();
 
   run(topStmts: PyNode[]): IRModule {
     const stmts = this.findFactoryBody(topStmts);
     let i = 0;
 
-    const varsCall = this.exprCallOf(stmts[i]);
-    const vars = varsCall && asAttrCall(varsCall, "rt", "vars");
-    if (!vars) {
+    const varsMatch = matchNamedCall(stmts[i], "vars");
+    if (!varsMatch) {
       fail("GP101", stmts[i], "expected rt.vars([...]) as the first statement");
     }
-    this.parseVars(vars);
+    this.parseVars(varsMatch);
     i += 1;
 
-    const eventsCall = this.exprCallOf(stmts[i]);
-    const events = eventsCall && asAttrCall(eventsCall, "rt", "events");
-    if (!events) {
+    const eventsMatch = matchNamedCall(stmts[i], "events");
+    if (!eventsMatch) {
       fail("GP102", stmts[i], "expected rt.events([...]) as the second statement");
     }
-    this.parseEvents(events);
+    this.parseEvents(eventsMatch);
     i += 1;
 
     // State slots: `S = SimpleNamespace()` (only if the emitter had any to
@@ -419,11 +460,20 @@ class ModuleParser {
   // vars / events / state slots
   // -------------------------------------------------------------------
 
-  private parseVars(call: PyNode) {
-    const arg = callArgs(call)[0];
+  // Old form: `rt.vars([{"type":...,"initial":...}, ...])` (list literal,
+  // synthetic `var<N>` names). New form: `V = rt.vars({"counter1":
+  // rt.int_(0), ...})` (dict literal — Python 3.7+ dict insertion order IS
+  // the variable index order, the load-bearing contract this relies on,
+  // same as the array form's element order).
+  private parseVars(match: { call: PyNode; boundName?: string }) {
+    const arg = callArgs(match.call)[0];
+    if (isType(arg, "Dict")) {
+      this.parseVarsDict(arg as PyNode, match.boundName ?? "V");
+      return;
+    }
     const arr = listElements(arg);
     if (!arr) {
-      fail("GP101", arg, "rt.vars expects a list-literal argument");
+      fail("GP101", arg, "rt.vars expects a list or dict literal argument");
     }
     arr.forEach((el, idx) => {
       if (!isType(el, "Dict")) {
@@ -443,36 +493,155 @@ class ModuleParser {
     });
   }
 
-  private parseEvents(call: PyNode) {
-    const arg = callArgs(call)[0];
+  // `{"counter1": rt.int_(0.0), ...}` — dict key order is the variable
+  // index order. Each key's real name round-trips exactly (unlike the
+  // plain-list form's synthetic `var<N>`).
+  private parseVarsDict(dict: PyNode, boundName: string) {
+    const keys = nodeList(dict.keys);
+    const values = nodeList(dict.values);
+    keys.forEach((keyNode, idx) => {
+      const name = stringLiteralValue(keyNode);
+      if (!name) {
+        fail("GP101", keyNode, "rt.vars dict key must be a string literal");
+      }
+      const decl = this.parseVarDeclShorthand(values[idx]);
+      const varIdx = this.variables.length;
+      this.variables.push({ name, type: decl.type, initial: { type: decl.type, data: decl.data as never } });
+      this.varIndexByProp.set(`${boundName}.${name}`, varIdx);
+    });
+  }
+
+  // `rt.int_(0)`/`rt.bool_(False)`/`rt.float_(0.0)`/`rt.float2(x,y)`/../
+  // `rt.ref_(s)` — inverse of emit-py's varDeclCall, mirrors engine.py's
+  // int_/bool_/float_/.../ref_ factory methods' own defaults.
+  private parseVarDeclShorthand(init: PyNode): { type: IRType; data: Array<number | boolean | string> } {
+    const c = attrCallOf(init);
+    if (!c || c.base !== "rt") {
+      fail("GP101", init, "rt.vars dict value must be an rt.<type>(...) declaration helper call");
+    }
+    const args = callArgs(c.call);
+    const type = c.attr.endsWith("_") ? c.attr.slice(0, -1) : c.attr;
+    if (type === "bool") {
+      return { type: "bool", data: [args[0] ? readBoolLiteral(args[0]) ?? false : false] };
+    }
+    if (type === "ref") {
+      return { type: "ref", data: [args[0] ? stringLiteralValue(args[0]) ?? "" : ""] };
+    }
+    if (type === "int") {
+      return { type: "int", data: [args[0] ? Math.trunc(readNumberLiteral(args[0]) ?? 0) : 0] };
+    }
+    if (type === "float") {
+      return { type: "float", data: [args[0] ? readNumberLiteral(args[0]) ?? 0 : 0] };
+    }
+    const VECTOR_MATRIX_DEFAULTS: Record<string, number[]> = {
+      float2: [0, 0],
+      float3: [0, 0, 0],
+      float4: [0, 0, 0, 0],
+      float2x2: [1, 0, 0, 1],
+      float3x3: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+      float4x4: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+    };
+    if (!(type in VECTOR_MATRIX_DEFAULTS)) {
+      fail("GP101", init, `unknown rt.${c.attr}(...) variable-declaration helper`);
+    }
+    const nums = args.map((a) => readNumberLiteral(a) ?? 0);
+    return { type: type as IRType, data: nums.length > 0 ? nums : VECTOR_MATRIX_DEFAULTS[type] };
+  }
+
+  private parseEvents(match: { call: PyNode; boundName?: string }) {
+    const arg = callArgs(match.call)[0];
+    if (isType(arg, "Dict")) {
+      this.parseEventsDict(arg as PyNode, match.boundName ?? "E");
+      return;
+    }
     const arr = listElements(arg);
     if (!arr) {
-      fail("GP102", arg, "rt.events expects a list-literal argument");
+      fail("GP102", arg, "rt.events expects a list or dict literal argument");
     }
     arr.forEach((el, idx) => {
       if (!isType(el, "Dict")) {
         fail("GP102", el, "rt.events element must be a dict literal");
       }
-      const externalId = stringLiteralValue(dictField(el, "externalId"));
-      const values: IREventValue[] = [];
-      const boolExpr = dictField(el, "defaultBool");
-      if (boolExpr) {
-        values.push({ name: "boolParameter", type: "bool", default: { type: "bool", data: [readBoolLiteral(boolExpr) ?? false] } });
-      }
-      const intExpr = dictField(el, "defaultInt");
-      if (intExpr) {
-        values.push({ name: "intParameter", type: "int", default: { type: "int", data: [readNumberLiteral(intExpr) ?? 0] } });
-      }
-      const floatExpr = dictField(el, "defaultFloat");
-      if (floatExpr) {
-        values.push({ name: "floatParameter", type: "float", default: { type: "float", data: [readNumberLiteral(floatExpr) ?? 0] } });
-      }
-      const durExpr = dictField(el, "expectedDuration");
-      if (durExpr) {
-        values.push({ name: "expectedDuration", type: "float", default: { type: "float", data: [readNumberLiteral(durExpr) ?? 0] } });
-      }
+      const { externalId, values } = this.parseEventValues(el);
       this.events.push({ name: `event${idx}`, id: externalId, values });
     });
+  }
+
+  private parseEventValues(el: PyNode): { externalId: string | undefined; values: IREventValue[] } {
+    const externalId = stringLiteralValue(dictField(el, "externalId"));
+    const values: IREventValue[] = [];
+    const boolExpr = dictField(el, "defaultBool");
+    if (boolExpr) {
+      values.push({ name: "boolParameter", type: "bool", default: { type: "bool", data: [readBoolLiteral(boolExpr) ?? false] } });
+    }
+    const intExpr = dictField(el, "defaultInt");
+    if (intExpr) {
+      values.push({ name: "intParameter", type: "int", default: { type: "int", data: [readNumberLiteral(intExpr) ?? 0] } });
+    }
+    const floatExpr = dictField(el, "defaultFloat");
+    if (floatExpr) {
+      values.push({ name: "floatParameter", type: "float", default: { type: "float", data: [readNumberLiteral(floatExpr) ?? 0] } });
+    }
+    const durExpr = dictField(el, "expectedDuration");
+    if (durExpr) {
+      values.push({ name: "expectedDuration", type: "float", default: { type: "float", data: [readNumberLiteral(durExpr) ?? 0] } });
+    }
+    return { externalId, values };
+  }
+
+  // `{"Explode": {"externalId": ..., ...}, ...}` — same insertion-order-is-
+  // index-order contract as parseVarsDict.
+  private parseEventsDict(dict: PyNode, boundName: string) {
+    const keys = nodeList(dict.keys);
+    const values = nodeList(dict.values);
+    keys.forEach((keyNode, idx) => {
+      const name = stringLiteralValue(keyNode);
+      if (!name) {
+        fail("GP102", keyNode, "rt.events dict key must be a string literal");
+      }
+      const el = values[idx];
+      if (!isType(el, "Dict")) {
+        fail("GP102", el, "rt.events dict value must be a dict literal");
+      }
+      const { externalId, values: eventValues } = this.parseEventValues(el);
+      const eventIdx = this.events.length;
+      this.events.push({ name, id: externalId, values: eventValues });
+      this.eventIndexByProp.set(`${boundName}.${name}`, eventIdx);
+    });
+  }
+
+  // Reconstructs `rt.send`'s 4 fixed payload args (bool,int,float,duration)
+  // from the event's OWN declared defaults, for the args-less `rt.send(idx)`
+  // shape — see emit-py's emitEvent/matchesEventDefaults doc comment.
+  private eventDefaultArgs(eventId: number): IRExpr[] {
+    const e = this.events[eventId];
+    const boolDefault = e?.values.find((v) => v.name === "boolParameter");
+    const intDefault = e?.values.find((v) => v.name === "intParameter");
+    const floatDefault = e?.values.find((v) => v.name === "floatParameter");
+    const duration = e?.values.find((v) => v.name === "expectedDuration");
+    return [
+      { k: "const", type: "bool", data: [Boolean(boolDefault?.default.data[0] ?? false)] },
+      { k: "const", type: "int", data: [Math.trunc(Number(intDefault?.default.data[0] ?? 0))] },
+      { k: "const", type: "float", data: [Number(floatDefault?.default.data[0] ?? 0)] },
+      { k: "const", type: "float", data: [Number(duration?.default.data[0] ?? 0)] }
+    ];
+  }
+
+  // `E["<name>"]` (dict form) resolves through eventIndexByProp; a bare
+  // numeric literal (list form, unchanged) resolves directly.
+  private readEventIndex(node: PyNode | undefined): number | undefined {
+    const n = readNumberLiteral(node);
+    if (n !== undefined) {
+      return n;
+    }
+    if (node && isType(node, "Subscript") && isType(node.value as PyNode, "Name")) {
+      const boundName = (node.value as PyNode).id as string;
+      const key = stringLiteralValue(node.slice as PyNode);
+      if (key !== undefined) {
+        return this.eventIndexByProp.get(`${boundName}.${key}`);
+      }
+    }
+    return undefined;
   }
 
   private tryRegisterStateSlot(stmt: PyNode): boolean {
@@ -490,6 +659,27 @@ class ModuleParser {
       this.stateSlots.push({ name, kind: "for", config: { initialIndex: Math.trunc(num) } });
       this.stateSlotIndexByName.set(name, idx);
       return true;
+    }
+    // New state-slot factory-call shape: `S.<name> = rt.do_n_state()`/etc —
+    // see engine.py's do_n_state/multi_gate_state/wait_all_state/
+    // throttle_state/delay_state.
+    const factoryCall = attrCallOf(init);
+    if (factoryCall && factoryCall.base === "rt") {
+      const FACTORY_KIND: Record<string, StateKind> = {
+        do_n_state: "doN",
+        multi_gate_state: "multiGate",
+        wait_all_state: "waitAll",
+        throttle_state: "throttle",
+        delay_state: "delay"
+      };
+      const kind = FACTORY_KIND[factoryCall.attr];
+      if (kind) {
+        const idx = this.stateSlots.length;
+        this.stateSlots.push({ name, kind, config: {} });
+        this.stateSlotIndexByName.set(name, idx);
+        return true;
+      }
+      return false;
     }
     if (!isType(init, "Dict")) {
       return false;
@@ -542,9 +732,9 @@ class ModuleParser {
     const onReceive = asAttrCall(call, "rt", "on_receive");
     if (onReceive) {
       const args = callArgs(onReceive);
-      const idx = readNumberLiteral(args[0]);
+      const idx = this.readEventIndex(args[0]);
       if (idx === undefined) {
-        fail("GP103", next, "rt.on_receive's first argument must be a numeric event-index literal");
+        fail("GP103", next, "rt.on_receive's first argument must be a numeric event-index literal or `E[\"<name>\"]`");
       }
       if (!(isType(args[1], "Name") && args[1].id === defName)) {
         fail("GP103", next, "rt.on_receive's second argument must reference the immediately preceding `def`");
@@ -574,6 +764,31 @@ class ModuleParser {
   private lowerOptionalBlock(stmts: PyNode[], ctx: Ctx): IRStmt | undefined {
     const result = this.lowerBlock(stmts, ctx);
     return result.k === "seq" && result.stmts.length === 0 ? undefined : result;
+  }
+
+  // `<boundName>["<name>"].get()` / `<boundName>["<name>"].set(value)` — the
+  // dict-form accessor call shape (see engine.py's vars doc comment).
+  // Returns the `"<base>.<prop>"` lookup key (checked against
+  // varIndexByProp by the two call sites) plus the call's own arguments
+  // (empty for "get", one value for "set").
+  private matchAccessorCall(expr: PyNode, method: "get" | "set"): { key: string; args: PyNode[] } | undefined {
+    if (!isType(expr, "Call")) {
+      return undefined;
+    }
+    const func = expr.func as PyNode | undefined;
+    if (!isType(func, "Attribute") || (func as PyNode).attr !== method) {
+      return undefined;
+    }
+    const objExpr = (func as PyNode).value as PyNode | undefined;
+    if (!isType(objExpr, "Subscript") || !isType((objExpr as PyNode).value as PyNode, "Name")) {
+      return undefined;
+    }
+    const boundName = ((objExpr as PyNode).value as PyNode).id as string;
+    const key = stringLiteralValue((objExpr as PyNode).slice as PyNode);
+    if (key === undefined) {
+      return undefined;
+    }
+    return { key: `${boundName}.${key}`, args: callArgs(expr) };
   }
 
   private isFieldTruthyCond(cond: PyNode, name: string, field: string): boolean {
@@ -630,17 +845,15 @@ class ModuleParser {
       return resetResult;
     }
 
-    // --- async: optional `def __contN() -> None: ...` then
-    // `resVar = rt.<async_fn>(...)`.
-    if (isType(stmt, "FunctionDef")) {
-      const next = stmts[i + 1];
-      if (isType(next, "Assign") && nodeList(next.targets).length === 1 && isType(nodeList(next.targets)[0], "Name")) {
-        const asyncCall = matchAsyncCall(next.value as PyNode);
-        if (asyncCall) {
-          return this.parseAsync(stmts, i, stmt, (nodeList(next.targets)[0] as PyNode).id as string, asyncCall, ctx);
-        }
-      }
-      fail("GP122", stmt, "unrecognized function definition (expected an async done-continuation)");
+    // --- async ops: optional `def __contN() -> None: ...` then either
+    // shape (see tryParseAsync's own doc comment for the full old/new shape
+    // matrix). Checked early since it can match a bare FunctionDef (always
+    // an async done-continuation in this parser), a `resVar =
+    // rt.<async_fn>(...)` assignment, a bare `rt.<async_fn>(...)`
+    // statement, or a bare `if rt.<async_fn>(...)["ok"]: ...`.
+    const asyncResult = this.tryParseAsync(stmts, i, ctx);
+    if (asyncResult) {
+      return asyncResult;
     }
 
     if (isType(stmt, "Assign") && nodeList(stmt.targets).length === 1) {
@@ -652,9 +865,6 @@ class ModuleParser {
 
         const ptrSet = asAttrCall(init, "rt", "ptr_set");
         if (ptrSet) return this.parseSetPointer(stmts, i, ptrSet, ctx);
-
-        const asyncCall = matchAsyncCall(init);
-        if (asyncCall) return this.parseAsync(stmts, i, undefined, name, asyncCall, ctx);
 
         const doN = asAttrCall(init, "rt", "do_n");
         if (doN) return this.parseDoN(stmts, i, name, doN, ctx);
@@ -704,6 +914,37 @@ class ModuleParser {
         // IR model — see emit-py's emitEventOutWrites doc comment.
         return { stmt: null, consumed: 1 };
       }
+      // setPointer, new bare-statement shape (no out/err at all — see
+      // emit-py's emitSetPointer doc comment).
+      const ptrSetBare = asAttrCall(call, "rt", "ptr_set");
+      if (ptrSetBare) {
+        return { stmt: this.buildSetPointerStmt(ptrSetBare, undefined, undefined, ctx), consumed: 1 };
+      }
+      // Stateful ops with NO branch at all wired still MUST run (they
+      // advance state) — emit-py emits a bare, return-value-discarding call
+      // statement for exactly this case (see emitStateful's `else` branches).
+      const doNBare = asAttrCall(call, "rt", "do_n");
+      if (doNBare) {
+        const [slotExpr, nExpr] = callArgs(doNBare);
+        const slot = this.slotRefOf(slotExpr);
+        const args = [this.lowerExpr(nExpr, "int", ctx)];
+        return { stmt: { k: "stateful", kind: "doN", slot, port: "in", args, outs: {} }, consumed: 1 };
+      }
+      const multiGateBare = asAttrCall(call, "rt", "multi_gate");
+      if (multiGateBare) {
+        return { stmt: this.buildMultiGateStmt(multiGateBare), consumed: 1 };
+      }
+      const waitAllBare = asAttrCall(call, "rt", "wait_all");
+      if (waitAllBare) {
+        return { stmt: this.buildWaitAllStmt(waitAllBare, undefined, undefined, ctx), consumed: 1 };
+      }
+      const throttleBare = asAttrCall(call, "rt", "throttle");
+      if (throttleBare) {
+        const [slotExpr, durationExpr] = callArgs(throttleBare);
+        const slot = this.slotRefOf(slotExpr);
+        const args = [this.lowerExpr(durationExpr, "float", ctx)];
+        return { stmt: { k: "stateful", kind: "throttle", slot, port: "in", args, outs: {} }, consumed: 1 };
+      }
       const setVar = asAttrCall(call, "rt", "set_var");
       if (setVar) {
         const [idxExpr, valExpr] = callArgs(setVar);
@@ -712,17 +953,35 @@ class ModuleParser {
         const varType = this.variables[varId]?.type ?? fail("GP123", idxExpr, `rt.set_var references out-of-range var ${varId}`);
         return { stmt: { k: "setVar", varId, expr: this.lowerExpr(valExpr, varType, ctx) }, consumed: 1 };
       }
+      // Dict form: `V["<name>"].set(value)` — see matchAccessorCall's doc
+      // comment and parseVarsDict's varIndexByProp population.
+      const setAccessor = this.matchAccessorCall(call, "set");
+      if (setAccessor && this.varIndexByProp.has(setAccessor.key)) {
+        const varId = this.varIndexByProp.get(setAccessor.key)!;
+        const varType = this.variables[varId]?.type ?? "float";
+        return { stmt: { k: "setVar", varId, expr: this.lowerExpr(setAccessor.args[0], varType, ctx) }, consumed: 1 };
+      }
       const send = asAttrCall(call, "rt", "send");
       if (send) {
-        const [idxExpr, , payloadExpr] = callArgs(send);
-        const eventId = readNumberLiteral(idxExpr);
-        if (eventId === undefined) fail("GP124", idxExpr, "rt.send's first argument must be a numeric literal");
-        const elems = listElements(payloadExpr);
-        if (!elems || elems.length !== 4) {
-          fail("GP124", payloadExpr, "rt.send's payload argument must be a 4-element list literal");
-        }
+        const sendArgs = callArgs(send);
+        const eventId = this.readEventIndex(sendArgs[0]);
+        if (eventId === undefined) fail("GP124", sendArgs[0], 'rt.send\'s first argument must be a numeric literal or `E["<name>"]`');
+        // Three call shapes (see engine.py's send doc comment): OLD
+        // `(idx, external_id, payload)` (3 args — payload is args[2],
+        // external_id is ignored), NEW `(idx, payload)` (2 args), and NEW
+        // `(idx)` alone (1 arg — every value equals the event's own
+        // declared default, reconstructed by eventDefaultArgs).
+        const payloadExpr = sendArgs.length >= 3 ? sendArgs[2] : sendArgs.length === 2 ? sendArgs[1] : undefined;
         const types: IRType[] = ["bool", "int", "float", "float"];
-        const args = elems.map((e, k) => this.lowerExpr(e, types[k], ctx));
+        const args = payloadExpr
+          ? (() => {
+              const elems = listElements(payloadExpr);
+              if (!elems || elems.length !== 4) {
+                fail("GP124", payloadExpr, "rt.send's payload argument must be a 4-element list literal");
+              }
+              return elems.map((e, k) => this.lowerExpr(e, types[k], ctx));
+            })()
+          : this.eventDefaultArgs(eventId);
         return { stmt: { k: "emitEvent", eventId, args }, consumed: 1 };
       }
       const stopProp = asAttrCall(call, "rt", "stop_propagation");
@@ -750,16 +1009,106 @@ class ModuleParser {
 
     if (isType(stmt, "If")) {
       const test = stmt.test as PyNode;
-      // Native `==` reaching this generic dispatch (not consumed by a
-      // preceding switch/multiGate lookahead) always means a genuine shape
-      // mismatch — see parse-lua's identical defensive check.
-      if (isType(test, "Compare") && nodeList(test.ops).length === 1 && (nodeList(test.ops)[0] as PyNode)._type === "Eq") {
-        fail("GP110", stmt, "unrecognized if-statement shape (an `==`-headed test not consumed by a preceding switch/multiGate lookahead)");
-      }
       const orelse = nodeList(stmt.orelse);
-      if (orelse.length === 1 && isType(orelse[0], "If")) {
-        fail("GP110", stmt, "unrecognized if-statement shape (unexpected elif chain for a plain flow/branch)");
+      const hasPlainElse = orelse.length > 0 && !(orelse.length === 1 && isType(orelse[0], "If"));
+
+      // `if rt.do_n(slot, n):` — doN's fire decision is now a bare boolean
+      // (see engine.py's do_n doc comment), inlined directly into the test
+      // with no result variable at all (there's no "no-fire" flow branch
+      // to speak of, so an `else`/`elif` here is never emitted for this
+      // shape).
+      if (orelse.length === 0) {
+        const doNCall = asAttrCall(test, "rt", "do_n");
+        if (doNCall) {
+          const [slotExpr, nExpr] = callArgs(doNCall);
+          const slot = this.slotRefOf(slotExpr);
+          const args = [this.lowerExpr(nExpr, "int", ctx)];
+          const outs: Record<string, IRStmt> = {};
+          const block = this.lowerOptionalBlock(nodeList(stmt.body), ctx);
+          if (block) outs.out = block;
+          return { stmt: { k: "stateful", kind: "doN", slot, port: "in", args, outs }, consumed: 1 };
+        }
       }
+      // setPointer, new bare-`if` shape (no named result — see emit-py's
+      // emitSetPointer doc comment).
+      if (orelse.length === 0 || hasPlainElse) {
+        const ptrSetIfCall = asAttrCall(test, "rt", "ptr_set");
+        if (ptrSetIfCall) {
+          return { stmt: this.buildSetPointerStmt(ptrSetIfCall, nodeList(stmt.body), hasPlainElse ? orelse : undefined, ctx), consumed: 1 };
+        }
+      }
+      // waitAll, new bare-`if` shape (no named result — `"completed"` read
+      // at most once, see emit-py's emitStateful's waitAll case).
+      if (orelse.length === 0 || hasPlainElse) {
+        const completedBase = fieldOf(test, "completed");
+        const waitAllCall = completedBase ? asAttrCall(completedBase, "rt", "wait_all") : undefined;
+        if (waitAllCall) {
+          return { stmt: this.buildWaitAllStmt(waitAllCall, nodeList(stmt.body), hasPlainElse ? orelse : undefined, ctx), consumed: 1 };
+        }
+      }
+      // multiGate, new single-wired-output bare-`if` shape: `if
+      // rt.multi_gate(...)["index"] == 0:` (no elif chain — see emit-py's
+      // emitStateful's multiGate case: 2+ outputs instead use a named
+      // result + elif chain, structurally identical to the OLD shape
+      // parseMultiGate already handles unchanged).
+      if (orelse.length === 0 && isType(test, "Compare") && nodeList(test.ops).length === 1 && (nodeList(test.ops)[0] as PyNode)._type === "Eq") {
+        const indexBase = fieldOf(test.left as PyNode, "index");
+        const multiGateCall = indexBase ? asAttrCall(indexBase, "rt", "multi_gate") : undefined;
+        const caseNum = readNumberLiteral(nodeList(test.comparators)[0]);
+        if (multiGateCall && caseNum !== undefined) {
+          const stmtNode = this.buildMultiGateStmt(multiGateCall);
+          stmtNode.outs[String(caseNum)] = this.lowerBlock(nodeList(stmt.body), ctx);
+          return { stmt: stmtNode, consumed: 1 };
+        }
+      }
+      // setPointer, negated empty-"out" bare-`if` shape: `if not
+      // rt.ptr_set(...): errBody` (no else) — see emit-py's emitSetPointer
+      // doc comment. A bare function-call result is always atomic, so the
+      // negated operand is exactly the same Call as the non-negated case.
+      if (orelse.length === 0) {
+        const { negated, inner } = unwrapNot(test);
+        if (negated) {
+          const negPtrSetCall = asAttrCall(inner, "rt", "ptr_set");
+          if (negPtrSetCall) {
+            return { stmt: this.buildSetPointerStmt(negPtrSetCall, undefined, nodeList(stmt.body), ctx), consumed: 1 };
+          }
+          // Generic empty-"then" negated-condition shape: `if not cond:
+          // elseBody` (no else at all) — see emit-py's emitStmt "if" case's
+          // thenEmpty branch. Reconstructs the ORIGINAL (un-negated) cond,
+          // an empty "then", and the printed body as "else" — the exact
+          // inverse of that transform. Checked last (after every more-
+          // specific negated shape above) since it's the most general
+          // match on a bare `not <expr>` test with no else.
+          const cond = this.lowerExpr(inner, "bool", ctx);
+          const elseBody = this.lowerBlock(nodeList(stmt.body), ctx);
+          return { stmt: { k: "if", cond, then: { k: "seq", stmts: [] }, else: elseBody }, consumed: 1 };
+        }
+      }
+
+      // NOTE: neither a native `==` in an `if` test, NOR an `orelse` of
+      // exactly one nested `If`, is on its own proof of a flow/switch or
+      // multiGate dispatch reaching this point unrecognized:
+      //   - the readability pass's native-operator substitution renders
+      //     float/bool math/eq as a plain `==` too (see emit-py's
+      //     nativeOpInfo), so an ordinary flow/branch test can legitimately
+      //     be `==`-headed;
+      //   - Python's grammar has no distinct AST node for `elif` at all —
+      //     `else:\n    if ...:` and `elif ...:` are BYTE-IDENTICAL ASTs
+      //     (`If.orelse = [If(...)]`), so a plain "if/else" whose else-arm
+      //     happens to contain exactly one (semantically unrelated) nested
+      //     `if` — e.g. flow/branch's own two-ptr_set-arms test asset, once
+      //     the new bare-`if` ptr_set shape (see emit-py's emitSetPointer)
+      //     makes each arm exactly one statement — is INDISTINGUISHABLE
+      //     from a genuine elif chain by shape alone.
+      // flow/switch (tryParseSwitchAfterLet) and OLD/NEW-shape multiGate
+      // (parseMultiGate/buildMultiGateStmt) are both consumed via
+      // LOOKAHEAD/dispatch keyed to their own SPECIFIC preceding
+      // assignment or call shape (checked earlier, above, and in the
+      // Assign-statement dispatch) — never by a blanket "orelse is one If"
+      // shape check — so there is no actual ambiguity to defend against
+      // here: whatever reaches this point is always a genuine plain
+      // flow/branch, lowered the same whether its else-arm is a block or a
+      // single nested if.
       const cond = this.lowerExpr(test, "bool", ctx);
       const thenS = this.lowerBlock(nodeList(stmt.body), ctx);
       const elseS = orelse.length ? this.lowerOptionalBlock(orelse, ctx) : undefined;
@@ -779,15 +1128,10 @@ class ModuleParser {
   // setPointer
   // -------------------------------------------------------------------
 
+  // OLD shape: `ok = rt.ptr_set(...)` [+ `if ok: ... else: ...`].
   private parseSetPointer(stmts: PyNode[], i: number, call: PyNode, ctx: Ctx): { stmt: IRStmt; consumed: number } {
     const stmt = stmts[i];
     const okName = (nodeList(stmt.targets)[0] as PyNode).id as string;
-    const [pointerExpr, argsObjExpr, typeExpr, valueExpr] = callArgs(call);
-    const pointerLit = stringLiteralValue(pointerExpr) ?? fail("GP125", pointerExpr, "pointer must be a string literal");
-    const template = parsePointerTemplate(pointerLit);
-    const type = (stringLiteralValue(typeExpr) as IRType | undefined) ?? fail("GP125", typeExpr, "pointer type must be a string literal");
-    const args = this.lowerPointerArgs(argsObjExpr, template, ctx);
-    const value = this.lowerExpr(valueExpr, type, ctx);
 
     // Unlike Lua (whose `do...end` wrapper makes "does this ptr_set have a
     // following if" unambiguous — the do-block contains ONLY the assign and,
@@ -800,24 +1144,49 @@ class ModuleParser {
     // So a following `If` is only ever consumed here when its test is
     // EXACTLY `Name(okName)` — anything else means there simply is no
     // if/else for this pointer/set, not a malformed one.
-    let out: IRStmt | undefined;
-    let err: IRStmt | undefined;
-    let consumed = 1;
     const next = stmts[i + 1];
     if (isType(next, "If") && isType(next.test as PyNode, "Name") && (next.test as PyNode).id === okName) {
-      out = this.lowerOptionalBlock(nodeList(next.body), ctx);
       const orelse = nodeList(next.orelse);
-      err = orelse.length ? this.lowerOptionalBlock(orelse, ctx) : undefined;
-      consumed = 2;
+      return { stmt: this.buildSetPointerStmt(call, nodeList(next.body), orelse.length ? orelse : undefined, ctx), consumed: 2 };
     }
-    return { stmt: { k: "setPointer", template, args, value, type, out, err }, consumed };
+    return { stmt: this.buildSetPointerStmt(call, undefined, undefined, ctx), consumed: 1 };
   }
 
+  // Shared arg-extraction for every pointer/set shape (old assign-then-if,
+  // new bare-call, new bare-`if`) — `call`'s own arguments alone (a 3-arg
+  // args-less form vs the 4-arg args-dict form, disambiguated the same way
+  // pointerCall's counterpart on the emit side infers it: position 1 is
+  // either the args dict or, when it's a string, the type signature and the
+  // whole args dict was omitted — see emit-py's pointerCall doc comment)
+  // determine everything except out/err, which the three call sites derive
+  // differently from their own surrounding syntax.
+  private buildSetPointerStmt(call: PyNode, outStmts: PyNode[] | undefined, errStmts: PyNode[] | undefined, ctx: Ctx): IRStmt {
+    const argNodes = callArgs(call);
+    const hasArgsObj = argNodes.length >= 2 && isType(argNodes[1], "Dict");
+    const [pointerExpr, argsObjExpr, typeExpr, valueExpr] = hasArgsObj ? argNodes : [argNodes[0], undefined, argNodes[1], argNodes[2]];
+    const pointerLit = stringLiteralValue(pointerExpr) ?? fail("GP125", pointerExpr, "pointer must be a string literal");
+    const template = parsePointerTemplate(pointerLit);
+    const type = (stringLiteralValue(typeExpr) as IRType | undefined) ?? fail("GP125", typeExpr, "pointer type must be a string literal");
+    const args = this.lowerPointerArgs(argsObjExpr, template, ctx);
+    const value = this.lowerExpr(valueExpr, type, ctx);
+    const out = outStmts ? this.lowerOptionalBlock(outStmts, ctx) : undefined;
+    const err = errStmts ? this.lowerOptionalBlock(errStmts, ctx) : undefined;
+    return { k: "setPointer", template, args, value, type, out, err };
+  }
+
+  // `objExpr` is undefined both when the template has zero dynamic params
+  // (args-less form — see emit-py's pointerCall) and, defensively, whenever
+  // there's genuinely nothing left to look up; only fail on a MISSING dict
+  // literal when the template actually still has params to resolve.
   private lowerPointerArgs(objExpr: PyNode | undefined, template: PtrTemplate, ctx: Ctx): IRExpr[] {
+    const params = pointerTemplateParams(template);
+    if (params.length === 0) {
+      return [];
+    }
     if (!objExpr || !isType(objExpr, "Dict")) {
       fail("GP125", objExpr, "pointer args must be a dict literal");
     }
-    return pointerTemplateParams(template).map((p) => {
+    return params.map((p) => {
       const init = dictField(objExpr, p.name);
       if (!init) {
         fail("GP125", objExpr, `pointer args dict missing param "${p.name}"`);
@@ -830,14 +1199,94 @@ class ModuleParser {
   // async ops
   // -------------------------------------------------------------------
 
-  private parseAsync(
-    stmts: PyNode[],
-    i: number,
-    contFn: PyNode | undefined,
-    resName: string,
+  // Entry point for both async-op shapes: the OLD `[contFn?] resVar =
+  // rt.<fn>(...)` [+ `if resVar["ok"]: ... else: ...`] and the NEW
+  // `[contFn?] (rt.<fn>(...) | if rt.<fn>(...)["ok"]: ... else: ...)` — the
+  // latter has no named result variable at all (`"ok"` is read at most
+  // once, so emit-py inlines the call straight into the check — see emit-
+  // py's emitAsync doc comment). Returns undefined (falling through to the
+  // rest of parseOne's dispatch) when `stmts[i]` isn't a `def` AND doesn't
+  // otherwise start a recognizable async site; still `fail()`s when
+  // `stmts[i]` IS a `def` but nothing valid follows it, since every nested
+  // `def` this parser can reach is, by construction, an async-op's lifted
+  // inline continuation.
+  private tryParseAsync(stmts: PyNode[], i: number, ctx: Ctx): { stmt: IRStmt; consumed: number } | undefined {
+    const stmt = stmts[i];
+    const contFn = isType(stmt, "FunctionDef") ? stmt : undefined;
+    const offset = contFn ? 1 : 0;
+    const site = stmts[i + offset];
+    if (!site) {
+      if (contFn) fail("GP122", stmt, "unrecognized function definition (expected an async done-continuation)");
+      return undefined;
+    }
+
+    // OLD shape: `resVar = rt.<fn>(...)` [+ `if resVar["ok"]: ... else: ...`]
+    if (isType(site, "Assign") && nodeList(site.targets).length === 1 && isType(nodeList(site.targets)[0], "Name")) {
+      const matched = matchAsyncCall(site.value as PyNode);
+      if (matched) {
+        const resName = (nodeList(site.targets)[0] as PyNode).id as string;
+        let consumed = offset + 1;
+        const nextStmt = stmts[i + consumed];
+        let outStmts: PyNode[] | undefined;
+        let errStmts: PyNode[] | undefined;
+        if (isType(nextStmt, "If") && this.isFieldTruthyCond(nextStmt!.test as PyNode, resName, "ok")) {
+          outStmts = nodeList(nextStmt!.body);
+          const orelse = nodeList(nextStmt!.orelse);
+          errStmts = orelse.length ? orelse : undefined;
+          consumed += 1;
+        }
+        return { stmt: this.buildAsyncStmt(matched, contFn, outStmts, errStmts, ctx), consumed };
+      }
+    }
+
+    // NEW shape: bare `rt.<fn>(...)` (no out/err — the call's return value
+    // is discarded entirely, matching the always-runs semantics exactly).
+    if (isType(site, "Expr")) {
+      const matched = matchAsyncCall(site.value as PyNode);
+      if (matched) {
+        return { stmt: this.buildAsyncStmt(matched, contFn, undefined, undefined, ctx), consumed: offset + 1 };
+      }
+    }
+
+    // NEW shape: `if rt.<fn>(...)["ok"]: ... else: ...`.
+    if (isType(site, "If")) {
+      const test = site.test as PyNode;
+      const okBase = fieldOf(test, "ok");
+      const matched = okBase ? matchAsyncCall(okBase) : undefined;
+      if (matched) {
+        const orelse = nodeList(site.orelse);
+        return { stmt: this.buildAsyncStmt(matched, contFn, nodeList(site.body), orelse.length ? orelse : undefined, ctx), consumed: offset + 1 };
+      }
+      // Negated empty-"out" shape: `if not rt.<fn>(...)["ok"]: errBody`
+      // (no else) — see emit-py's emitAsync doc comment for the negation
+      // this inverts. `not x["ok"]` always parses as `not (x["ok"])`
+      // (subscript binds tighter than `not`), so the operand here is
+      // exactly the same `<call>["ok"]` Subscript as the non-negated case.
+      if (nodeList(site.orelse).length === 0) {
+        const { negated, inner } = unwrapNot(test);
+        if (negated) {
+          const innerOkBase = fieldOf(inner, "ok");
+          const negMatched = innerOkBase ? matchAsyncCall(innerOkBase) : undefined;
+          if (negMatched) {
+            return { stmt: this.buildAsyncStmt(negMatched, contFn, undefined, nodeList(site.body), ctx), consumed: offset + 1 };
+          }
+        }
+      }
+    }
+
+    if (contFn) {
+      fail("GP122", stmt, "unrecognized function definition (expected an async done-continuation)");
+    }
+    return undefined;
+  }
+
+  private buildAsyncStmt(
     matched: { kind: AsyncKind; call: PyNode },
+    contFn: PyNode | undefined,
+    outStmts: PyNode[] | undefined,
+    errStmts: PyNode[] | undefined,
     ctx: Ctx
-  ): { stmt: IRStmt; consumed: number } {
+  ): IRStmt {
     const args = callArgs(matched.call);
     const kind = matched.kind;
 
@@ -862,7 +1311,10 @@ class ModuleParser {
       ];
       lastArg = doneExpr;
     } else if (kind === "ptrInterp") {
-      const [pointerExpr, argsObjExpr, typeExpr, valueExpr, durationExpr, p1Expr, p2Expr, doneExpr] = args;
+      const hasArgsObj = args.length >= 2 && isType(args[1], "Dict");
+      const [pointerExpr, argsObjExpr, typeExpr, valueExpr, durationExpr, p1Expr, p2Expr, doneExpr] = hasArgsObj
+        ? args
+        : [args[0], undefined, args[1], args[2], args[3], args[4], args[5], args[6]];
       const pointerLit = stringLiteralValue(pointerExpr) ?? fail("GP126", pointerExpr, "ptr_interp pointer must be a string literal");
       const template = parsePointerTemplate(pointerLit);
       const type = (stringLiteralValue(typeExpr) as IRType | undefined) ?? fail("GP126", typeExpr, "ptr_interp type must be a string literal");
@@ -896,16 +1348,9 @@ class ModuleParser {
       }
     }
 
-    let consumed = (contFn ? 1 : 0) + 1;
-    const nextIdx = i + consumed;
-    const ifRes = this.tryReadIfElseOn(stmts[nextIdx], resName, "ok", ctx);
-    if (ifRes) {
-      baseStmt.out = ifRes.out;
-      baseStmt.err = ifRes.err;
-      consumed += 1;
-    }
-
-    return { stmt: baseStmt as IRStmt, consumed };
+    baseStmt.out = outStmts ? this.lowerOptionalBlock(outStmts, ctx) : undefined;
+    baseStmt.err = errStmts ? this.lowerOptionalBlock(errStmts, ctx) : undefined;
+    return baseStmt as IRStmt;
   }
 
   // -------------------------------------------------------------------
@@ -958,7 +1403,23 @@ class ModuleParser {
     return { stmt: { k: "stateful", kind: "throttle", slot, port: "in", args, outs }, consumed };
   }
 
+  // OLD shape: `resVar = rt.wait_all(...)` [+ `if resVar["completed"]: ...
+  // else: ...`]. The NEW bare-`if` shape (no named result at all) is
+  // dispatched straight to buildWaitAllStmt from parseOne's own If handling.
   private parseWaitAll(stmts: PyNode[], i: number, resName: string, call: PyNode, ctx: Ctx): { stmt: IRStmt; consumed: number } {
+    const next = stmts[i + 1];
+    if (isType(next, "If") && this.isFieldTruthyCond(next!.test as PyNode, resName, "completed")) {
+      const orelse = nodeList(next!.orelse);
+      return { stmt: this.buildWaitAllStmt(call, nodeList(next!.body), orelse.length ? orelse : undefined, ctx), consumed: 2 };
+    }
+    return { stmt: this.buildWaitAllStmt(call, undefined, undefined, ctx), consumed: 1 };
+  }
+
+  // Shared arg-parsing (+ config back-fill) for both waitAll shapes: the OLD
+  // named-result form and the NEW bare `if rt.wait_all(...)["completed"]:
+  // ... else: ...` form (`"completed"` read at most once — see emit-py's
+  // emitStateful's waitAll case).
+  private buildWaitAllStmt(call: PyNode, completedStmts: PyNode[] | undefined, outStmts: PyNode[] | undefined, ctx: Ctx): IRStmt {
     const [slotExpr, inputFlowsExpr, indexExpr] = callArgs(call);
     const slot = this.slotRefOf(slotExpr);
     const inputFlows = readNumberLiteral(inputFlowsExpr);
@@ -967,23 +1428,27 @@ class ModuleParser {
     }
     const index = readNumberLiteral(indexExpr) ?? 0;
     const outs: Record<string, IRStmt> = {};
-    let consumed = 1;
-    const ifRes = this.tryReadIfElseOn(stmts[i + 1], resName, "completed", ctx);
-    if (ifRes) {
-      if (ifRes.out) outs.completed = ifRes.out;
-      if (ifRes.err) outs.out = ifRes.err;
-      consumed = 2;
+    if (completedStmts) {
+      const completedBlock = this.lowerOptionalBlock(completedStmts, ctx);
+      if (completedBlock) outs.completed = completedBlock;
     }
-    return { stmt: { k: "stateful", kind: "waitAll", slot, port: Math.trunc(index), args: [], outs }, consumed };
+    if (outStmts) {
+      const outBlock = this.lowerOptionalBlock(outStmts, ctx);
+      if (outBlock) outs.out = outBlock;
+    }
+    return { k: "stateful", kind: "waitAll", slot, port: Math.trunc(index), args: [], outs };
   }
 
+  // OLD shape: `resVar = rt.multi_gate(...); if resVar["index"] == 0: ...
+  // elif ... :` (also reused, UNCHANGED, for the new 2+-output named-result
+  // shape — see emit-py's emitStateful's multiGate case: only a SINGLE
+  // wired output ever inlines the call directly with no named result,
+  // since an if/elif chain re-evaluating a literal call expression 2+
+  // times would re-invoke — and re-mutate — this stateful op; that bare-
+  // `if` single-output shape is dispatched straight to buildMultiGateStmt
+  // from parseOne's own If handling instead).
   private parseMultiGate(stmts: PyNode[], i: number, resName: string, call: PyNode, ctx: Ctx): { stmt: IRStmt; consumed: number } {
-    const [slotExpr, , isRandomExpr, isLoopExpr] = callArgs(call);
-    const slot = this.slotRefOf(slotExpr);
-    const isRandom = readBoolLiteral(isRandomExpr) ?? false;
-    const isLoop = readBoolLiteral(isLoopExpr) ?? false;
-    this.stateSlots[slot.slot] = { ...this.stateSlots[slot.slot], config: { isRandom, isLoop } };
-    const outs: Record<string, IRStmt> = {};
+    const base = this.buildMultiGateStmt(call);
     let consumed = 1;
     const next = stmts[i + 1];
     if (isType(next, "If")) {
@@ -1006,12 +1471,24 @@ class ModuleParser {
           if (num === undefined) {
             fail("GP128", clause, "multiGate switch case must be a numeric literal");
           }
-          outs[String(num)] = this.lowerBlock(nodeList(clause.body), ctx);
+          base.outs[String(num)] = this.lowerBlock(nodeList(clause.body), ctx);
         });
         consumed = 2;
       }
     }
-    return { stmt: { k: "stateful", kind: "multiGate", slot, port: "in", args: [], outs }, consumed };
+    return { stmt: base, consumed };
+  }
+
+  // Shared arg-parsing (+ config back-fill) for every multiGate shape — see
+  // parseMultiGate's own doc comment for which surrounding syntax each
+  // caller derives `outs` from.
+  private buildMultiGateStmt(call: PyNode): Extract<IRStmt, { k: "stateful" }> {
+    const [slotExpr, , isRandomExpr, isLoopExpr] = callArgs(call);
+    const slot = this.slotRefOf(slotExpr);
+    const isRandom = readBoolLiteral(isRandomExpr) ?? false;
+    const isLoop = readBoolLiteral(isLoopExpr) ?? false;
+    this.stateSlots[slot.slot] = { ...this.stateSlots[slot.slot], config: { isRandom, isLoop } };
+    return { k: "stateful", kind: "multiGate", slot, port: "in", args: [], outs: {} };
   }
 
   private tryParseReset(stmts: PyNode[], i: number): { stmt: IRStmt; consumed: number } | null {
@@ -1148,9 +1625,27 @@ class ModuleParser {
       }
       cases.push([num, this.lowerBlock(nodeList(node.body), ctx)]);
       const orelse = nodeList(node.orelse);
+      // Python's grammar has no distinct AST node for `elif` at all — a
+      // genuine `elif <selector> == N:` and an `else:` block whose sole
+      // statement happens to be an UNRELATED nested `if` (e.g. this
+      // switch's own default arm, once a single ptr_set/etc. bare-`if`
+      // shape makes it exactly one statement — see parse-lua's/this file's
+      // identical ambiguity note on the generic "if" dispatch) are BYTE-
+      // IDENTICAL ASTs. Only continue the chain when the nested If's own
+      // test is ALSO `<selector> == <literal>` — anything else (including a
+      // single nested If with a different shape) is this switch's default
+      // body, not another case.
+      const nextClauseTest = orelse.length === 1 && isType(orelse[0], "If") ? (orelse[0].test as PyNode) : undefined;
+      const continuesChain =
+        nextClauseTest &&
+        isType(nextClauseTest, "Compare") &&
+        nodeList(nextClauseTest.ops).length === 1 &&
+        (nodeList(nextClauseTest.ops)[0] as PyNode)._type === "Eq" &&
+        isType(nextClauseTest.left as PyNode, "Name") &&
+        (nextClauseTest.left as PyNode).id === name;
       if (orelse.length === 0) {
         node = undefined;
-      } else if (orelse.length === 1 && isType(orelse[0], "If")) {
+      } else if (continuesChain) {
         node = orelse[0];
       } else {
         dflt = this.lowerBlock(orelse, ctx);
@@ -1163,6 +1658,130 @@ class ModuleParser {
   // -------------------------------------------------------------------
   // Expression lowering
   // -------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------
+  // Native-operator forms — the inverse of emit-py's nativeOpInfo/
+  // emitNativeOp. Deliberately narrower than @gltfi/parse-ts's identical-
+  // purpose tryLowerNativeOp: this backend's emitter never natively
+  // substitutes int arithmetic/comparisons or division (see emit-py's
+  // nativeOpInfo doc comment), so every comparison/eq this dispatch reaches
+  // is unambiguously float-or-bool typed, and there is no int-wrap
+  // unwrapping to do.
+  // ---------------------------------------------------------------------
+
+  private tryLowerNativeOp(expr: PyNode, ctx: Ctx): IRExpr | undefined {
+    if (isType(expr, "UnaryOp")) {
+      const opKind = (expr.op as PyNode)._type;
+      if (opKind === "USub") {
+        // A bare negative NUMERIC LITERAL is caught earlier by
+        // readNumberLiteral (lowerExpr's very first check) — reaching here
+        // means the operand isn't a literal, so this is always float neg.
+        const a = this.lowerExpr(expr.operand as PyNode, "float", ctx);
+        const overload = resolveOverload("math/neg", { a: "float" });
+        if (!overload) fail("GP161", expr, "could not resolve native float neg overload");
+        return { k: "op", op: "math/neg", overload, args: [a] };
+      }
+      if (opKind === "Not") {
+        const a = this.lowerExpr(expr.operand as PyNode, "bool", ctx);
+        const overload = resolveOverload("math/not", { a: "bool" });
+        if (!overload) fail("GP161", expr, "could not resolve native bool not overload");
+        return { k: "op", op: "math/not", overload, args: [a] };
+      }
+      return undefined;
+    }
+    if (isType(expr, "BoolOp")) {
+      // Unlike TS's/Lua's own `&&`/`and` (always a plain BinaryExpression
+      // tree, nesting exactly however emit-ts's/emit-lua's own recursive
+      // emitExpr calls produced it), Python's grammar FLATTENS a bare chain
+      // of the same and/or operator into ONE BoolOp node with 3+ `values`
+      // (`a and b and c` parses as `BoolOp(And, [a, b, c])`, never nested
+      // two-operand BoolOps) — a real corpus case (math/saturate's chained
+      // "every sub-test passed" condition) hits this whenever 3+ math/and
+      // nodes chain together and all render bare (no parens needed at that
+      // uniform precedence level — see emit-py's emitNativeOp). Folded back
+      // into the same LEFT-associative nested binary shape emit-ts's/emit-
+      // lua's own explicit-tree emission always produces, matching how
+      // @gltfi/ir/import.ts itself builds a multi-input and/or chain (see
+      // e.g. flow/branch's own boolean-AND-of-conditions authoring
+      // pattern) — proven correct by the other two backends' own
+      // structural round-trip passing against the exact same corpus asset.
+      const values = nodeList(expr.values);
+      if (values.length < 2) {
+        return undefined;
+      }
+      const opKind = (expr.op as PyNode)._type;
+      const op = opKind === "And" ? "math/and" : opKind === "Or" ? "math/or" : undefined;
+      if (!op) {
+        return undefined;
+      }
+      let acc = this.lowerExpr(values[0], "bool", ctx);
+      for (let idx = 1; idx < values.length; idx += 1) {
+        acc = this.buildBinaryOpFromExpr(op, "bool", acc, values[idx], ctx);
+      }
+      return acc;
+    }
+    if (isType(expr, "Compare")) {
+      const ops = nodeList(expr.ops);
+      const comparators = nodeList(expr.comparators);
+      if (ops.length !== 1 || comparators.length !== 1) {
+        return undefined; // this emitter never chains comparisons
+      }
+      const opKind = (ops[0] as PyNode)._type;
+      const left = expr.left as PyNode;
+      const right = comparators[0];
+      if (opKind === "NotEq") return this.buildBinaryOp("math/xor", "bool", left, right, ctx);
+      if (opKind === "Eq") return this.buildBinaryOp("math/eq", this.inferScalarKind(left, right, ctx, ["bool", "float"]), left, right, ctx);
+      if (opKind === "Lt") return this.buildBinaryOp("math/lt", "float", left, right, ctx);
+      if (opKind === "LtE") return this.buildBinaryOp("math/le", "float", left, right, ctx);
+      if (opKind === "Gt") return this.buildBinaryOp("math/gt", "float", left, right, ctx);
+      if (opKind === "GtE") return this.buildBinaryOp("math/ge", "float", left, right, ctx);
+      return undefined;
+    }
+    if (isType(expr, "BinOp")) {
+      const opKind = (expr.op as PyNode)._type;
+      const left = expr.left as PyNode;
+      const right = expr.right as PyNode;
+      if (opKind === "Add") return this.buildBinaryOp("math/add", "float", left, right, ctx);
+      if (opKind === "Sub") return this.buildBinaryOp("math/sub", "float", left, right, ctx);
+      if (opKind === "Mult") return this.buildBinaryOp("math/mul", "float", left, right, ctx);
+      return undefined;
+    }
+    return undefined;
+  }
+
+  private buildBinaryOp(op: string, kind: IRType, leftNode: PyNode, rightNode: PyNode, ctx: Ctx): IRExpr {
+    return this.buildBinaryOpFromExpr(op, kind, this.lowerExpr(leftNode, kind, ctx), rightNode, ctx);
+  }
+
+  // Like buildBinaryOp, but the left operand is ALREADY a lowered IRExpr —
+  // used by the BoolOp left-fold above, where the "left" side of each fold
+  // step is the accumulator from the previous step, not a raw AST node.
+  private buildBinaryOpFromExpr(op: string, kind: IRType, a: IRExpr, rightNode: PyNode, ctx: Ctx): IRExpr {
+    const b = this.lowerExpr(rightNode, kind, ctx);
+    const overload = resolveOverload(op, { a: kind, b: kind } as Record<string, TypeSig>);
+    if (!overload) {
+      fail("GP161", rightNode, `could not resolve native overload for "${op}" with operand type "${kind}"`);
+    }
+    return { k: "op", op, overload, args: [a, b] };
+  }
+
+  // Bottom-up peek at whichever operand isn't literal-ish (mirrors
+  // disambiguateOverload's identical strategy) to pick which of `allowed`'s
+  // concrete types this native `==` was over (math/eq is the only native op
+  // this backend ever renders for BOTH float and bool — see nativeOpInfo);
+  // falls back to "float".
+  private inferScalarKind(a: PyNode, b: PyNode, ctx: Ctx, allowed: IRType[]): IRType {
+    for (const n of [a, b]) {
+      if (isLiteralish(n)) {
+        continue;
+      }
+      const t = this.typeOfExpr(this.lowerExpr(n, undefined, ctx));
+      if (allowed.includes(t)) {
+        return t;
+      }
+    }
+    return allowed.includes("float") ? "float" : allowed[0];
+  }
 
   private lowerExpr(expr: PyNode, expected: IRType | undefined, ctx: Ctx): IRExpr {
     const num = readNumberLiteral(expr);
@@ -1188,6 +1807,18 @@ class ModuleParser {
       const varId = readNumberLiteral(callArgs(getVar)[0]) ?? fail("GP141", expr, "rt.get_var's argument must be a numeric literal");
       return { k: "varGet", varId };
     }
+    // Dict form: `V["name"].get()` — see matchAccessorCall's doc comment.
+    const getAccessor = this.matchAccessorCall(expr, "get");
+    if (getAccessor && this.varIndexByProp.has(getAccessor.key)) {
+      return { k: "varGet", varId: this.varIndexByProp.get(getAccessor.key)! };
+    }
+    // Native-operator forms (`a + b`, `a == b`, `a < b`, `a and b`, `not a`,
+    // ...) — see emit-py's nativeOpInfo for exactly which op/type
+    // combinations these can come from.
+    const native = this.tryLowerNativeOp(expr, ctx);
+    if (native) {
+      return native;
+    }
     if (asAttrCall(expr, "rt", "random")) {
       const overload = resolveOverload("math/random", {})!;
       return { k: "op", op: "math/random", overload, args: [] };
@@ -1209,7 +1840,7 @@ class ModuleParser {
       }
       const payloadCall = asAttrCall(base, "rt", "event_payload");
       if (payloadCall) {
-        const eventIndex = readNumberLiteral(callArgs(payloadCall)[0]) ?? 0;
+        const eventIndex = this.readEventIndex(callArgs(payloadCall)[0]) ?? 0;
         const fieldIdx = readNumberLiteral(sliceNode) ?? 0;
         const field = PAYLOAD_FIELDS[fieldIdx] ?? "boolParameter";
         return { k: "intrinsic", op: "event/receive#payload", config: { eventIndex, field }, args: [], type: field === "boolParameter" ? "bool" : field === "intParameter" ? "int" : "float" };
@@ -1321,7 +1952,17 @@ class ModuleParser {
   }
 
   private lowerPtrGet(call: PyNode, wantIsValid: boolean): IRExpr {
-    const [pointerExpr, argsObjExpr, typeExpr] = callArgs(call);
+    const argNodes = callArgs(call);
+    // Args-less form (see emit-py's pointerCall doc comment): every
+    // template param was a compile-time constant, already inlined into the
+    // path string, so the whole args dict is omitted and `type` shifts into
+    // position 1 — disambiguated the same way engine.py's ptr_get does:
+    // position 1 is either the args dict or, when it's a string, IS the
+    // type signature.
+    const hasArgsObj = argNodes.length >= 2 && isType(argNodes[1], "Dict");
+    const pointerExpr = argNodes[0];
+    const argsObjExpr = hasArgsObj ? argNodes[1] : undefined;
+    const typeExpr = hasArgsObj ? argNodes[2] : argNodes[1];
     const pointerLit = stringLiteralValue(pointerExpr) ?? fail("GP141", pointerExpr, "pointer must be a string literal");
     const template = parsePointerTemplate(pointerLit);
     const valueType = (stringLiteralValue(typeExpr) as IRType | undefined) ?? fail("GP141", typeExpr, "pointer type must be a string literal");
