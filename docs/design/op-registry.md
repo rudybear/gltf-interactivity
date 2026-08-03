@@ -64,12 +64,13 @@ conformance-tested; on any doubt the interpreter's behavior wins over this doc.
 - **math trig (9)**: rad, deg, sin, cos, tan, asin, acos, atan (F→F component-wise), atan2 (a,b).
 - **math hyperbolic (6)**: sinh, cosh, tanh, asinh, acosh, atanh.
 - **math exp (7)**: pow (a,b), exp, log, log2, log10, sqrt, cbrt.
-- **math vector (8)**: length (V→float), normalize (V→V), dot (V,V→float), cross (float3),
-  rotate2D (float2,float→float2), rotate3D (float3,float4→float3), transform (V by matching M),
-  slerp (V,V,float→V).
-- **math matrix (6)**: transpose (M→M), determinant (M→float), inverse (M→M),
+- **math vector (8)**: length (V→float), normalize (V→V + bool isValid), dot (V,V→float),
+  cross (float3), rotate2D (float2,float→float2), rotate3D (float3,float4→float3),
+  transform (float3|float4 with float4x4 ONLY, order-agnostic operands — the interpreter
+  does not implement float2x2/float3x3 transform), slerp (V,V,float→V).
+- **math matrix (6)**: transpose (M→M), determinant (M→float), inverse (M→M + bool isValid),
   matMul (M,M→M), matCompose (float3 translation, float4 rotation, float3 scale → float4x4),
-  matDecompose (float4x4 → translation/rotation/scale).
+  matDecompose (float4x4 → translation/rotation/scale + bool isValid).
 - **math quaternion (9)**: quatConjugate, quatMul, quatAngleBetween (→float),
   quatFromAxisAngle (float3,float→float4), quatToAxisAngle (float4→axis float3 + angle float),
   quatFromDirections (float3,float3→float4), quatFromUpForward, quatFromAngles, quatSlerp.
@@ -77,7 +78,9 @@ conformance-tested; on any doubt the interpreter's behavior wins over this doc.
   asr (a,b), lsl (a,b), clz, ctz, popcnt. **ctz(0) = 32; popcnt counts over the 32-bit
   two's-complement pattern (unsigned loop)** — spec-tested edge cases.
 - **math bool (5)**: eq, not, and, or, xor (bool overloads).
-- **math color (2)**: rgbToOkLCh, rgbFromOkLCh (float3↔float3).
+- **math swizzle (12)**: combine2/3/4, combine2x2/3x3/4x4 (scalars/columns → vector/matrix),
+  extract2/3/4, extract2x2/3x3/4x4 (vector/matrix → scalar outputs "0","1",…).
+- **math color (2)**: rgbToOkLCh, rgbFromOkLCh — scalar sockets r/g/b ↔ l/c/h (NOT float3).
 - **ref (1)**: ref/eq (ref,ref→bool).
 - **type (6)**: boolToInt, boolToFloat, intToBool, intToFloat, floatToBool
   (false iff NaN or ±0), floatToInt (0 for NaN/±Inf, else truncate + wrap to int32 = `a|0`).
@@ -107,8 +110,15 @@ conformance-tested; on any doubt the interpreter's behavior wins over this doc.
   input sockets; in/out).
 - **extension events (3)**: event/onSelect (KHR_node_selectability; config int nodeIndex,
   bool stopPropagation; out; ref selectedNode, int controllerIndex, float3 selectionPoint,
-  float3 selectionRayOrigin, ref event), event/onHoverIn / event/onHoverOut
-  (KHR_node_hoverability; config int nodeIndex; out; ref hoveredNode, int controllerIndex, ref event).
+  float3 selectionRayOrigin, ref event, plus legacy int selectedNodeIndex), event/onHoverIn /
+  event/onHoverOut (KHR_node_hoverability; config int nodeIndex; out; ref hoveredNode,
+  int controllerIndex, ref event).
+
+> `packages/kernel/src/registry.ts` is the implementation of record (138 ops); where this
+> doc and the registry disagree, the registry — transcribed from the conformance-tested
+> interpreter — wins. Interpreter-only dispatch cases exempted from the cross-check:
+> viewer pointer events (onPointerDown/Up/Move, onHover) and vestigial fixed-size matrix
+> cases (matMul2x2 etc.) unreachable from real graphs.
 
 ## Validation script
 

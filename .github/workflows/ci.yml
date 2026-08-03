@@ -23,4 +23,6 @@ jobs:
       - run: pnpm install --frozen-lockfile=false
       - run: pnpm fetch:assets
       - run: pnpm build
+      - run: pnpm check:registry
+      - run: pnpm test
       - run: pnpm conf:interp
