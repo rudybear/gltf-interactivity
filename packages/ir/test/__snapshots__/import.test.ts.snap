@@ -35,10 +35,10 @@ handlers (5):
     async setDelay[delay12](float [1]) {
       out {
         emitEvent _eventWithoutParametersb6d646f8_2845_4396_bf78_97c3d53c1870(bool [false], int [0], float [0], float [0])
-        if (math/eq(intrinsic:event/receive(), int [1])) {
+        if (math/eq(intrinsic:event/receive#payload(), int [1])) {
           setPointer "/nodes/[nodeIndex]/translation"(int [17]) = float3 [0,0,0.8] {
             out {
-              setVar TestResult_HasPassed_event_send_and_receive_Default_Event_Value__Int_ = math/eq(intrinsic:event/receive(), int [1])
+              setVar TestResult_HasPassed_event_send_and_receive_Default_Event_Value__Int_ = math/eq(intrinsic:event/receive#payload(), int [1])
               log("<event/send and receive - Default Event Value (Int)>: Test Successful", [])
               callProc proc17
             }
@@ -46,10 +46,10 @@ handlers (5):
         } else {
           callProc proc17
         }
-        if (math/eq(intrinsic:event/receive(), bool [false])) {
+        if (math/eq(intrinsic:event/receive#payload(), bool [false])) {
           setPointer "/nodes/[nodeIndex]/translation"(int [23]) = float3 [0,0,0.8] {
             out {
-              setVar TestResult_HasPassed_event_send_and_receive_Default_Event_Value__Bool_ = math/eq(intrinsic:event/receive(), bool [false])
+              setVar TestResult_HasPassed_event_send_and_receive_Default_Event_Value__Bool_ = math/eq(intrinsic:event/receive#payload(), bool [false])
               log("<event/send and receive - Default Event Value (Bool)>: Test Successful", [])
               callProc proc29
             }
@@ -57,10 +57,10 @@ handlers (5):
         } else {
           callProc proc29
         }
-        if (math/eq(intrinsic:event/receive(), float [1])) {
+        if (math/eq(intrinsic:event/receive#payload(), float [1])) {
           setPointer "/nodes/[nodeIndex]/translation"(int [29]) = float3 [0,0,0.8] {
             out {
-              setVar TestResult_HasPassed_event_send_and_receive_Default_Event_Value__Float_ = math/eq(intrinsic:event/receive(), float [1])
+              setVar TestResult_HasPassed_event_send_and_receive_Default_Event_Value__Float_ = math/eq(intrinsic:event/receive#payload(), float [1])
               log("<event/send and receive - Default Event Value (Float)>: Test Successful", [])
               callProc proc55
             }
@@ -229,28 +229,28 @@ handlers (5):
   }
 procs (6):
   proc proc17 [0] {
-    log("<event/send and receive - Default Event Value (Int)>: Value is {0}, should be {1} ", [intrinsic:event/receive(), int [1]])
-    setVar TestResult_event_send_and_receive_Default_Event_Value__Int_ = intrinsic:event/receive()
+    log("<event/send and receive - Default Event Value (Int)>: Value is {0}, should be {1} ", [intrinsic:event/receive#payload(), int [1]])
+    setVar TestResult_event_send_and_receive_Default_Event_Value__Int_ = intrinsic:event/receive#payload()
   }
   proc proc29 [1] {
-    log("<event/send and receive - Default Event Value (Bool)>: Value is {0}, should be {1} ", [intrinsic:event/receive(), bool [false]])
-    setVar TestResult_event_send_and_receive_Default_Event_Value__Bool_ = intrinsic:event/receive()
+    log("<event/send and receive - Default Event Value (Bool)>: Value is {0}, should be {1} ", [intrinsic:event/receive#payload(), bool [false]])
+    setVar TestResult_event_send_and_receive_Default_Event_Value__Bool_ = intrinsic:event/receive#payload()
   }
   proc proc55 [2] {
-    log("<event/send and receive - Default Event Value (Float)>: Value is {0}, should be {1} ", [intrinsic:event/receive(), float [1]])
-    setVar TestResult_event_send_and_receive_Default_Event_Value__Float_ = intrinsic:event/receive()
+    log("<event/send and receive - Default Event Value (Float)>: Value is {0}, should be {1} ", [intrinsic:event/receive#payload(), float [1]])
+    setVar TestResult_event_send_and_receive_Default_Event_Value__Float_ = intrinsic:event/receive#payload()
   }
   proc proc79 [3] {
-    log("<event/send and receive - Rcv Parameter Int>: Value is {0}, should be {1} ", [intrinsic:event/receive(), int [2]])
-    setVar TestResult_event_send_and_receive_Rcv_Parameter_Int = intrinsic:event/receive()
+    log("<event/send and receive - Rcv Parameter Int>: Value is {0}, should be {1} ", [intrinsic:event/receive#payload(), int [2]])
+    setVar TestResult_event_send_and_receive_Rcv_Parameter_Int = intrinsic:event/receive#payload()
   }
   proc proc93 [4] {
-    log("<event/send and receive - Rcv Parameter Bool>: Value is {0}, should be {1} ", [intrinsic:event/receive(), bool [true]])
-    setVar TestResult_event_send_and_receive_Rcv_Parameter_Bool = intrinsic:event/receive()
+    log("<event/send and receive - Rcv Parameter Bool>: Value is {0}, should be {1} ", [intrinsic:event/receive#payload(), bool [true]])
+    setVar TestResult_event_send_and_receive_Rcv_Parameter_Bool = intrinsic:event/receive#payload()
   }
   proc proc106 [5] {
-    log("<event/send and receive - Rcv Parameter Float>: Value is {0}, should be {1} ", [intrinsic:event/receive(), float [2]])
-    setVar TestResult_event_send_and_receive_Rcv_Parameter_Float = intrinsic:event/receive()
+    log("<event/send and receive - Rcv Parameter Float>: Value is {0}, should be {1} ", [intrinsic:event/receive#payload(), float [2]])
+    setVar TestResult_event_send_and_receive_Rcv_Parameter_Float = intrinsic:event/receive#payload()
   }
 "
 `;
@@ -776,7 +776,7 @@ handlers (7):
   [0] onStart(event:ref) {
     async setDelay[delay18](float [2]) {
       out {
-        let t2: float = intrinsic:event/onTick()
+        let t2: float = intrinsic:event/onTick#time()
         setVar startTime_d2ce0a9f_f380_4188_b9c2_b65f1fcb0caa = math/select(math/isNaN(t2), float [0], t2)
         async setDelay[delay1](float [1]) {
           out {
@@ -795,13 +795,13 @@ handlers (7):
             }
             setPointer "/nodes/[nodeIndex]/translation"(int [18]) = float3 [0,0,0] {
               out {
-                let t2_2: float = intrinsic:event/onTick()
+                let t2_2: float = intrinsic:event/onTick#time()
                 if (math/lt(math/abs(math/sub(math/sub(math/select(math/isNaN(t2_2), float [0], t2_2), varGet(startTime_d2ce0a9f_f380_4188_b9c2_b65f1fcb0caa)), float [1])), float [0.1])) {
                   setPointer "/nodes/[nodeIndex]/translation"(int [17]) = float3 [0,0,0.8] {
                     out {
                       setPointer "/nodes/[nodeIndex]/translation"(int [18]) = float3 [0,0,0] {
                         out {
-                          let t2_3: float = intrinsic:event/onTick()
+                          let t2_3: float = intrinsic:event/onTick#time()
                           setVar TestResult_HasPassed_flow_setDelay_and_cancelDelay_Flow__done___in_correct_delay = math/lt(math/abs(math/sub(math/sub(math/select(math/isNaN(t2_3), float [0], t2_3), varGet(startTime_d2ce0a9f_f380_4188_b9c2_b65f1fcb0caa)), float [1])), float [0.1])
                           log("<flow/setDelay and cancelDelay - Flow [done] in correct delay>: Test Successful", [])
                           callProc proc26
@@ -1009,9 +1009,9 @@ handlers (7):
   }
 procs (2):
   proc proc26 [0] {
-    let t2: float = intrinsic:event/onTick()
+    let t2: float = intrinsic:event/onTick#time()
     log("<flow/setDelay and cancelDelay - Flow [done] in correct delay>: Value is {0}, should be {1} (Proximity range: 0,1)", [math/sub(math/select(math/isNaN(t2), float [0], t2), varGet(startTime_d2ce0a9f_f380_4188_b9c2_b65f1fcb0caa)), float [1]])
-    let t2_2: float = intrinsic:event/onTick()
+    let t2_2: float = intrinsic:event/onTick#time()
     setVar TestResult_flow_setDelay_and_cancelDelay_Flow__done___in_correct_delay = math/sub(math/select(math/isNaN(t2_2), float [0], t2_2), varGet(startTime_d2ce0a9f_f380_4188_b9c2_b65f1fcb0caa))
   }
   proc proc116 [1] {

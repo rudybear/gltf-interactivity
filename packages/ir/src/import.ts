@@ -666,7 +666,7 @@ class Importer {
     const flows = this.node(nodeId).flows ?? {};
     const out = flows.out ? this.continueTo(flows.out) : undefined;
     const err = flows.err ? this.continueTo(flows.err) : undefined;
-    return this.withLets(lets, { k: "setPointer", template, args, value: values.value, out, err });
+    return this.withLets(lets, { k: "setPointer", template, args, value: values.value, type: valueType, out, err });
   }
 
   private raiseEventSend(nodeId: number): IRStmt {
@@ -766,7 +766,7 @@ class Importer {
       ];
       const { lets, values } = this.materializeSite(nodeId, roots);
       const args = roots.map((r) => values[r.key]);
-      return this.withLets(lets, { k: "async", kind, template, args, done, out, err });
+      return this.withLets(lets, { k: "async", kind, template, type: valueType, args, done, out, err });
     }
     if (kind === "animStart") {
       const roots: Array<{ key: string; type: IRType }> = [
@@ -1004,13 +1004,48 @@ class Importer {
         return { k: "param", name: socket, type: this.socketType(nodeId, socket) };
       }
       this.warn("GI012", nodeId, `read of handler-root node's "${socket}" output from outside its own handler body; lowered to intrinsic`);
-      // `sourceNode` is the original graph node index of the event node
-      // whose output is being read cross-handler — @gltfi/emit-ts needs it
-      // to correlate this read against the writing handler's
-      // `sourceNodeIds["handler:<i>"]` entry (see docs/design/ir-and-
-      // transpiler.md's GI012 note) and lower to rt.eventOutRead(sourceNode,
-      // socket), with the owning handler emitting a matching
-      // rt.eventOut(sourceNode, socket, ...) write.
+      // Every handler-root output socket GI012 can reach is either a pure
+      // compile-time constant (the "event" ref — see eventRefLiteral,
+      // mirroring paramAccess's own mapping in emit-ts) or genuinely
+      // global/live runtime state that the interpreter itself recomputes
+      // fresh on every read regardless of dispatch order (event/receive's
+      // last-sent payload comes from `runtime.eventPayloads`, a persistent
+      // map keyed by event index — see interpreter.ts's getEventPayload;
+      // event/onTick's timeSinceStart/timeSinceLastTick come straight from
+      // `runtime.scheduler` state) — NEVER a snapshot tied to whether the
+      // *owning* handler happened to execute first. Lowering each of these
+      // to a direct accessor (rather than a write-then-read register keyed
+      // by "did the owning handler run yet") is what makes cross-handler
+      // reads order-independent here too, matching the interpreter exactly
+      // (see @gltfi/runtime-lib's engine.ts eventPayload/tickTime/tickDelta).
+      if (socket === "event") {
+        return { k: "const", type: "ref", data: [this.eventRefLiteral(op, nodeId)] };
+      }
+      if (op === "event/receive" && (socket === "boolParameter" || socket === "intParameter" || socket === "floatParameter" || socket === "expectedDuration")) {
+        const eventIndex = this.toIndex(this.configValue(nodeId, "event"));
+        return {
+          k: "intrinsic",
+          op: "event/receive#payload",
+          config: { eventIndex, field: socket },
+          args: [],
+          type: this.socketType(nodeId, socket)
+        };
+      }
+      if (op === "event/onTick" && (socket === "timeSinceStart" || socket === "timeSinceLastTick")) {
+        return { k: "intrinsic", op: "event/onTick#time", config: { field: socket }, args: [], type: "float" };
+      }
+      // Fallback for sockets without a dedicated cross-context accessor
+      // (pointer/selection/hover geometry, controllerIndex, ...) — not
+      // exercised by the acceptance corpus (see task report); `sourceNode`
+      // is the original graph node index of the event node whose output is
+      // being read, so @gltfi/emit-ts can correlate this against the
+      // writing handler's `sourceNodeIds["handler:<i>"]` entry and lower to
+      // rt.eventOutRead(sourceNode, socket), with the owning handler
+      // emitting a matching rt.eventOut(sourceNode, socket, ...) write.
+      // Note this register IS execution-order dependent (only correct if
+      // the owning handler happens to run before the reader within the
+      // same dispatch pass) — a known gap, not exercised by any passing
+      // test.
       return {
         k: "intrinsic",
         op,
@@ -1072,14 +1107,47 @@ class Importer {
     return { k: "const", type: t, data: defaultValue(t).data };
   }
 
+  // The "event" output socket's ref-string value for a handler-root node —
+  // a pure function of (op, its own config), exactly mirroring
+  // interpreter.ts's per-op "event" socket cases (event/onStart ->
+  // "event:onStart", event/onTick -> "event:onTick", event/send|receive ->
+  // "event:custom:<index>", event/onSelect -> "event:onSelect",
+  // event/onHoverIn|Out -> "event:onHoverIn"|"event:onHoverOut") and
+  // emit-ts's own paramAccess (which computes the SAME literal for a
+  // same-handler "event" read) — used both for GI012 cross-handler reads
+  // (see buildRawExpr) and available for any other caller that needs a
+  // node's canonical event ref without going through a handler context.
+  private eventRefLiteral(op: string, nodeId: number): string {
+    switch (op) {
+      case "event/onStart":
+        return "event:onStart";
+      case "event/onTick":
+        return "event:onTick";
+      case "event/onSelect":
+        return "event:onSelect";
+      case "event/onHoverIn":
+        return "event:onHoverIn";
+      case "event/onHoverOut":
+        return "event:onHoverOut";
+      case "event/send":
+      case "event/receive": {
+        const eventIndex = this.configValue(nodeId, "event") as number | undefined;
+        return eventIndex === undefined ? "" : `event:custom:${eventIndex}`;
+      }
+      default:
+        return "";
+    }
+  }
+
   private buildPointerGetExpr(nodeId: number, socket: string, ctx: SiteCtx | null): IRExpr {
     const template = this.pointerTemplateOf(nodeId);
     const params = pointerTemplateParams(template);
     const args = params.map((p) => this.buildArgExpr(nodeId, p.name, p.kind === "int" ? "int" : "ref", ctx));
+    const valueType = this.pointerValueType(nodeId);
     if (socket === "isValid") {
-      return { k: "ptrGet", template, args, type: "bool", wantIsValid: true };
+      return { k: "ptrGet", template, args, type: "bool", valueType, wantIsValid: true };
     }
-    return { k: "ptrGet", template, args, type: this.pointerValueType(nodeId), wantIsValid: false };
+    return { k: "ptrGet", template, args, type: valueType, valueType, wantIsValid: false };
   }
 
   private buildMathSwitchExpr(nodeId: number, ctx: SiteCtx | null): IRExpr {

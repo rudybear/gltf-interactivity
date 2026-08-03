@@ -131,7 +131,11 @@ export type IRStmt =
   | { k: "for"; slot?: StateRef; start: IRExpr; end: IRExpr; body: IRStmt; completed?: IRStmt }
   | { k: "switch"; selector: IRExpr; cases: Array<[number, IRStmt]>; default?: IRStmt }
   | { k: "setVar"; varId: number; expr: IRExpr }
-  | { k: "setPointer"; template: PtrTemplate; args: IRExpr[]; value: IRExpr; out?: IRStmt; err?: IRStmt }
+  // `type` is the pointer's configured value signature (same concept as
+  // ptrGet's `valueType` — see that field's doc comment) — the resolver
+  // needs it to know what shape/kind to validate+coerce the written value
+  // against; there's no other field on this shape that carries it.
+  | { k: "setPointer"; template: PtrTemplate; args: IRExpr[]; value: IRExpr; type: IRType; out?: IRStmt; err?: IRStmt }
   | { k: "emitEvent"; eventId: number; args: IRExpr[] }
   | { k: "stopPropagation"; stopImmediate: IRExpr; config: Record<string, unknown> }
   | { k: "log"; template: string; args: IRExpr[] }
@@ -147,6 +151,12 @@ export type IRStmt =
       // template's params in template order (pointerTemplateParams(template)
       // gives the split point).
       template?: PtrTemplate;
+      // ptrInterp only: the pointer's configured value signature — same
+      // concept as ptrGet's `valueType` / setPointer's `type` (see those
+      // fields' doc comments): needed to validate+read the CURRENT pointer
+      // value at interpolation-start time, and nowhere else on this shape
+      // carries it.
+      type?: IRType;
       args: IRExpr[];
       done?: Cont;
       out?: IRStmt;
@@ -165,7 +175,16 @@ export type IRStmt =
 export type IRExpr =
   | { k: "const"; type: IRType; data: ConstData }
   | { k: "varGet"; varId: number }
-  | { k: "ptrGet"; template: PtrTemplate; args: IRExpr[]; type: IRType; wantIsValid?: boolean }
+  // `type` is this expression's own result type (checked/consumed as such by
+  // check.ts's inferExprType — "bool" when wantIsValid is set). `valueType`
+  // is always the pointer's *configured* value signature (independent of
+  // wantIsValid) — the type the resolver validates the resolved raw value
+  // against; a `pointer/get` node's isValid output reflects whether
+  // resolution against ITS OWN configured type succeeded, not "bool", so
+  // losing that signature at the isValid read site would make isValid always
+  // false (see runtime-lib/pointer.ts's ptrGet: it needs the real signature
+  // to validate against, not the boolean result type).
+  | { k: "ptrGet"; template: PtrTemplate; args: IRExpr[]; type: IRType; valueType: IRType; wantIsValid?: boolean }
   | { k: "param"; name: string; type: IRType }
   // `config` carries an op's plain (non-configSockets) config field values
   // when present (e.g. math/quatFromAngles's "order") — needed because

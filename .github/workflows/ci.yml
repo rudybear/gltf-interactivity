@@ -26,4 +26,4 @@ jobs:
       - run: pnpm check:registry
       - run: pnpm test
       - run: pnpm conf:interp
-      - run: node packages/conformance/dist/run-compiled.js --filter math/
+      - run: pnpm conf:compiled

@@ -168,6 +168,17 @@ class Emitter {
   // corpus (math/type/ref never read cross-handler) but implemented since
   // @gltfi/ir already carries the data (see import.ts's GI012 branch).
   private readonly crossHandlerReads = new Set<string>();
+  // Monotonic counter for synthesized local identifiers (async-op result
+  // vars, lifted inline-Cont function names, ...) — guaranteed not to
+  // collide with graph-derived names (temps/procs/state slots all come from
+  // @gltfi/ir's own NameAllocator, which never produces a bare "varN"/
+  // "contN" of this shape without a graph-derived prefix; see names.ts).
+  private varCounter = 0;
+
+  private freshVar(prefix: string): string {
+    this.varCounter += 1;
+    return `__${prefix}${this.varCounter}`;
+  }
 
   constructor(module: IRModule) {
     this.module = module;
@@ -261,7 +272,7 @@ class Emitter {
     this.push("export default createEngine((rt) => {");
     this.emitVars();
     this.emitEvents();
-    this.emitForStateSlots();
+    this.emitStateSlots();
     this.emitProcs();
     this.emitHandlers();
     this.push("});");
@@ -283,10 +294,29 @@ class Emitter {
 
   private emitEvents() {
     const entries = this.module.events.map((e) => {
-      const duration = e.values.find((v) => v.name === "expectedDuration");
       const fields: string[] = [];
       if (e.id) {
         fields.push(`externalId: ${JSON.stringify(e.id)}`);
+      }
+      // All four standard payload fields' declared defaults — not just
+      // expectedDuration — so rt.eventPayload() (see engine.ts) can answer
+      // "what would this event's payload be if it were never sent" for
+      // cross-handler event/receive payload reads (GI012; see
+      // emitIntrinsicExpr's "event/receive#payload" case) exactly like
+      // interpreter.ts's getEventPayload does from the graph's own event
+      // declarations.
+      const boolDefault = e.values.find((v) => v.name === "boolParameter");
+      const intDefault = e.values.find((v) => v.name === "intParameter");
+      const floatDefault = e.values.find((v) => v.name === "floatParameter");
+      const duration = e.values.find((v) => v.name === "expectedDuration");
+      if (boolDefault) {
+        fields.push(`defaultBool: ${Boolean(boolDefault.default.data[0]) ? "true" : "false"}`);
+      }
+      if (intDefault) {
+        fields.push(`defaultInt: ${Math.trunc(Number(intDefault.default.data[0] ?? 0))}`);
+      }
+      if (floatDefault) {
+        fields.push(`defaultFloat: ${floatLiteral(Number(floatDefault.default.data[0] ?? 0))}`);
       }
       if (duration) {
         fields.push(`expectedDuration: ${floatLiteral(Number(duration.default.data[0] ?? 0))}`);
@@ -296,24 +326,44 @@ class Emitter {
     this.push(`rt.events([${entries.join(", ")}]);`);
   }
 
-  // "for" state slots are real persisted cross-invocation registers (the
-  // interpreter's flow/for keeps `nodeStates.get(nodeId).forIndex` around
-  // between executions, readable via a value edge from *anywhere* — before
-  // the loop has ever run it reads config.initialIndex, and after it reads
-  // whatever the last run left it at, until the loop runs again — see
-  // interpreter.ts's "flow/for" evaluateValue and executeNodeFlow cases).
-  // A plain module-level `let` per slot, assigned (not re-declared) by the
-  // for-statement's own execution, reproduces that exactly; stateRead just
-  // references it unconditionally (see emitStateRead) — no lexical scoping
-  // needed. Other state slot kinds (doN/multiGate/waitAll/throttle/delay)
-  // aren't in this milestone's scope (see file header note).
-  private emitForStateSlots() {
+  // State slots are real persisted cross-invocation registers — module-level
+  // `let`/`const` bindings assigned (never re-declared) by whichever
+  // statement drives that slot's state machine, exactly mirroring
+  // interpreter.ts's per-node NodeState fields (see engine.ts's DelaySlot/
+  // DoNSlot/MultiGateSlot/WaitAllSlot/ThrottleSlot doc comments for the
+  // field-by-field correspondence). stateRead just references the slot (or
+  // one of its fields) unconditionally — no lexical scoping needed, since a
+  // graph value edge can read a state slot's output from anywhere (same
+  // reasoning as "for"'s own note below).
+  //
+  // "for" specifically stays a bare number register (interpreter.ts's
+  // `nodeStates.get(nodeId).forIndex`): before the loop has ever run it
+  // reads config.initialIndex, and after it reads whatever the last run
+  // left it at, until the loop runs again.
+  private emitStateSlots() {
     this.module.stateSlots.forEach((slot) => {
-      if (slot.kind !== "for") {
-        return;
+      switch (slot.kind) {
+        case "for": {
+          const initial = Number((slot.config as { initialIndex?: number }).initialIndex ?? 0);
+          this.push(`let ${slot.name} = ${floatLiteral(Math.trunc(initial))};`);
+          return;
+        }
+        case "delay":
+          this.push(`const ${slot.name} = { lastId: -1, lastRef: "", ids: [] };`);
+          return;
+        case "doN":
+          this.push(`const ${slot.name} = { count: 0 };`);
+          return;
+        case "multiGate":
+          this.push(`const ${slot.name} = { lastIndex: -1, used: [] };`);
+          return;
+        case "waitAll":
+          this.push(`const ${slot.name} = { activated: [], remaining: undefined };`);
+          return;
+        case "throttle":
+          this.push(`const ${slot.name} = { lastTime: undefined, remaining: NaN };`);
+          return;
       }
-      const initial = Number((slot.config as { initialIndex?: number }).initialIndex ?? 0);
-      this.push(`let ${slot.name} = ${floatLiteral(Math.trunc(initial))};`);
     });
   }
 
@@ -474,7 +524,12 @@ class Emitter {
         return;
       }
       case "stopPropagation":
-        this.push("rt.stopPropagation();");
+        // eventRef is the CURRENT handler's own event ref — always known at
+        // compile time (paramAccess("event") resolves it the same way a
+        // param("event") read would; see import.ts's note that IR always
+        // targets the enclosing handler's own event regardless of what the
+        // graph node's "event" input was actually wired to).
+        this.push(`rt.stopPropagation(${this.paramAccess("event")}, ${this.emitExpr(stmt.stopImmediate)});`);
         return;
       case "log": {
         const argsCode = stmt.args.map((a) => this.emitExpr(a)).join(", ");
@@ -490,12 +545,254 @@ class Emitter {
         return;
       }
       case "async":
-        throw new EmitError(`async op "${stmt.kind}" not supported this milestone (no delay/interpolate/animation in scope)`, `async/${stmt.kind}`, this.originNodeId);
+        this.emitAsync(stmt);
+        return;
       case "stateful":
-        throw new EmitError(`stateful op "${stmt.kind}" not supported this milestone (no doN/multiGate/waitAll/throttle in scope)`, `stateful/${stmt.kind}`, this.originNodeId);
+        this.emitStateful(stmt);
+        return;
       case "intrinsic":
-        throw new EmitError(`intrinsic op "${stmt.op}" has no dedicated lowering`, stmt.op, this.originNodeId);
+        this.emitIntrinsicStmt(stmt);
+        return;
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // Async ops (flow/setDelay, variable/interpolate, pointer/interpolate,
+  // animation/start|stop|stopAt). Each rt.* call below returns {ok:boolean}
+  // — see engine.ts's EngineBuilder doc comments for exactly which
+  // interpreter.ts executeNodeFlow case each one mirrors.
+  // ---------------------------------------------------------------------
+
+  private emitAsync(stmt: Extract<IRStmt, { k: "async" }>) {
+    const doneCode = this.emitCont(stmt.done);
+    let callCode: string;
+    switch (stmt.kind) {
+      case "setDelay": {
+        const slotIndex = stmt.slot?.slot;
+        if (slotIndex === undefined) {
+          throw new EmitError("flow/setDelay missing its state slot", "flow/setDelay", this.originNodeId);
+        }
+        const slotName = this.module.stateSlots[slotIndex]?.name ?? `delay${slotIndex}`;
+        callCode = `rt.setDelay(${slotName}, ${this.emitExpr(stmt.args[0])}, ${doneCode})`;
+        break;
+      }
+      case "varInterp": {
+        const { varId, useSlerp } = (stmt.config ?? {}) as { varId: number; useSlerp: boolean };
+        const [value, duration, p1, p2] = stmt.args.map((a) => this.emitExpr(a));
+        callCode = `rt.varInterp(${varId}, ${value}, ${duration}, ${p1}, ${p2}, ${useSlerp ? "true" : "false"}, ${doneCode})`;
+        break;
+      }
+      case "ptrInterp": {
+        const template = stmt.template;
+        if (!template) {
+          throw new EmitError("pointer/interpolate missing its pointer template", "async/ptrInterp", this.originNodeId);
+        }
+        const params = pointerTemplateParams(template);
+        const [value, duration, p1, p2, ...paramArgs] = stmt.args;
+        const entries = params.map((p, i) => `${JSON.stringify(p.name)}: ${this.emitExpr(paramArgs[i])}`);
+        const pointerLit = JSON.stringify(formatPointerTemplate(template));
+        callCode =
+          `rt.ptrInterp(${pointerLit}, { ${entries.join(", ")} }, "${stmt.type}", ${this.emitExpr(value)}, ` +
+          `${this.emitExpr(duration)}, ${this.emitExpr(p1)}, ${this.emitExpr(p2)}, ${doneCode})`;
+        break;
+      }
+      case "animStart": {
+        const [animation, startTime, endTime, speed] = stmt.args.map((a) => this.emitExpr(a));
+        callCode = `rt.animStart(${animation}, ${startTime}, ${endTime}, ${speed}, ${doneCode})`;
+        break;
+      }
+      case "animStop": {
+        callCode = `rt.animStop(${this.emitExpr(stmt.args[0])})`;
+        break;
+      }
+      case "animStopAt": {
+        const [animation, stopTime] = stmt.args.map((a) => this.emitExpr(a));
+        callCode = `rt.animStopAt(${animation}, ${stopTime}, ${doneCode})`;
+        break;
+      }
+    }
+    const resVar = this.freshVar("async");
+    this.push(`const ${resVar} = ${callCode};`);
+    if (stmt.out || stmt.err) {
+      this.push(`if (${resVar}.ok) {`);
+      this.indent += 1;
+      if (stmt.out) this.emitStmt(stmt.out);
+      this.indent -= 1;
+      if (stmt.err) {
+        this.push("} else {");
+        this.indent += 1;
+        this.emitStmt(stmt.err);
+        this.indent -= 1;
+      }
+      this.push("}");
+    }
+  }
+
+  // A `Cont` is either a plain proc reference (`{kind:"proc"}` — just its
+  // name, callable with no args, exactly the shape rt.* async calls expect
+  // for `done`) or an inline body (`{kind:"inline"}`). Inline bodies are
+  // lifted to a synthetic top-level-in-their-enclosing-block function
+  // declaration emitted right before the call that references it — safe
+  // because a Cont body can only touch module state, never a caller's
+  // temps (see docs/design/ir-and-transpiler.md's GI105 / the IR invariant
+  // checker), and it sidesteps needing to embed a multi-statement block as
+  // a single call-argument expression.
+  private emitCont(cont: Extract<IRStmt, { k: "async" }>["done"]): string {
+    if (!cont) {
+      return "undefined";
+    }
+    if (cont.kind === "proc") {
+      const proc = this.module.procs[cont.procId];
+      if (!proc) {
+        throw new EmitError(`unknown proc id ${cont.procId}`, "async.done", this.originNodeId);
+      }
+      return proc.name;
+    }
+    const name = this.freshVar("cont");
+    this.push(`function ${name}() {`);
+    this.indent += 1;
+    this.emitStmt(cont.body);
+    this.indent -= 1;
+    this.push("}");
+    return name;
+  }
+
+  // ---------------------------------------------------------------------
+  // Stateful ops (flow/doN, flow/multiGate, flow/waitAll, flow/throttle).
+  // Reset ports are plain field assignments on the slot object (mirroring
+  // interpreter.ts's own reset cases exactly — no rt.* call needed); "in"
+  // ports call the matching rt.* decision function and branch on its
+  // result. See engine.ts's EngineBuilder doc comments for exactly which
+  // interpreter.ts executeNodeFlow case each one mirrors.
+  // ---------------------------------------------------------------------
+
+  private emitStateful(stmt: Extract<IRStmt, { k: "stateful" }>) {
+    const slotIndex = stmt.slot.slot;
+    const slot = this.module.stateSlots[slotIndex];
+    const slotName = slot?.name ?? `slot${slotIndex}`;
+    switch (stmt.kind) {
+      case "doN": {
+        if (stmt.port === "reset") {
+          this.push(`${slotName}.count = 0;`);
+          return;
+        }
+        const resVar = this.freshVar("doN");
+        this.push(`const ${resVar} = rt.doN(${slotName}, ${this.emitExpr(stmt.args[0])});`);
+        if (stmt.outs.out) {
+          this.push(`if (${resVar}.fire) {`);
+          this.indent += 1;
+          this.emitStmt(stmt.outs.out);
+          this.indent -= 1;
+          this.push("}");
+        }
+        return;
+      }
+      case "throttle": {
+        if (stmt.port === "reset") {
+          this.push(`${slotName}.lastTime = undefined;`);
+          this.push(`${slotName}.remaining = NaN;`);
+          return;
+        }
+        const resVar = this.freshVar("throttle");
+        this.push(`const ${resVar} = rt.throttle(${slotName}, ${this.emitExpr(stmt.args[0])});`);
+        if (stmt.outs.out || stmt.outs.err) {
+          this.push(`if (${resVar}.invalid) {`);
+          this.indent += 1;
+          if (stmt.outs.err) this.emitStmt(stmt.outs.err);
+          this.indent -= 1;
+          this.push(`} else if (${resVar}.fire) {`);
+          this.indent += 1;
+          if (stmt.outs.out) this.emitStmt(stmt.outs.out);
+          this.indent -= 1;
+          this.push("}");
+        }
+        return;
+      }
+      case "multiGate": {
+        if (stmt.port === "reset") {
+          this.push(`${slotName}.used = [];`);
+          this.push(`${slotName}.lastIndex = -1;`);
+          return;
+        }
+        // UTF-16/lexical sort — matches interpreter.ts's own
+        // `Object.keys(flows).sort()` exactly (see flow/multiGate's
+        // executeNodeFlow case), not JS's automatic ascending-numeric
+        // reordering of integer-like object keys, which would only
+        // coincide with this for < 10 outputs.
+        const keys = Object.keys(stmt.outs).sort();
+        const isRandom = Boolean((slot?.config as { isRandom?: boolean } | undefined)?.isRandom);
+        const isLoop = Boolean((slot?.config as { isLoop?: boolean } | undefined)?.isLoop);
+        const resVar = this.freshVar("gate");
+        this.push(`const ${resVar} = rt.multiGate(${slotName}, ${keys.length}, ${isRandom ? "true" : "false"}, ${isLoop ? "true" : "false"});`);
+        if (keys.length > 0) {
+          this.push(`switch (${resVar}.index) {`);
+          this.indent += 1;
+          keys.forEach((key, i) => {
+            this.push(`case ${i}: {`);
+            this.indent += 1;
+            this.emitStmt(stmt.outs[key]);
+            this.push("break;");
+            this.indent -= 1;
+            this.push("}");
+          });
+          this.indent -= 1;
+          this.push("}");
+        }
+        return;
+      }
+      case "waitAll": {
+        const inputFlows = Number((slot?.config as { inputFlows?: number } | undefined)?.inputFlows ?? 0);
+        if (stmt.port === "reset") {
+          this.push(`${slotName}.activated = [];`);
+          this.push(`${slotName}.remaining = ${inputFlows};`);
+          return;
+        }
+        const index = typeof stmt.port === "number" ? stmt.port : 0;
+        const resVar = this.freshVar("waitAll");
+        this.push(`const ${resVar} = rt.waitAll(${slotName}, ${inputFlows}, ${index});`);
+        if (stmt.outs.completed || stmt.outs.out) {
+          this.push(`if (${resVar}.completed) {`);
+          this.indent += 1;
+          if (stmt.outs.completed) this.emitStmt(stmt.outs.completed);
+          this.indent -= 1;
+          this.push("} else {");
+          this.indent += 1;
+          if (stmt.outs.out) this.emitStmt(stmt.outs.out);
+          this.indent -= 1;
+          this.push("}");
+        }
+        return;
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Intrinsic statements: the escape hatch for ops with no dedicated IRStmt
+  // shape. Only two synthetic ops reach here in practice (see
+  // import.ts's lowerSecondaryPort and its ASYNC_OPS/STATEFUL_OPS-miss
+  // fallback to raiseIntrinsic): a delay node's own "cancel" input port,
+  // and the standalone flow/cancelDelay op (cancels an arbitrary delay by
+  // ref, looked up at the scheduler level — see engine.ts's cancelDelay).
+  // ---------------------------------------------------------------------
+
+  private emitIntrinsicStmt(stmt: Extract<IRStmt, { k: "intrinsic" }>) {
+    if (stmt.op === "flow/setDelay#cancel") {
+      const slotIndex = (stmt.config as { slot?: number }).slot;
+      if (slotIndex === undefined) {
+        throw new EmitError("flow/setDelay#cancel missing its state slot", stmt.op, this.originNodeId);
+      }
+      const slotName = this.module.stateSlots[slotIndex]?.name ?? `delay${slotIndex}`;
+      this.push(`rt.cancelDelaySlot(${slotName});`);
+      return;
+    }
+    if (stmt.op === "flow/cancelDelay") {
+      this.push(`rt.cancelDelay(${this.emitExpr(stmt.args[0])});`);
+      if (stmt.outs.out) {
+        this.emitStmt(stmt.outs.out);
+      }
+      return;
+    }
+    throw new EmitError(`intrinsic op "${stmt.op}" has no dedicated lowering`, stmt.op, this.originNodeId);
   }
 
   // The for-loop's index lives in the module-level register emitted by
@@ -528,7 +825,7 @@ class Emitter {
     const ok = "ok" + Math.abs(hashString(pointer + this.lines.length));
     this.push(`{`);
     this.indent += 1;
-    this.push(`const ${ok} = rt.ptrSet(${pointer}, ${argsObj}, ${valueCode});`);
+    this.push(`const ${ok} = rt.ptrSet(${pointer}, ${argsObj}, "${stmt.type}", ${valueCode});`);
     if (stmt.out || stmt.err) {
       this.push(`if (${ok}) {`);
       this.indent += 1;
@@ -564,7 +861,12 @@ class Emitter {
         return `rt.getVar(${expr.varId})`;
       case "ptrGet": {
         const { pointer, argsObj } = this.pointerCall(expr.template, expr.args);
-        const call = `rt.ptrGet(${pointer}, ${argsObj}, "${expr.type}")`;
+        // Always validate against the pointer's own configured signature
+        // (valueType), even when reading the "isValid" socket — see
+        // model.ts's ptrGet doc comment: `type` is this expression's own
+        // result type (bool for isValid reads), not what the resolver
+        // should check the raw value against.
+        const call = `rt.ptrGet(${pointer}, ${argsObj}, "${expr.valueType}")`;
         return expr.wantIsValid ? `${call}.isValid` : `${call}.value`;
       }
       case "param":
@@ -603,14 +905,40 @@ class Emitter {
     throw new EmitError(`param("${name}") not supported for handler kind "${ctx.kind}"`, "param", this.originNodeId);
   }
 
+  // Every case here is a module-level register/slot field (see
+  // emitStateSlots) — readable from anywhere, not just lexically inside the
+  // owning statement, matching interpreter.ts's own per-op "value" cases
+  // (flow/for, flow/doN, flow/multiGate, flow/setDelay, flow/throttle,
+  // flow/waitAll — see evaluateValue's switch), each keyed by the same
+  // output socket name the field mirrors.
   private emitStateRead(slotIndex: number, field: string): string {
     const slot = this.module.stateSlots[slotIndex];
-    if (!slot || slot.kind !== "for" || field !== "index") {
-      throw new EmitError(`stateRead on "${slot?.kind ?? "?"}".${field} not supported this milestone`, "stateRead", this.originNodeId);
+    if (!slot) {
+      throw new EmitError(`stateRead on unknown state slot ${slotIndex}`, "stateRead", this.originNodeId);
     }
-    // Module-level register (see emitForStateSlots) — readable from
-    // anywhere, not just lexically inside the owning for-statement.
-    return slot.name;
+    if (slot.kind === "for" && field === "index") {
+      return slot.name;
+    }
+    if (slot.kind === "doN" && field === "currentCount") {
+      return `${slot.name}.count`;
+    }
+    if (slot.kind === "multiGate" && field === "lastIndex") {
+      return `${slot.name}.lastIndex`;
+    }
+    if (slot.kind === "delay" && field === "lastDelay") {
+      return `${slot.name}.lastRef`;
+    }
+    if (slot.kind === "throttle" && field === "lastRemainingTime") {
+      return `${slot.name}.remaining`;
+    }
+    if (slot.kind === "waitAll" && field === "remainingInputs") {
+      // Unset (never-advanced) reads as the slot's own configured
+      // inputFlows — mirrors interpreter.ts's `state?.remainingInputs ??
+      // inputFlows` fallback (see flow/waitAll's evaluateValue case).
+      const inputFlows = Number((slot.config as { inputFlows?: number }).inputFlows ?? 0);
+      return `(${slot.name}.remaining ?? ${inputFlows})`;
+    }
+    throw new EmitError(`stateRead on "${slot.kind}".${field} not supported this milestone`, "stateRead", this.originNodeId);
   }
 
   private emitIntrinsicExpr(expr: Extract<IRExpr, { k: "intrinsic" }>): string {
@@ -621,6 +949,18 @@ class Emitter {
       const dfltCode = this.emitExpr(dflt);
       const valuesCode = caseArgs.map((a) => this.emitExpr(a)).join(", ");
       return `m.switchCase(${selCode}, [${cases.join(", ")}], [${valuesCode}], ${dfltCode})`;
+    }
+    if (expr.op === "event/receive#payload") {
+      // Direct read of the (persistent, event-index-keyed) last-sent
+      // payload — order-independent by construction, see engine.ts's
+      // eventPayload doc comment and import.ts's GI012 branch.
+      const eventIndex = expr.config.eventIndex as number;
+      const field = expr.config.field as string;
+      const fieldIndex = { boolParameter: 0, intParameter: 1, floatParameter: 2, expectedDuration: 3 }[field];
+      return `rt.eventPayload(${eventIndex})[${fieldIndex}]`;
+    }
+    if (expr.op === "event/onTick#time") {
+      return (expr.config.field as string) === "timeSinceStart" ? "rt.tickTime()" : "rt.tickDelta()";
     }
     if (expr.config?.crossContext === true) {
       const sourceNode = expr.config.sourceNode as number;

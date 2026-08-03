@@ -75,9 +75,11 @@ async function runOne(asset: { name: string; glbPath: string; testPath: string }
   let factory: EngineFactory;
   let testJson: TestJson;
   let gltf: unknown;
+  let glbBin: DataView | null = null;
   try {
     const probe = createRuntimeFromGlbFile(asset.glbPath);
     gltf = probe.gltf;
+    glbBin = probe.glbBin;
     const { module, diagnostics } = importGraph(probe.graph as unknown as IrGraph);
     const importErrors = diagnostics.filter((d) => d.severity === "error");
     if (importErrors.length > 0) {
@@ -96,7 +98,7 @@ async function runOne(asset: { name: string; glbPath: string; testPath: string }
   }
 
   try {
-    const result = judgeTest(() => factory({ gltf }), testJson);
+    const result = judgeTest(() => factory({ gltf, glbBin }), testJson);
     if (!result.ok) {
       return { ok: false, kind: "FAIL", reason: result.failures.join("\n  - ") };
     }
