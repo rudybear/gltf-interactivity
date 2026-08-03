@@ -81,6 +81,9 @@ importers:
       '@gltfi/emit-lua':
         specifier: workspace:*
         version: link:../emit-lua
+      '@gltfi/emit-py':
+        specifier: workspace:*
+        version: link:../emit-py
       '@gltfi/emit-ts':
         specifier: workspace:*
         version: link:../emit-ts
@@ -108,6 +111,9 @@ importers:
       '@gltfi/runtime-lua':
         specifier: workspace:*
         version: link:../runtime-lua
+      '@gltfi/runtime-py':
+        specifier: workspace:*
+        version: link:../runtime-py
       '@gltfi/verify':
         specifier: workspace:*
         version: link:../verify
@@ -120,6 +126,15 @@ importers:
         version: 0.23.1
 
   packages/emit-lua:
+    dependencies:
+      '@gltfi/ir':
+        specifier: workspace:*
+        version: link:../ir
+      '@gltfi/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+
+  packages/emit-py:
     dependencies:
       '@gltfi/ir':
         specifier: workspace:*
@@ -222,6 +237,8 @@ importers:
       wasmoon:
         specifier: ^1.16.0
         version: 1.16.0
+
+  packages/runtime-py: {}
 
   packages/verify:
     dependencies:

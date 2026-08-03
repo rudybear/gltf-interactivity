@@ -7,6 +7,7 @@
   "types": "dist/index.d.ts",
   "dependencies": {
     "@gltfi/emit-lua": "workspace:*",
+    "@gltfi/emit-py": "workspace:*",
     "@gltfi/emit-ts": "workspace:*",
     "@gltfi/gltf": "workspace:*",
     "@gltfi/ir": "workspace:*",
@@ -16,6 +17,7 @@
     "@gltfi/runtime": "workspace:*",
     "@gltfi/runtime-lib": "workspace:*",
     "@gltfi/runtime-lua": "workspace:*",
+    "@gltfi/runtime-py": "workspace:*",
     "@gltfi/verify": "workspace:*",
     "wasmoon": "^1.16.0"
   },

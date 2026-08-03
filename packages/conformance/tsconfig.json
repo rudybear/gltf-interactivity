@@ -11,11 +11,13 @@
     { "path": "../kernel" },
     { "path": "../emit-ts" },
     { "path": "../emit-lua" },
+    { "path": "../emit-py" },
     { "path": "../parse-ts" },
     { "path": "../parse-lua" },
     { "path": "../verify" },
     { "path": "../runtime-lib" },
     { "path": "../runtime-lua" },
+    { "path": "../runtime-py" },
     { "path": "../gltf" }
   ]
 }
