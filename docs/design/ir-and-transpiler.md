@@ -8,12 +8,28 @@ is the escape hatch).
 
 ## Why structuring always works
 
-Graph JSON constraints: an input value edge must reference a **lower** node index;
-an output flow edge must reference a **higher** node index. Flow is therefore a
-forward DAG (loops exist only inside `flow/while`/`flow/for` self-activation and
-async re-entry). Any flow target with a single predecessor inlines into its caller;
-any target with ≥2 predecessors (or mixed sync/async reachability) becomes an
-`IRProc`. No irreducible control flow can occur.
+Value edges are backward-only in practice (0 backward/self value-edge violations
+across the 145-graph corpus), so the value DAG types in one forward pass.
+
+**Corpus correction (2026-08-02):** the "flow edges must point to higher node
+indices" premise is empirically FALSE — real Khronos test assets contain thousands
+of backward flow edges, including plain non-looping chains. The importer therefore
+uses a general cycle-safe algorithm: flow targets with ≥2 predecessors (counted on
+primary input ports) become `IRProc`s, and on-stack cycle detection during inlining
+turns repeated targets into `callProc` (procs are pre-registered before their bodies
+build, so self-cycles resolve). `flow/waitAll` needs a special case: it has no
+primary "in" port (all triggers lower at the sending site), so its out/completed
+targets are forced multi-predecessor when waitAll has ≥2 incoming triggers.
+The *synchronous* proc call graph must be acyclic; cycles through `async.done`
+continuations are legal (a self-rescheduling delay). For EXPORT this changes
+nothing: emitting forward-only flow edges is always safe.
+
+**Cross-handler event-output reads (GI012):** a value edge may read an event
+node's output sockets (e.g. `onTick.timeSinceStart`) from a *different* handler —
+event-node outputs are graph-global registers, not lexically scoped params
+(47 corpus occurrences). `param` covers same-handler reads; cross-handler reads
+currently import as `intrinsic` with warning GI012. The compiled engine (M3) must
+give event nodes module-level last-output registers to lower these properly.
 
 ## Model (packages/ir/src/model.ts)
 

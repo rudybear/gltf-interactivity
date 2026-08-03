@@ -103,6 +103,10 @@ importers:
       '@gltfi/kernel':
         specifier: workspace:*
         version: link:../kernel
+    devDependencies:
+      '@gltfi/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
   packages/kernel: {}
 
