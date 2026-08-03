@@ -1,0 +1,12 @@
+{
+  "name": "@gltfi/runtime",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "dependencies": {
+    "@gltfi/kernel": "workspace:*",
+    "@gltfi/gltf": "workspace:*"
+  }
+}

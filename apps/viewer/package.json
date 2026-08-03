@@ -1,0 +1,23 @@
+{
+  "name": "@gltfi/viewer",
+  "version": "0.0.1",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@gltfi/runtime": "workspace:*",
+    "@gltfi/runtime-lib": "workspace:*",
+    "@gltfi/gltf": "workspace:*",
+    "@gltfi/emit-ts": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0",
+    "@webgpu/types": "^0.1.44"
+  }
+}

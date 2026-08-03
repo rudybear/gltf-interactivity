@@ -1,0 +1,16 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/kernel" },
+    { "path": "packages/gltf" },
+    { "path": "packages/runtime" },
+    { "path": "packages/ir" },
+    { "path": "packages/emit-ts" },
+    { "path": "packages/parse-ts" },
+    { "path": "packages/runtime-lib" },
+    { "path": "packages/verify" },
+    { "path": "packages/conformance" },
+    { "path": "packages/cli" },
+    { "path": "apps/viewer" }
+  ]
+}

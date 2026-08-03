@@ -1,0 +1,25 @@
+{
+  "name": "gltf-interactivity",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "fetch:assets": "node scripts/fetch-assets.mjs",
+    "build": "tsc -b",
+    "conf:interp": "node packages/conformance/dist/run-interp.js",
+    "conf:compiled": "node packages/conformance/dist/run-compiled.js",
+    "conf:roundtrip": "node packages/conformance/dist/run-roundtrip.js",
+    "test": "vitest run --passWithNoTests",
+    "dev": "pnpm --filter @gltfi/viewer dev",
+    "smoke": "node scripts/render-verify.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.0",
+    "@types/node": "^22"
+  }
+}

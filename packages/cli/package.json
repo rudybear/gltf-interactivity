@@ -1,0 +1,19 @@
+{
+  "name": "@gltfi/cli",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "gltfi": "dist/main.js"
+  },
+  "dependencies": {
+    "@gltfi/ir": "workspace:*",
+    "@gltfi/emit-ts": "workspace:*",
+    "@gltfi/parse-ts": "workspace:*",
+    "@gltfi/verify": "workspace:*",
+    "@gltfi/gltf": "workspace:*",
+    "@gltfi/conformance": "workspace:*"
+  }
+}
