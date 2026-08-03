@@ -4,11 +4,15 @@ A bidirectional transpiler between glTF KHR_interactivity behavior graphs and co
 
 ## Status
 
-Early bootstrap. Conformance gates:
+All core conformance gates pass against the official Khronos test assets (145 tests / 647 sub-tests):
 
-| Gate | V1 Interpreter | V2 Compiled | V3 Roundtrip |
-|------|---|---|---|
-| Status | Pending | Pending | Pending |
+| Gate | Pipeline | Status |
+|------|----------|--------|
+| V1 Interpreter | graph → interpreter | **145/145** |
+| V2 Compiled | graph → TypeScript → execute | **145/145** |
+| V3 Roundtrip | graph → TypeScript → parse → graph′ → interpreter | **145/145** |
+
+In progress: WebGPU viewer with an interpreter/compiled engine toggle; planned: Luau and typed-Python backends over the same IR.
 
 ## Quickstart
 

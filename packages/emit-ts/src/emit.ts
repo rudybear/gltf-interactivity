@@ -340,6 +340,17 @@ class Emitter {
   // `nodeStates.get(nodeId).forIndex`): before the loop has ever run it
   // reads config.initialIndex, and after it reads whatever the last run
   // left it at, until the loop runs again.
+  // Explicit type annotations (not just the doc's "plain inferred JS
+  // expression" shape — see this file's header note) are needed on the
+  // waitAll/throttle slot objects specifically: TS infers an object
+  // literal's `undefined`-valued property as the literal type `undefined`
+  // (not `number | undefined`), which then rejects the reset code's later
+  // `slot.remaining = <number>;` assignment under strict mode. Annotating
+  // keeps every flavor's *runtime* shape identical (erased by esbuild in the
+  // --js/bundled path — see run-compiled.ts) while making the "ts" flavor's
+  // own file strict-mode sound, which @gltfi/parse-ts's type checker
+  // requires (see docs/design/ir-and-transpiler.md's GIscript subset: "The
+  // TS type checker runs first").
   private emitStateSlots() {
     this.module.stateSlots.forEach((slot) => {
       switch (slot.kind) {
@@ -349,19 +360,19 @@ class Emitter {
           return;
         }
         case "delay":
-          this.push(`const ${slot.name} = { lastId: -1, lastRef: "", ids: [] };`);
+          this.push(`const ${slot.name}: { lastId: number; lastRef: string; ids: number[] } = { lastId: -1, lastRef: "", ids: [] };`);
           return;
         case "doN":
-          this.push(`const ${slot.name} = { count: 0 };`);
+          this.push(`const ${slot.name}: { count: number } = { count: 0 };`);
           return;
         case "multiGate":
-          this.push(`const ${slot.name} = { lastIndex: -1, used: [] };`);
+          this.push(`const ${slot.name}: { lastIndex: number; used: boolean[] } = { lastIndex: -1, used: [] };`);
           return;
         case "waitAll":
-          this.push(`const ${slot.name} = { activated: [], remaining: undefined };`);
+          this.push(`const ${slot.name}: { activated: boolean[]; remaining: number | undefined } = { activated: [], remaining: undefined };`);
           return;
         case "throttle":
-          this.push(`const ${slot.name} = { lastTime: undefined, remaining: NaN };`);
+          this.push(`const ${slot.name}: { lastTime: number | undefined; remaining: number } = { lastTime: undefined, remaining: NaN };`);
           return;
       }
     });
@@ -485,7 +496,14 @@ class Emitter {
         return;
       }
       case "switch": {
-        this.push(`switch (${this.emitExpr(stmt.selector)}) {`);
+        // `| 0` is a semantic no-op for an already-int value (spec ints are
+        // int32) but forces TS to widen a compile-time-constant selector
+        // (e.g. a literal-condition graph like flow/switch's own conformance
+        // asset) from a numeric-literal type to plain `number` — a bare
+        // `switch (4) { case 1: ... }` is a strict-mode TS error ("Type '1'
+        // is not comparable to type '4'") otherwise, since TS narrows the
+        // switch discriminant to the literal type of a literal expression.
+        this.push(`switch (${this.emitExpr(stmt.selector)} | 0) {`);
         this.indent += 1;
         for (const [c, body] of stmt.cases) {
           this.push(`case ${c}: {`);
