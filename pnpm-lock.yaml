@@ -63,9 +63,15 @@ importers:
       '@gltfi/ir':
         specifier: workspace:*
         version: link:../ir
+      '@gltfi/kernel':
+        specifier: workspace:*
+        version: link:../kernel
       '@gltfi/parse-ts':
         specifier: workspace:*
         version: link:../parse-ts
+      '@gltfi/runtime':
+        specifier: workspace:*
+        version: link:../runtime
       '@gltfi/verify':
         specifier: workspace:*
         version: link:../verify

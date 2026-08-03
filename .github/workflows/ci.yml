@@ -28,3 +28,4 @@ jobs:
       - run: pnpm conf:interp
       - run: pnpm conf:compiled
       - run: pnpm conf:roundtrip
+      - run: pnpm fuzz

@@ -11,6 +11,8 @@
     { "path": "../parse-ts" },
     { "path": "../verify" },
     { "path": "../gltf" },
-    { "path": "../conformance" }
+    { "path": "../conformance" },
+    { "path": "../runtime" },
+    { "path": "../kernel" }
   ]
 }

@@ -621,7 +621,7 @@ class Importer {
 
   private raiseSwitch(nodeId: number): IRStmt {
     const { lets, values } = this.materializeSite(nodeId, [{ key: "selection", type: "int" }]);
-    const casesCfg = (this.configValue(nodeId, "cases") as number[] | undefined) ?? [];
+    const casesCfg = this.configIntArray(nodeId, "cases");
     const flows = this.node(nodeId).flows ?? {};
     const cases: Array<[number, IRStmt]> = [...new Set(casesCfg)]
       .sort((a, b) => a - b)
@@ -640,8 +640,7 @@ class Importer {
   }
 
   private raiseVariableSet(nodeId: number): IRStmt {
-    const idsRaw = this.configValue(nodeId, "variables");
-    const ids = (Array.isArray(idsRaw) ? idsRaw : idsRaw !== undefined ? [idsRaw] : []).map((v) => this.toIndex(v));
+    const ids = this.configIntArray(nodeId, "variables");
     const stmts: IRStmt[] = [];
     for (const varId of ids) {
       const varType = this.variableTypes[varId] ?? "float";
@@ -1151,7 +1150,7 @@ class Importer {
   }
 
   private buildMathSwitchExpr(nodeId: number, ctx: SiteCtx | null): IRExpr {
-    const cases = (this.configValue(nodeId, "cases") as number[] | undefined) ?? [];
+    const cases = this.configIntArray(nodeId, "cases");
     const sorted = [...new Set(cases)].sort((a, b) => a - b);
     const resolved = this.resolvedOverloadByNode.get(nodeId);
     const outType = resolved ? this.toIRType(resolved.outputs.value ?? "float") : "float";
@@ -1233,6 +1232,23 @@ class Importer {
     }
     const parsed = entry.value.map((v) => parseScalar(v));
     return parsed.length === 1 ? parsed[0] : parsed;
+  }
+
+  // configValue collapses a single-element config array down to a bare
+  // scalar (see above) — fine for genuinely scalar fields ("variable",
+  // "type", ...), but every "int[]"-typed field ("cases" on flow/switch
+  // and math/switch, "variables" on variable/set) must come back as an
+  // array even when the graph happens to declare just one entry (e.g. a
+  // switch with a single case, or a variable/set targeting one variable —
+  // both perfectly legal, if unusual, and both crashed `new Set(...)`
+  // downstream before this helper existed; caught by the differential
+  // fuzzer, see packages/conformance/src/fuzz.ts).
+  private configIntArray(nodeId: number, key: string): number[] {
+    const raw = this.configValue(nodeId, key);
+    if (raw === undefined) {
+      return [];
+    }
+    return (Array.isArray(raw) ? raw : [raw]).map((v) => this.toIndex(v));
   }
 
   private toIRType(t: TypeSig): IRType {

@@ -218,13 +218,11 @@ export const m = {
   orInt: (a: number, b: number): number => (a | 0) | (b | 0),
   not: (a: boolean): boolean => !a,
   notInt: (a: number): number => ~a,
-  // The interpreter's "math/xor" dispatch always takes the int-bitwise path
-  // regardless of the resolved overload's bool/int-ness (see interpreter.ts
-  // "math/xor": unconditional `(x|0)^(y|0)`). For genuine 0/1 boolean
-  // inputs that's truth-table-identical to `!==`; the bool variant here is
-  // reimplemented as `!==` (not a literal transcription of the interpreter's
-  // branch, since it has none) so the compiled engine's typed representation
-  // stays consistent (bool=boolean, not 0/1 numbers) — see task report.
+  // Mirrors interpreter.ts's "math/xor" bool branch (added after the
+  // differential fuzzer caught it missing — every other bool/int op there
+  // special-cases `a.type === "bool"`, xor didn't, so it always returned an
+  // int-typed 0/1 result even for genuine bool inputs). `!==` is
+  // truth-table-identical to bitwise xor over 0/1 booleans.
   xor: (a: boolean, b: boolean): boolean => a !== b,
   xorInt: (a: number, b: number): number => (a | 0) ^ (b | 0),
   asr: (a: number, b: number): number => (a | 0) >> (b | 0),

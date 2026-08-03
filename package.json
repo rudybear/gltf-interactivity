@@ -14,6 +14,7 @@
     "conf:interp": "node packages/conformance/dist/run-interp.js",
     "conf:compiled": "node packages/conformance/dist/run-compiled.js",
     "conf:roundtrip": "node packages/conformance/dist/run-roundtrip.js",
+    "fuzz": "node packages/conformance/dist/fuzz.js",
     "test": "vitest run --passWithNoTests",
     "dev": "pnpm --filter @gltfi/viewer dev",
     "smoke": "node scripts/render-verify.mjs"

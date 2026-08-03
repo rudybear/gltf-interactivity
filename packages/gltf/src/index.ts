@@ -444,6 +444,55 @@ function parseGlb(buffer: ArrayBuffer): GltfDocument {
   return { json, binaryChunk: bin };
 }
 
+// glTF-Binary chunk alignment: JSON chunk is padded with ASCII spaces
+// (0x20), BIN chunk with zero bytes (0x00) — see the glTF 2.0 spec's
+// "Binary glTF Layout" section. Both chunks (and hence the whole file) must
+// end on a 4-byte boundary.
+function padTo4(bytes: Uint8Array, padByte: number): Uint8Array {
+  const remainder = bytes.length % 4;
+  if (remainder === 0) {
+    return bytes;
+  }
+  const padded = new Uint8Array(bytes.length + (4 - remainder));
+  padded.set(bytes);
+  padded.fill(padByte, bytes.length);
+  return padded;
+}
+
+// Inverse of parseGlb/loadGltf's GLB path: serializes a GltfDocument back
+// into a .glb container (JSON chunk always present; BIN chunk included only
+// if binaryChunk is set — a pure-interactivity asset with no mesh/buffer
+// data has no need for one).
+export function writeGlb(doc: GltfDocument): ArrayBuffer {
+  const jsonChunk = padTo4(new TextEncoder().encode(JSON.stringify(doc.json)), 0x20);
+  const binSource = doc.binaryChunk ? new Uint8Array(doc.binaryChunk) : null;
+  const binChunk = binSource && binSource.length > 0 ? padTo4(binSource, 0x00) : null;
+
+  const totalLength = 12 + 8 + jsonChunk.length + (binChunk ? 8 + binChunk.length : 0);
+  const buffer = new ArrayBuffer(totalLength);
+  const view = new DataView(buffer);
+  const bytes = new Uint8Array(buffer);
+  let offset = 0;
+
+  view.setUint32(offset, GLB_MAGIC, true);
+  view.setUint32(offset + 4, 2, true); // glTF version
+  view.setUint32(offset + 8, totalLength, true);
+  offset += 12;
+
+  view.setUint32(offset, jsonChunk.length, true);
+  view.setUint32(offset + 4, CHUNK_JSON, true);
+  bytes.set(jsonChunk, offset + 8);
+  offset += 8 + jsonChunk.length;
+
+  if (binChunk) {
+    view.setUint32(offset, binChunk.length, true);
+    view.setUint32(offset + 4, CHUNK_BIN, true);
+    bytes.set(binChunk, offset + 8);
+  }
+
+  return buffer;
+}
+
 export async function buildRenderScene(doc: GltfDocument, options: GltfOptions = {}): Promise<RenderScene> {
   const json = doc.json;
   if (!json.meshes || !json.accessors || !json.bufferViews || !json.buffers) {

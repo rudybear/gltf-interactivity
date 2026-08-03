@@ -149,6 +149,19 @@ function normSocket(key: string): string {
   return /^\d+$/.test(key) ? String(Number(key)) : key;
 }
 
+// flow/sequence's ordered output sockets show up under two different naming
+// conventions across the corpus: plain decimal ("0","1",...) — what
+// @gltfi/ir/export.ts synthesizes — and the zero-padded "sNNN" form used by
+// some authoring tools in the wild (e.g. "s000","s001","s002"). Both name
+// the same thing (the Nth branch to fire, in order), so chainSteps below
+// needs to recognize either spelling; returns null for keys that are
+// neither (a flow/sequence node should not have any).
+function sequenceSocketIndex(key: string): number | null {
+  if (/^\d+$/.test(key)) return Number(key);
+  const m = /^s(\d+)$/.exec(key);
+  return m ? Number(m[1]) : null;
+}
+
 // JSON.stringify collapses NaN/Infinity/-Infinity to `null`, which would
 // make e.g. [NaN,2,3] and [Infinity,2,3] compare equal here — see
 // @gltfi/ir/export.ts's stableDataKey, which this mirrors (a real bug
@@ -156,7 +169,14 @@ function normSocket(key: string): string {
 // same hazard applies to any JSON.stringify over graph literal values).
 function stableDataKey(data: ReadonlyArray<number | boolean | string>): string {
   return JSON.stringify(
-    data.map((v) => {
+    data.map((raw) => {
+      // KHR_interactivity encodes non-finite floats as the strings
+      // "NaN"/"Infinity"/"-Infinity" in glTF JSON (numbers can't carry
+      // them); @gltfi/kernel's parseScalar does this same coercion
+      // elsewhere. A graph fresh off disk and one that's been through
+      // @gltfi/ir (which materializes them as real JS numbers) must
+      // compare equal here.
+      const v = raw === "NaN" ? NaN : raw === "Infinity" ? Infinity : raw === "-Infinity" ? -Infinity : raw;
       if (typeof v === "number") {
         if (Number.isNaN(v)) return "NaN";
         if (v === Infinity) return "Inf";
@@ -168,10 +188,84 @@ function stableDataKey(data: ReadonlyArray<number | boolean | string>): string {
   );
 }
 
-function canonicalConfig(node: VGraphNode): string {
+// pointer/get, pointer/set and pointer/interpolate all carry a "type"
+// config field whose *value* is a raw index into graph.types — but the
+// exported and re-imported graphs each build their own types table
+// independently, so the same logical type ("float3", say) can legitimately
+// sit at different indices in the two tables (divergence class (a), see
+// docs's "Equivalence" section). Compare by the referenced type's
+// signature instead of its positional index.
+const POINTER_TYPE_OPS = new Set(["pointer/get", "pointer/set", "pointer/interpolate"]);
+
+// int/float literals are graph-level ambiguous for many generically-typed
+// sockets (most visibly debug/log's message arguments): the same numeric
+// literal can round-trip as "int" on one side and "float" on the other
+// purely because JS numbers don't distinguish the two and emit/parse must
+// pick a default (divergence class (c), see docs's "Equivalence" section).
+// Treat scalar int/float literals as one "num" family for comparison.
+function literalTypeFamily(signature: string): string {
+  return signature === "int" || signature === "float" ? "num" : signature;
+}
+
+// KHR_interactivity treats a missing value-socket input as "use this type's
+// default (zero) value" — see @gltfi/kernel's defaultValue, mirrored here.
+// So an explicit default-valued literal on one side and an omitted socket
+// on the other are execution-equivalent, even though one graph's node has
+// the value key and the other's doesn't. This is most visible on
+// event/send's optional payload parameters (boolParameter/intParameter/...)
+// which @gltfi/ir/export.ts always materializes explicitly.
+const IDENTITY_2X2 = [1, 0, 0, 1];
+const IDENTITY_3X3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+const IDENTITY_4X4 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+
+function isDefaultLiteral(signature: string, data: ReadonlyArray<number | boolean | string>): boolean {
+  const allZero = (n: number) => data.length === n && data.every((v) => Number(v) === 0);
+  switch (signature) {
+    case "bool":
+      return data.length === 1 && data[0] === false;
+    case "int":
+    case "float":
+      return allZero(1);
+    case "float2":
+      return allZero(2);
+    case "float3":
+      return allZero(3);
+    case "float4":
+      return allZero(4);
+    case "float2x2":
+      return data.length === IDENTITY_2X2.length && data.every((v, i) => Number(v) === IDENTITY_2X2[i]);
+    case "float3x3":
+      return data.length === IDENTITY_3X3.length && data.every((v, i) => Number(v) === IDENTITY_3X3[i]);
+    case "float4x4":
+      return data.length === IDENTITY_4X4.length && data.every((v, i) => Number(v) === IDENTITY_4X4[i]);
+    case "ref":
+      return data.length === 1 && data[0] === "";
+    default:
+      return false;
+  }
+}
+
+function canonicalConfig(graph: VGraph, op: string, node: VGraphNode): string {
   const cfg = node.configuration ?? {};
   const keys = Object.keys(cfg).sort();
-  return JSON.stringify(keys.map((k) => [k, stableDataKey(cfg[k].value)]));
+  return JSON.stringify(
+    keys.map((k) => {
+      if (POINTER_TYPE_OPS.has(op) && k === "type") {
+        const idx = Number(cfg[k].value[0]);
+        return [k, `sig:${graph.types[idx]?.signature ?? `<invalid:${idx}>`}`];
+      }
+      if (op === "flow/switch" && k === "cases") {
+        // flow/switch's output flow sockets are keyed by the case *value*
+        // itself (e.g. socket "4" routes case 4), not by its position in
+        // this config array — so the declared order of "cases" carries no
+        // behavior and two graphs listing the same case values in a
+        // different order are execution-equivalent.
+        const sorted = [...cfg[k].value].sort((x, y) => Number(x) - Number(y));
+        return [k, stableDataKey(sorted)];
+      }
+      return [k, stableDataKey(cfg[k].value)];
+    })
+  );
 }
 
 export function normalizeGraph(graph: VGraph): NormalizedGraph {
@@ -179,14 +273,18 @@ export function normalizeGraph(graph: VGraph): NormalizedGraph {
     const op = graph.declarations[node.declaration]?.op ?? `<invalid:${node.declaration}>`;
     const values = Object.entries(node.values ?? {})
       .map(([socket, v]): [string, string] => {
-        const key = "node" in v ? `ref:${v.node}:${normSocket(v.socket ?? "value")}` : `lit:${graph.types[v.type]?.signature ?? v.type}:${stableDataKey(v.value)}`;
-        return [normSocket(socket), key];
+        if ("node" in v) {
+          return [normSocket(socket), `ref:${v.node}:${normSocket(v.socket ?? "value")}`];
+        }
+        const signature = graph.types[v.type]?.signature ?? String(v.type);
+        const key = `lit:${literalTypeFamily(signature)}:${stableDataKey(v.value)}`;
+        return [normSocket(socket), isDefaultLiteral(signature, v.value) ? `${key}:default` : key];
       })
       .sort((a, b) => a[0].localeCompare(b[0]));
     const flows = Object.entries(node.flows ?? {})
       .map(([socket, f]): [string, number] => [normSocket(socket), f.node])
       .sort((a, b) => a[0].localeCompare(b[0]));
-    return { op, config: canonicalConfig(node), values, flows };
+    return { op, config: canonicalConfig(graph, op, node), values, flows };
   });
   return { graph, nodes };
 }
@@ -201,6 +299,61 @@ export function equivalentGraphs(a: VGraph, b: VGraph): EquivalenceResult {
   const bHandlers = b.nodes.map((n, i) => ({ i, op: b.declarations[n.declaration]?.op ?? "" })).filter((x) => HANDLER_OPS.has(x.op));
   if (aHandlers.length !== bHandlers.length) {
     return { equivalent: false, firstDivergence: `handler count differs: ${aHandlers.length} vs ${bHandlers.length}` };
+  }
+
+  // Flow-chain canonicalization (divergence class (b), see docs's
+  // "Equivalence" section): a flow/sequence node with N ordered outputs is
+  // execution-equivalent to the same N targets fired one after another via
+  // plain "out" chaining, at any nesting depth — @gltfi/ir/export.ts may
+  // synthesize nested flow/sequence wrappers (or none at all, chaining
+  // through plain "out" sockets instead) where the original graph used one
+  // flatter or differently-shaped structure. chainSteps() flattens both
+  // representations into the same canonical ordered list of "real"
+  // (non-flow/sequence) node indices: it inlines every flow/sequence
+  // target in socket order ("0","1","2",...) and, for any other node whose
+  // *only* flow output socket is "out" (a plain statement handing off to
+  // the next one), continues the list through that socket instead of
+  // stopping.
+  function chainSteps(ng: NormalizedGraph, start: number): number[] {
+    const steps: number[] = [];
+    const visited = new Set<number>();
+    let current: number | undefined = start;
+    while (current !== undefined) {
+      if (visited.has(current)) break; // cycle guard — shouldn't happen in well-formed graphs.
+      visited.add(current);
+      const normNode: NormalizedNode | undefined = ng.nodes[current];
+      if (!normNode) break;
+      if (normNode.op === "flow/sequence") {
+        const targets: number[] = normNode.flows
+          .filter((entry: [string, number]) => sequenceSocketIndex(entry[0]) !== null)
+          .sort((x: [string, number], y: [string, number]) => sequenceSocketIndex(x[0])! - sequenceSocketIndex(y[0])!)
+          .map((entry: [string, number]) => entry[1]);
+        for (const target of targets) {
+          steps.push(...chainSteps(ng, target));
+        }
+        current = undefined;
+      } else {
+        steps.push(current);
+        current = normNode.flows.length === 1 && normNode.flows[0][0] === "out" ? normNode.flows[0][1] : undefined;
+      }
+    }
+    return steps;
+  }
+
+  // Compares the canonical flattened chains starting at two flow targets
+  // (see chainSteps above), walking matching steps pairwise.
+  function compareChain(ai: number, bi: number, path: string): string | null {
+    const chainA = chainSteps(na, ai);
+    const chainB = chainSteps(nb, bi);
+    if (chainA.length !== chainB.length) {
+      return `${path}: flattened sequence length differs (${chainA.length} vs ${chainB.length}) starting at a:${ai} vs b:${bi}`;
+    }
+    for (let i = 0; i < chainA.length; i += 1) {
+      const stepPath = chainA.length > 1 ? `${path}[chain step ${i}]` : path;
+      const div = walk(chainA[i], chainB[i], stepPath);
+      if (div) return div;
+    }
+    return null;
   }
 
   const visiting = new Set<string>();
@@ -224,14 +377,20 @@ export function equivalentGraphs(a: VGraph, b: VGraph): EquivalenceResult {
       }
       const valKeysA = new Set(nodeA.values.map(([k]) => k));
       const valKeysB = new Set(nodeB.values.map(([k]) => k));
-      for (const k of valKeysA) {
-        if (!valKeysB.has(k)) return `${path}: value socket "${k}" present in a (${nodeA.op}#${ai}) but missing in b`;
+      for (const [k, ref] of nodeA.values) {
+        if (!valKeysB.has(k) && !ref.endsWith(":default")) {
+          return `${path}: value socket "${k}" present in a (${nodeA.op}#${ai}) but missing in b`;
+        }
       }
-      for (const k of valKeysB) {
-        if (!valKeysA.has(k)) return `${path}: value socket "${k}" present in b (${nodeB.op}#${bi}) but missing in a`;
+      for (const [k, ref] of nodeB.values) {
+        if (!valKeysA.has(k) && !ref.endsWith(":default")) {
+          return `${path}: value socket "${k}" present in b (${nodeB.op}#${bi}) but missing in a`;
+        }
       }
       for (const [socket, refA] of nodeA.values) {
-        const refB = nodeB.values.find(([k]) => k === socket)![1];
+        const entryB = nodeB.values.find(([k]) => k === socket);
+        if (!entryB) continue; // missing on b, but refA was verified default-valued above.
+        const refB = entryB[1];
         if (refA.startsWith("ref:") && refB.startsWith("ref:")) {
           const [, aNodeStr, aSocket] = refA.split(":");
           const [, bNodeStr, bSocket] = refB.split(":");
@@ -249,17 +408,34 @@ export function equivalentGraphs(a: VGraph, b: VGraph): EquivalenceResult {
     }
   }
 
-  // Compares flow socket sets and recursively walks matching targets. Note:
-  // @gltfi/ir/export.ts may synthesize an extra flow/sequence node to join
-  // independent branches (see that file's header) where the original graph
-  // used one wider flow/sequence node (e.g. 3 keys "0","1","2" vs a
-  // synthesized 2-level nesting) — this reads as a structural divergence
-  // here even though the two graphs are execution-equivalent (same nodes
-  // fire in the same order). That's intentional: this checker reports
-  // honest structural differences rather than guessing at equivalence
-  // across a restructuring — see this file's header ("a triage signal, not
-  // the gate").
+  // Compares flow socket sets and recursively compares matching targets'
+  // flattened chains (see compareChain/chainSteps above). A node whose only
+  // flow output socket is "out" has already been absorbed into its caller's
+  // chain (chainSteps followed it), so there's nothing left to compare here
+  // for that socket.
   function compareFlows(nodeA: NormalizedNode, nodeB: NormalizedNode, ai: number, bi: number, path: string): string | null {
+    if (nodeA.flows.length === 1 && nodeA.flows[0][0] === "out" && nodeB.flows.length === 1 && nodeB.flows[0][0] === "out") {
+      return null;
+    }
+    // flow/multiGate's output sockets are "fully dynamic" (see
+    // registry.ts): @gltfi/runtime picks which one fires by rank —
+    // `Object.keys(node.flows).sort()[index]`, not by the sockets' literal
+    // key text — so two independently-authored/exported multiGate nodes
+    // can legitimately use different key spellings for "the Nth gate" (see
+    // e.g. zero-padded "001"/"004"/"008" vs plain "0"/"1"/"2" in the
+    // corpus) as long as the rank order of targets matches.
+    if (nodeA.op === "flow/multiGate" && nodeB.op === "flow/multiGate") {
+      const rankedA = [...nodeA.flows].sort((x, y) => Number(x[0]) - Number(y[0]));
+      const rankedB = [...nodeB.flows].sort((x, y) => Number(x[0]) - Number(y[0]));
+      if (rankedA.length !== rankedB.length) {
+        return `${path}: flow/multiGate output count differs (${rankedA.length} vs ${rankedB.length}) at a:${ai} vs b:${bi}`;
+      }
+      for (let i = 0; i < rankedA.length; i += 1) {
+        const sub = compareChain(rankedA[i][1], rankedB[i][1], `${path}.flows[rank ${i}]`);
+        if (sub) return sub;
+      }
+      return null;
+    }
     const flowKeysA = new Set(nodeA.flows.map(([k]) => k));
     const flowKeysB = new Set(nodeB.flows.map(([k]) => k));
     for (const k of flowKeysA) {
@@ -270,14 +446,14 @@ export function equivalentGraphs(a: VGraph, b: VGraph): EquivalenceResult {
     }
     for (const [socket, targetA] of nodeA.flows) {
       const targetB = nodeB.flows.find(([k]) => k === socket)![1];
-      const sub = walk(targetA, targetB, `${path}.flows[${socket}]`);
+      const sub = compareChain(targetA, targetB, `${path}.flows[${socket}]`);
       if (sub) return sub;
     }
     return null;
   }
 
   for (let i = 0; i < aHandlers.length; i += 1) {
-    const div = walk(aHandlers[i].i, bHandlers[i].i, `handler[${i}]`);
+    const div = compareChain(aHandlers[i].i, bHandlers[i].i, `handler[${i}]`);
     if (div) {
       return { equivalent: false, firstDivergence: div };
     }

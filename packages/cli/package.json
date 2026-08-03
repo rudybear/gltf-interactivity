@@ -14,6 +14,8 @@
     "@gltfi/parse-ts": "workspace:*",
     "@gltfi/verify": "workspace:*",
     "@gltfi/gltf": "workspace:*",
-    "@gltfi/conformance": "workspace:*"
+    "@gltfi/conformance": "workspace:*",
+    "@gltfi/runtime": "workspace:*",
+    "@gltfi/kernel": "workspace:*"
   }
 }

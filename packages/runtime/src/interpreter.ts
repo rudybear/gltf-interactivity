@@ -464,7 +464,14 @@ function evaluateValue(runtime: RuntimeGraph, nodeId: number, socket: string, st
     case "math/xor": {
       const a = getInput(runtime, nodeId, "a", stack);
       const b = getInput(runtime, nodeId, "b", stack);
-      result = intValue(applyBinary(a, b, (x, y) => (x | 0) ^ (y | 0), "int").data as number[]);
+      if (a.type === "bool" || b.type === "bool") {
+        const left = valueToNumberArray(a).map((item) => Boolean(item));
+        const right = valueToNumberArray(b).map((item) => Boolean(item));
+        const [l, r] = broadcast(left.map((item) => (item ? 1 : 0)), right.map((item) => (item ? 1 : 0)));
+        result = boolValue(l.map((item, index) => Boolean(item) !== Boolean(r[index] ?? r[0])));
+      } else {
+        result = intValue(applyBinary(a, b, (x, y) => (x | 0) ^ (y | 0), "int").data as number[]);
+      }
       break;
     }
     case "math/not": {
