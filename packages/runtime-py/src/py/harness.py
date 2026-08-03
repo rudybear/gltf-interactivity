@@ -19,6 +19,8 @@ Commands (one-line JSON objects on stdin):
   {"cmd":"sent_events"}
   {"cmd":"event_defaults"}
   {"cmd":"eval_m", "fn":<str>, "args":[...]}   -- vitest math-parity spot checks only
+  {"cmd":"ast", "code":<str>}                  -- @gltfi/parse-py: dump ast.parse(code)'s
+                                                   own tree as JSON (see cmd_ast below)
   {"cmd":"ping"}
 
 Every response is a one-line JSON object `{"ok": true, ...}` or, on ANY
@@ -37,6 +39,7 @@ as the STRING "NaN" / "Infinity" / "-Infinity" (enc_num/dec_num below);
 finite numbers, bools, and ordinary strings cross the wire untouched. The
 counterpart encode/decode lives in run-compiled-py.ts.
 """
+import ast
 import base64
 import importlib.util
 import json
@@ -97,6 +100,60 @@ def enc_any(value):
     if isinstance(value, dict):
         return {k: enc_any(v) for k, v in value.items()}
     return value
+
+
+# ---------------------------------------------------------------------------
+# @gltfi/parse-py support: dump ast.parse(code)'s own tree as JSON — see that
+# package's src/index.ts header for the full rationale (reusing CPython's own
+# grammar/parser instead of a bespoke JS-side Python parser). Recursive over
+# ast.AST exactly like enc_any is recursive over plain JSON values: every node
+# becomes a dict `{"_type": <class name>, ...one key per node._fields...,
+# "lineno":..., "col_offset":...}` (only the fields ast.AST itself declares
+# for that node type — no extra "children" indirection), every list of nodes
+# becomes a JSON array, and any other leaf value (str/int/float/bool/None)
+# passes through unchanged EXCEPT it gets run through enc_any at the very end
+# (see cmd_ast) so a non-finite float literal buried anywhere in the tree
+# (`float("nan")`'s folded Constant, if a future CPython ever constant-folds
+# it — never true for the `float("nan")` CALL shape this backend emits, but
+# cheap insurance) still crosses the wire per this file's own NaN/Infinity
+# string-encoding convention.
+#
+# `ast.Constant.value`'s Python type is the one piece of information JSON
+# alone can't preserve round-trip through Node's JSON.parse: `5` and `5.0`
+# both become the JS number 5 once parsed (JSON has no separate int/float
+# lexical class the way Python's json.dumps does), so int-vs-float-vs-bool
+# constants would be ambiguous on the TypeScript side. Fixed by stamping an
+# explicit "_ptype" tag (not a real ast.Constant field — a marker THIS
+# serializer adds) with Python's own type name for exactly `ast.Constant`
+# nodes: "bool"/"int"/"float"/"str"/"none"/<other>. TypeScript's ast reader
+# switches on this instead of ever inspecting a Constant's raw `value` type.
+def ast_to_dict(node):
+    if isinstance(node, ast.AST):
+        result = {"_type": type(node).__name__}
+        for field in node._fields:
+            result[field] = ast_to_dict(getattr(node, field, None))
+        if isinstance(node, ast.Constant):
+            v = node.value
+            if isinstance(v, bool):
+                result["_ptype"] = "bool"
+            elif isinstance(v, float):
+                result["_ptype"] = "float"
+            elif isinstance(v, int):
+                result["_ptype"] = "int"
+            elif isinstance(v, str):
+                result["_ptype"] = "str"
+            elif v is None:
+                result["_ptype"] = "none"
+            else:
+                result["_ptype"] = type(v).__name__
+        if hasattr(node, "lineno"):
+            result["lineno"] = node.lineno
+        if hasattr(node, "col_offset"):
+            result["col_offset"] = node.col_offset
+        return result
+    if isinstance(node, list):
+        return [ast_to_dict(x) for x in node]
+    return node
 
 
 class Harness:
@@ -167,6 +224,21 @@ class Harness:
         fn = getattr(rt_pkg.m, req["fn"])
         args = [dec_any(a) for a in req.get("args", [])]
         return {"ok": True, "result": enc_any(fn(*args))}
+
+    # @gltfi/parse-py's sole entry point into this process: parse `code`
+    # (always emit-py's own output, but never assumed to be — a genuine
+    # SyntaxError here is surfaced as an ordinary `{"ok": false}` response,
+    # same as any other command's exception, and @gltfi/parse-py turns that
+    # into a GP001 diagnostic) with type comments explicitly OFF (the
+    # default already, but spelled out per the task's own parsing-approach
+    # note — this backend never emits `# type:` comments, so there is
+    # nothing for `type_comments=True` to buy here, only startup cost) and
+    # return its ast.Module as the same JSON shape ast_to_dict/enc_any give
+    # the rest of this file's responses.
+    def cmd_ast(self, req):
+        code = req["code"]
+        tree = ast.parse(code, mode="exec", type_comments=False)
+        return {"ok": True, "ast": enc_any(ast_to_dict(tree))}
 
     def cmd_ping(self, req):
         return {"ok": True}

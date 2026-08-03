@@ -32,6 +32,14 @@ Code namespaces:
   `GI1xx` — same numbering scheme, same "mechanical inverse of the emitter"
   design, distinct namespace (no overlap with `GI1xx`, since Lua has no ambient
   type-checker pass analogous to parse-ts's `GI001`).
+- **`GP1xx`** — `@gltfi/parse-py`'s `parseModulePy` (emitted Python → IR). Always
+  **error** severity (a `ParseError` thrown mid-parse always aborts with an empty
+  module), except `GP180` which is informational. The Python-surface counterpart
+  to `GI1xx`/`GL1xx` — same numbering scheme, same "mechanical inverse of the
+  emitter" design, distinct namespace. Like Lua, Python has no ambient type-
+  checker pass analogous to parse-ts's `GI001` (`GP001` instead covers a genuine
+  `ast.parse` `SyntaxError`, the Python-grammar counterpart of `GL001`'s luaparse
+  syntax error).
 
 ## GI0xx — `@gltfi/ir` importGraph (graph → IR)
 
@@ -117,6 +125,61 @@ checker would otherwise share.
 | `GL150` | error | An identifier doesn't resolve to any known binding (variable, proc, state slot, ...). | The final fallback when an identifier reference can't be matched to anything the parser tracks — usually a genuinely free variable that shouldn't exist in emitted code. |
 | `GL180` | info | Best-effort reconstruction of a cross-handler event-output read (`rt.eventOutRead(sourceNode, socket)`). | The parse-side counterpart to `import.ts`'s `GI012`, mirroring parse-ts's own `GI180` for the Lua surface: `emit-lua` emits a dedicated call for these reads, and reconstructing it is inherently approximate, but never an error — informational only. |
 
+## GP1xx — `@gltfi/parse-py` parseModulePy (Python → IR)
+
+The Python-surface counterpart to `GI1xx`/`GL1xx` above — same design (a
+mechanical inverse of `emit-py`'s `emit.ts`, case for case), same convention
+that any `ParseError` thrown mid-parse aborts with an empty module — except
+`GP180`, pushed directly as `info`. Unlike `GI1xx`, there is no ambient
+type-checker pass analogous to parse-ts's TS-diagnostics `GI001`: like Lua,
+Python has no static types at all in the emitted source, so `GP1xx`'s own
+structural "subset validator" carries the full soundness burden. Unlike both
+other parsers, this one doesn't run its own grammar in-process — it hands the
+source to a real `python3` subprocess (`@gltfi/runtime-py`'s `harness.py`,
+via its `{"cmd":"ast", code}` command) and lowers **CPython's own**
+`ast.parse` tree; see `packages/parse-py/src/index.ts`'s header comment and
+`packages/parse-py/src/session.ts` for the synchronous-subprocess protocol
+this reuses from `run-compiled-py.ts`.
+
+| Code | Severity | Meaning | Spec rationale |
+| --- | --- | --- | --- |
+| `GP001` | error | `ast.parse` itself raised a `SyntaxError` against the source (surfaced by the harness's `cmd_ast` as an ordinary failed-command response). | The Python-grammar counterpart to `GL001`'s luaparse syntax error / parse-ts's TS-diagnostics `GI001` — a real Python parse failure, not a structural-shape mismatch (those are `GP1xx`+). Emitted modules are supposed to always be valid Python 3.10+ syntax, so any syntax error here is fatal. |
+| `GP100` | error | The module's top level doesn't match zero-or-more `import`/`from ... import ...` statements followed by exactly one `def build(rt) -> None: ...` as the LAST top-level statement (wrong statement count/order, missing/misnamed function, wrong parameter). | This exact shape is what `@gltfi/emit-py` always produces (see `emit.ts`'s header comment); `parse-py` is a mechanical *inverse* of that emitter, so anything else means the source wasn't produced by (or compatible with) this pipeline. |
+| `GP101` | error | `rt.vars([...])` isn't the `build` body's first statement, or an element isn't a well-formed `{"type": ..., "initial": ...}` dict literal. | Variable declarations must come first and be statically enumerable — the IR needs a fixed, ordered variable table before it can structure anything that reads/writes them. |
+| `GP102` | error | `rt.events([...])` isn't the second statement, or an element is malformed. | Same rigidity as `GP101`, for the event table. |
+| `GP103` | error | A handler-registration call (`rt.on_start`/`rt.on_tick`/`rt.on_receive`) doesn't reference the name of the `def` immediately preceding it, or (for `rt.on_receive`) its event-index argument isn't a numeric literal. | Handler registration is a lookahead from each top-level `def` (see `matchHandlerRegistration`) — a call that superficially matches one of the three registration names but doesn't check out can only mean the source diverged from `emit.ts`'s own convention. |
+| `GP104` | error | A top-level statement (after `rt.vars`/`rt.events`/state slots) isn't a `def` (proc or handler). | Procs and handlers are the only things left at module scope besides the fixed header — anything else has no IR shape to parse into. |
+| `GP110` | error | A statement inside a handler/proc body doesn't match any recognized statement shape. | The statement-level mechanical inverse of `emit.ts`'s statement emission — every `IRStmt` variant emits one specific Python shape, and this is the fallback when none match (including an `==`-headed `if` not consumed by a preceding switch/multiGate lookahead — see `GP130`). |
+| `GP121` | *(reserved)* | *(no analog — Python's `setPointer` shape needs no `do...end`-style wrapper; see `GP125` for its actual malformed-shape code.)* | Kept as a reserved slot purely so `GP1xx`'s numbering stays visually aligned with `GI1xx`/`GL1xx`'s own `1xx`-per-shape layout; never pushed by this parser. |
+| `GP122` | error | An unrecognized `def` where an async done-continuation was expected. | Async ops (`set_delay`, `var_interp`, `ptr_interp`, `anim_start`, ...) emit their "on complete" continuation as either an inline `def` or a proc reference — anything else can't be lowered back. |
+| `GP123` | error | `rt.set_var`'s first argument isn't a numeric literal, or references an out-of-range variable index. | Variable indices must be statically known at parse time to resolve the target's declared type. |
+| `GP124` | error | `rt.send`'s event-index argument isn't a numeric literal, or its payload isn't a 4-element list literal. | `event/send`'s payload is a fixed-shape tuple (`bool`, `int`, `float`, `expectedDuration`) — anything else doesn't round-trip to a valid graph node. |
+| `GP125` | error | A pointer op's (`pointer/get`/`set`/`interpolate`) `pointer`/`type` arguments aren't string literals, or its params dict is missing a declared template parameter. | Pointer templates are resolved statically at export time (`@gltfi/ir/pointer.ts`), so every part of the call must be literal, not computed. Unlike `GL125`, a malformed *following* `if ok: ...` never raises this code — see the note below. |
+| `GP126` | error | `rt.var_interp`/`rt.ptr_interp`'s numeric/string-literal arguments are missing, or its done-continuation isn't a proc reference/inline `def`/`None`. | Same static-literal requirement as `GP125`/`GP123`, applied to the interpolation ops' arguments. |
+| `GP127` | error | An expression expected to be a state-slot attribute (`S.<name>`) isn't one, or names an unknown slot. | `doN`/`multiGate`/`waitAll`/`throttle`/`for`/`delay` state reads go through a fixed table of slot names the emitter itself generated — an unrecognized one means the source was hand-edited or corrupted. |
+| `GP128` | error | A `flow/multiGate` if/elif-chain case (`R["index"] == N`) isn't a numeric literal. | Mirrors `flow/switch`'s `GP130` for multiGate's own emitted dispatch shape (an if/elif chain, like Lua's — Python has no switch statement either). |
+| `GP129` | error | A for-loop reconstruction failed: no `while` loop follows a for-slot assignment, the loop condition isn't `S.<slot> < end`, or the body's last statement isn't the index increment. | `flow/for` always emits this exact three-part shape (`S.slot = start; while S.slot < end: body; S.slot = S.slot + 1`); any deviation means it wasn't produced by `emit.ts`. |
+| `GP130` | error | A `flow/switch` if/elif-chain case isn't a numeric-literal equality test (`selVar == N`). | Switch cases are graph flow-socket names, which must be statically known integers, not computed. Also covers a malformed chain reaching `tryParseSwitchAfterLet`/the generic `if`-dispatch's defensive check. |
+| `GP140` | error | An expression doesn't match any recognized value-expression shape (including a list literal with the wrong element count/non-literal elements). | The expression-level mechanical inverse of `emit.ts`'s expression emission; the catch-all when nothing else in `ModuleParser`'s expression dispatch matches. |
+| `GP141` | error | `rt.get_var`'s argument isn't a numeric literal, or a pointer's `pointer`/`type` string-literal arguments are missing (in a value-expression context). | Same static-literal requirements as `GP123`/`GP125`, enforced again at the expression level (`rt.get_var` used as a value rather than in a statement). |
+| `GP142` | error | `m.switchCase(...)`'s `cases`/`values` arguments aren't plain list literals, or a case value isn't numeric. | `math/switch`'s case table must be statically enumerable, same requirement as `flow/switch`'s `GP130`. |
+| `GP143` | error | An `m.<fn>(...)` call references an unknown function, an op missing from the registry, the wrong argument count, an unresolvable overload for the given argument types, an unrecognized multi-output index, or an output socket the op doesn't have. | The single broadest bucket — every way a math-namespace call can fail to map back onto a concrete `OpSpec` overload, via the SAME `@gltfi/kernel` `fn-naming.ts` reverse table `GI143`/`GL143` use, after first reversing `emit-py`'s own keyword-collision renaming (`and_`/`or_`/`not_`/`abs_`/`min_`/`max_`/`pow_`/`round_` → their base names — see `PY_UNRENAME` in `parse-py/src/index.ts`, the mirror image of `emit-py`'s own `PY_RENAME`). |
+| `GP150` | error | An identifier doesn't resolve to any known binding (a temp or an onTick time parameter — state-slot/proc references go through `S.<name>`/a bare call instead, never a plain `Name` lookup). | The final fallback when an identifier reference can't be matched to anything the parser tracks — usually a genuinely free variable that shouldn't exist in emitted code. |
+| `GP180` | info | Best-effort reconstruction of a cross-handler event-output read (`rt.event_out_read(sourceNode, socket)`). | The parse-side counterpart to `import.ts`'s `GI012`, mirroring `GI180`/`GL180` for the Python surface: `emit-py` emits a dedicated call for these reads, and reconstructing it is inherently approximate, but never an error — informational only. |
+
+`GP125` note: Python's `emitSetPointer` (unlike Lua's, which wraps the write in
+a `do...end` block making "does this `ptr_set` have a following `if`"
+unambiguous) emits **no** `if ok: ...` at all when the original IR's
+`setPointer` had neither an `out` nor an `err` branch — so an *unrelated*
+statement is free to immediately follow a `ptr_set` call (observed in the
+corpus: `pointer/get_set_morphtargets`). `parse-py`'s `parseSetPointer`
+therefore only consumes a following `If` when its test is *exactly*
+`Name(<the ptr_set result variable>)`; anything else is treated as "no
+if/else for this pointer/set" (not an error), letting that next statement be
+parsed on its own. This is the one place `parse-py` genuinely had to differ
+from `parse-lua`'s structurally-simpler read of the same shape, driven purely
+by the two backends' different emitted wrapping, not a soundness gap.
+
 ## GI2xx — `@gltfi/ir` exportGraph (IR → graph)
 
 All **error** severity except `GI212` (informational). An export error means the
@@ -194,11 +257,11 @@ execution equivalence via the conformance judge protocol).
 ## Regenerating this table
 
 ```sh
-grep -rn -oE '"(GI|GIC|GV|GL)[0-9]+"' packages/*/src/*.ts | sort -u
+grep -rn -oE '"(GI|GIC|GV|GL|GP)[0-9]+"' packages/*/src/*.ts | sort -u
 ```
 
 Cross-check severities against each producing module's own emission helper
 (`warn`/`error` methods in `import.ts`/`export.ts`/`check.ts`, `err` in
-`verify/src/index.ts`, `fail`/direct `diagnostics.push` in `parse-ts/src/index.ts`
-and `parse-lua/src/index.ts`) rather than assuming from the code's numeric range
-alone.
+`verify/src/index.ts`, `fail`/direct `diagnostics.push` in `parse-ts/src/index.ts`,
+`parse-lua/src/index.ts`, and `parse-py/src/index.ts`) rather than assuming from
+the code's numeric range alone.

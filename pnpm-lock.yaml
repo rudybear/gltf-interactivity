@@ -99,6 +99,9 @@ importers:
       '@gltfi/parse-lua':
         specifier: workspace:*
         version: link:../parse-lua
+      '@gltfi/parse-py':
+        specifier: workspace:*
+        version: link:../parse-py
       '@gltfi/parse-ts':
         specifier: workspace:*
         version: link:../parse-ts
@@ -197,6 +200,37 @@ importers:
       '@types/luaparse':
         specifier: ^0.2.13
         version: 0.2.13
+
+  packages/parse-py:
+    dependencies:
+      '@gltfi/ir':
+        specifier: workspace:*
+        version: link:../ir
+      '@gltfi/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      '@gltfi/runtime-py':
+        specifier: workspace:*
+        version: link:../runtime-py
+    devDependencies:
+      '@gltfi/emit-lua':
+        specifier: workspace:*
+        version: link:../emit-lua
+      '@gltfi/emit-py':
+        specifier: workspace:*
+        version: link:../emit-py
+      '@gltfi/emit-ts':
+        specifier: workspace:*
+        version: link:../emit-ts
+      '@gltfi/parse-lua':
+        specifier: workspace:*
+        version: link:../parse-lua
+      '@gltfi/parse-ts':
+        specifier: workspace:*
+        version: link:../parse-ts
+      '@gltfi/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
   packages/parse-ts:
     dependencies:

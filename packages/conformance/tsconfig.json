@@ -14,6 +14,7 @@
     { "path": "../emit-py" },
     { "path": "../parse-ts" },
     { "path": "../parse-lua" },
+    { "path": "../parse-py" },
     { "path": "../verify" },
     { "path": "../runtime-lib" },
     { "path": "../runtime-lua" },

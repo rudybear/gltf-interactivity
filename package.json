@@ -17,6 +17,7 @@
     "conf:py": "node packages/conformance/dist/run-compiled-py.js",
     "conf:roundtrip": "node packages/conformance/dist/run-roundtrip.js",
     "conf:roundtrip-lua": "node packages/conformance/dist/run-roundtrip-lua.js",
+    "conf:roundtrip-py": "node packages/conformance/dist/run-roundtrip-py.js",
     "fuzz": "node packages/conformance/dist/fuzz.js",
     "test": "vitest run --passWithNoTests",
     "dev": "pnpm --filter @gltfi/viewer dev",

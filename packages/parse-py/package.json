@@ -1,0 +1,21 @@
+{
+  "name": "@gltfi/parse-py",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "dependencies": {
+    "@gltfi/ir": "workspace:*",
+    "@gltfi/kernel": "workspace:*",
+    "@gltfi/runtime-py": "workspace:*"
+  },
+  "devDependencies": {
+    "@gltfi/emit-lua": "workspace:*",
+    "@gltfi/emit-py": "workspace:*",
+    "@gltfi/emit-ts": "workspace:*",
+    "@gltfi/parse-lua": "workspace:*",
+    "@gltfi/parse-ts": "workspace:*",
+    "@gltfi/runtime": "workspace:*"
+  }
+}

@@ -31,4 +31,5 @@ jobs:
       - run: pnpm conf:py
       - run: pnpm conf:roundtrip
       - run: pnpm conf:roundtrip-lua
+      - run: pnpm conf:roundtrip-py
       - run: pnpm fuzz

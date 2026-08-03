@@ -13,8 +13,10 @@ All core conformance gates pass against the official Khronos test assets (145 te
 | V3 Roundtrip (TS) | graph → TypeScript → parse → graph′ → interpreter | **145/145** |
 | V2 Compiled (Lua) | graph → Lua → execute (wasmoon) | **145/145** |
 | V3 Roundtrip (Lua) | graph → Lua → parse → graph′ → interpreter | **145/145** |
+| V2 Compiled (Python) | graph → typed Python → execute (CPython) | **145/145** |
+| V3 Roundtrip (Python) | graph → Python → parse → graph′ → interpreter | **145/145** |
 
-The WebGPU viewer (`pnpm dev`) hosts both engines — `?engine=interpreter` (default) or `?engine=compiled` — with click-select and hover bubbling. `pnpm smoke` runs a headless render check (needs a real GPU; software WebGPU in sandboxes can't sustain the swap-chain). The Lua backend (`@gltfi/emit-lua`, `@gltfi/parse-lua`, `@gltfi/runtime-lua`) shares the same IR; a typed-Python backend is planned.
+The WebGPU viewer (`pnpm dev`) hosts both engines — `?engine=interpreter` (default) or `?engine=compiled` — with click-select and hover bubbling. `pnpm smoke` runs a headless render check (needs a real GPU; software WebGPU in sandboxes can't sustain the swap-chain). All three language backends — TypeScript (`emit-ts`/`parse-ts`/`runtime-lib`), Lua (`emit-lua`/`parse-lua`/`runtime-lua`, executed via wasmoon), and typed Python (`emit-py`/`parse-py`/`runtime-py`, executed via CPython) — share one IR, one op registry, and one op-naming convention; cross-parser tests assert all three frontends produce identical IR.
 
 The V3 roundtrip gate above is execution equivalence (interpreter judges the re-imported/re-exported graph against the same oracle); `@gltfi/verify`'s `equivalentGraphs` additionally reports *structural* equivalence between the original and round-tripped graph as an informational signal (not a gate — see that package's header) — currently **131/145 EQUIV** after canonicalizing the three cosmetic divergence classes documented there (type-table ordering, flow/sequence nesting shape, int/float literal ambiguity); the remaining 14 are explained (cross-handler value materialization duplicating handler roots, or generic-`T` literal round-trip ambiguity) rather than left as unexplained noise.
 
