@@ -14,8 +14,10 @@
 // needs an actual `dotnet build` step before its harness executable exists
 // at all — see run-compiled-cs.ts's own header for the caching strategy
 // this enables (build once per source-tree-hash, not once per test).
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 export const CS_SRC_DIR: string = path.resolve(import.meta.dirname, "../src/cs");
@@ -66,4 +68,139 @@ export function needsBuild(): boolean {
     return true;
   }
   return readBuildMarker() !== hashCsSources();
+}
+
+// ---------------------------------------------------------------------------
+// Shared `dotnet gltfi-harness-cs.dll` process bridge. Originally lived only
+// in packages/conformance/src/run-compiled-cs.ts (findDotnetBin/
+// ensureHarnessBuilt/class CsSession); factored out here so @gltfi/parse-cs's
+// own session.ts (which needs the exact same "find `dotnet`, build the
+// harness if the source tree changed, then talk to ONE persistent harness
+// process over a synchronous mkfifo-backed request/response bridge" dance —
+// see run-compiled-cs.ts's own header comment for the full rationale on why
+// two named pipes opened O_RDWR are needed for a genuinely blocking round
+// trip out of Node's fundamentally-async child_process pipes, the same
+// reasoning packages/parse-py/src/session.ts's AstSession documents for its
+// own Python-harness counterpart) can reuse it verbatim instead of
+// maintaining a second copy. run-compiled-cs.ts itself now imports
+// findDotnetBin/ensureHarnessBuilt/CsHarnessSession from here too, rather
+// than keeping its own now-redundant local copies.
+// ---------------------------------------------------------------------------
+
+export function findDotnetBin(): string {
+  const fromEnv = process.env.GLTFI_DOTNET;
+  if (fromEnv) {
+    return fromEnv;
+  }
+  // Common install locations not always on a non-interactive shell's PATH
+  // (e.g. the user-level SDK install under ~/.dotnet).
+  const candidates = ["dotnet", path.join(os.homedir(), ".dotnet", "dotnet"), "/usr/local/share/dotnet/dotnet", "/usr/lib/dotnet/dotnet"];
+  for (const candidate of candidates) {
+    try {
+      execFileSync(candidate, ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
+      return candidate;
+    } catch {
+      // try next candidate
+    }
+  }
+  throw new Error("could not find a `dotnet` executable (set GLTFI_DOTNET to its path)");
+}
+
+// Builds GltfiRuntime.csproj (which also produces the Harness.cs/Program.cs
+// executable) in Release configuration, once, iff the source tree's
+// fingerprint changed since the last successful build.
+export function ensureHarnessBuilt(dotnetBin: string): void {
+  if (!needsBuild()) {
+    return;
+  }
+  console.error("gltfi-harness-cs: source changed (or no prior build) -- running `dotnet build -c Release`...");
+  execFileSync(dotnetBin, ["build", CSPROJ_PATH, "-c", "Release"], { stdio: "inherit" });
+  writeBuildMarker(hashCsSources());
+}
+
+// Generic, synchronous FIFO-backed session with ONE persistent `dotnet
+// gltfi-harness-cs.dll` process, speaking the harness's line-delimited-JSON
+// protocol (see Harness.cs's own header for the full command list) —
+// command-agnostic (unlike run-compiled-cs.ts's own CsEngineLike wrapper,
+// this class has no opinion on which commands get sent; it's just the
+// transport). Any caller (a conformance runner driving "load"/"reset"/
+// "advance"/..., @gltfi/parse-cs's session.ts driving "ast") constructs one
+// and calls `request()`.
+export class CsHarnessSession {
+  private readonly reqWriteFd: number;
+  private readonly respReadFd: number;
+  private readonly child: ChildProcess;
+  private readonly tmpDir: string;
+  private buf: Buffer = Buffer.alloc(0);
+
+  constructor(dotnetBin: string) {
+    this.tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "gltfi-cs-fifo-"));
+    const reqPath = path.join(this.tmpDir, "req.fifo");
+    const respPath = path.join(this.tmpDir, "resp.fifo");
+    execFileSync("mkfifo", [reqPath]);
+    execFileSync("mkfifo", [respPath]);
+
+    // Opened O_RDWR ("r+") specifically so this open call can never block —
+    // see this file's header note. Handed to the child as its stdin/stdout,
+    // then closed here once the child owns its own copies.
+    const spawnReqFd = fs.openSync(reqPath, "r+");
+    const spawnRespFd = fs.openSync(respPath, "r+");
+    this.child = spawn(dotnetBin, [HARNESS_DLL_PATH], {
+      stdio: [spawnReqFd, spawnRespFd, "inherit"]
+    });
+    fs.closeSync(spawnReqFd);
+    fs.closeSync(spawnRespFd);
+
+    // Fresh fds for OUR OWN use — distinct opens from the ones just handed
+    // to the child and closed above, all pointing at the same two FIFO
+    // paths on disk.
+    this.reqWriteFd = fs.openSync(reqPath, "r+");
+    this.respReadFd = fs.openSync(respPath, "r+");
+  }
+
+  private readLine(): string {
+    const chunk = Buffer.alloc(1 << 16);
+    for (;;) {
+      const idx = this.buf.indexOf(10);
+      if (idx !== -1) {
+        const line = this.buf.subarray(0, idx).toString("utf8");
+        this.buf = this.buf.subarray(idx + 1);
+        return line;
+      }
+      const n = fs.readSync(this.respReadFd, chunk, 0, chunk.length, null);
+      if (n === 0) {
+        throw new Error("dotnet harness process closed its output unexpectedly (it may have crashed — check stderr above)");
+      }
+      this.buf = Buffer.concat([this.buf, chunk.subarray(0, n)]);
+    }
+  }
+
+  request(req: Record<string, unknown>): Record<string, unknown> {
+    fs.writeSync(this.reqWriteFd, Buffer.from(`${JSON.stringify(req)}\n`, "utf8"));
+    const resp = JSON.parse(this.readLine()) as Record<string, unknown>;
+    if (!resp.ok) {
+      const reason = typeof resp.traceback === "string" ? `${String(resp.error)}\n${resp.traceback}` : String(resp.error);
+      throw new Error(reason);
+    }
+    return resp;
+  }
+
+  dispose(): void {
+    try {
+      fs.closeSync(this.reqWriteFd);
+    } catch {
+      /* already closed */
+    }
+    try {
+      fs.closeSync(this.respReadFd);
+    } catch {
+      /* already closed */
+    }
+    this.child.kill();
+    try {
+      fs.rmSync(this.tmpDir, { recursive: true, force: true });
+    } catch {
+      /* best effort */
+    }
+  }
 }

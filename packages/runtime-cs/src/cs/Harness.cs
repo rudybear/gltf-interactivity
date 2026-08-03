@@ -17,7 +17,36 @@
 //   {"cmd":"sent_events"}
 //   {"cmd":"event_defaults"}
 //   {"cmd":"eval_m", "fn":<str>, "args":[...]}   -- vitest math-parity spot checks only
+//   {"cmd":"ast", "source":<str>}   -- @gltfi/parse-cs's own AST fetch (see below)
 //   {"cmd":"ping"}
+//
+// "ast": mirrors harness.py's `{"cmd":"ast", code}` (see that file's own
+// header comment) one level up the abstraction stack — where CPython's
+// `ast.parse` already returns a plain, JSON-friendly tree of dicts,
+// Microsoft.CodeAnalysis.CSharp's `CSharpSyntaxTree.ParseText` returns a
+// typed, reflection-only object graph (SyntaxNode/SyntaxToken/SyntaxList<T>)
+// with no built-in JSON projection, so `AstNodeToJson` below builds one:
+// GENERIC reflection over each concrete SyntaxNode subtype's OWN declared
+// properties (filtered to exclude the ones inherited from the SyntaxNode/
+// CSharpSyntaxNode base classes — Parent/SyntaxTree/RawKind/... — which
+// carry no @gltfi/parse-cs-relevant data), exactly mirroring how Python's
+// own `ast.dump()`/`ast_to_dict` walks each node's `_fields` tuple rather
+// than hand-listing every node type's shape. Every JSON object carries a
+// `_type` (`SyntaxKind.ToString()`, e.g. "InvocationExpression",
+// "IfStatement", "NumericLiteralExpression" — the C# counterpart of
+// Python's `ast.AST._type`) plus `lineno`/`col_offset` (1-based/0-based,
+// matching harness.py's own convention exactly, so @gltfi/parse-cs's own
+// `fail()` helper can report "at line N, column M" identically to
+// @gltfi/parse-py's). `LiteralExpressionSyntax` is the ONE node type this
+// hand-codes explicitly rather than reflecting generically: its boxed
+// `Token.Value` is where a numeric literal's actual CLR type (`int` vs
+// `double`) lives, and preserving that distinction across the JSON wire —
+// via an explicit `_ptype` tag ("int"/"float"/"str"/"bool"/"null") — is
+// EXACTLY parse-py's own `_ptype` convention (see harness.py's header),
+// needed for the identical reason: plain JSON has no int/float distinction
+// of its own, and @gltfi/emit-cs's `csFloatLiteral`/`csIntLiteral` always
+// produce an unambiguous CLR-typed literal that would otherwise round-trip
+// ambiguously.
 //
 // Every response is a one-line JSON object `{"ok": true, ...}` or, on ANY
 // exception (including a compile error in the received module source, or a
@@ -45,6 +74,7 @@
 // assembly the running .NET host already has loaded, without a dedicated
 // reference-assembly NuGet package).
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -54,6 +84,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace GltfiRuntime;
 
@@ -374,6 +405,194 @@ internal sealed class Harness
 
     private static JsonObject CmdPing(JsonObject req) => new() { ["ok"] = true };
 
+    // -----------------------------------------------------------------
+    // "ast" -- see this file's header comment for the full rationale.
+    // -----------------------------------------------------------------
+
+    private static JsonObject CmdAst(JsonObject req)
+    {
+        var source = (string)req["source"]!;
+        var tree = CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Latest));
+        var errors = tree.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+        if (errors.Count > 0)
+        {
+            throw new InvalidOperationException($"C# syntax error(s):\n{string.Join("\n", errors.Select(d => d.ToString()))}");
+        }
+        return new JsonObject { ["ok"] = true, ["ast"] = AstNodeToJson(tree.GetRoot()) };
+    }
+
+    // Properties declared directly on these two base classes carry no
+    // @gltfi/parse-cs-relevant data (Parent/SyntaxTree/RawKind/Span/...,
+    // all either redundant with `_start`/`_length`/`lineno`/`col_offset` or
+    // pure plumbing) -- see this file's header note on why filtering by
+    // DeclaringType is sufficient here (every genuinely meaningful field --
+    // Body/Condition/Left/Right/Identifier/Modifiers/... -- is declared on
+    // a CONCRETE node subtype or an intermediate abstract type like
+    // MemberDeclarationSyntax/BaseTypeDeclarationSyntax, never on these two).
+    private static readonly HashSet<Type> BaseNodeTypes = new() { typeof(SyntaxNode), typeof(CSharpSyntaxNode) };
+
+    private static JsonObject AstNodeToJson(SyntaxNode node)
+    {
+        if (node is LiteralExpressionSyntax literal)
+        {
+            return EncodeLiteral(literal);
+        }
+
+        var obj = new JsonObject { ["_type"] = node.Kind().ToString() };
+        SetSpan(obj, node);
+
+        foreach (var prop in node.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.GetIndexParameters().Length > 0 || BaseNodeTypes.Contains(prop.DeclaringType))
+            {
+                continue;
+            }
+            var value = prop.GetValue(node);
+            var encoded = EncodePropertyValue(value);
+            if (encoded != null)
+            {
+                obj[prop.Name] = encoded;
+            }
+        }
+        return obj;
+    }
+
+    private static void SetSpan(JsonObject obj, SyntaxNode node)
+    {
+        obj["_start"] = node.SpanStart;
+        obj["_length"] = node.Span.Length;
+        var pos = node.GetLocation().GetLineSpan().StartLinePosition;
+        obj["lineno"] = pos.Line + 1;
+        obj["col_offset"] = pos.Character;
+    }
+
+    // `Token.Value` is the ONE place a numeric literal's real CLR type
+    // (`int` vs `double`, from @gltfi/emit-cs's own `csIntLiteral`/
+    // `csFloatLiteral`) survives -- see this file's header `_ptype` note.
+    private static JsonObject EncodeLiteral(LiteralExpressionSyntax lit)
+    {
+        var obj = new JsonObject { ["_type"] = "Literal" };
+        SetSpan(obj, lit);
+        switch (lit.Kind())
+        {
+            case SyntaxKind.NumericLiteralExpression:
+                switch (lit.Token.Value)
+                {
+                    case double dv:
+                        obj["_ptype"] = "float";
+                        obj["value"] = EncodeNum(dv);
+                        break;
+                    case float fv:
+                        obj["_ptype"] = "float";
+                        obj["value"] = EncodeNum(fv);
+                        break;
+                    case int iv:
+                        obj["_ptype"] = "int";
+                        obj["value"] = iv;
+                        break;
+                    case uint uv:
+                        obj["_ptype"] = "int";
+                        obj["value"] = (double)uv;
+                        break;
+                    case long lv:
+                        obj["_ptype"] = "int";
+                        obj["value"] = (double)lv;
+                        break;
+                    default:
+                        obj["_ptype"] = "int";
+                        obj["value"] = Convert.ToDouble(lit.Token.Value);
+                        break;
+                }
+                break;
+            case SyntaxKind.StringLiteralExpression:
+                obj["_ptype"] = "str";
+                obj["value"] = (string)lit.Token.Value;
+                break;
+            case SyntaxKind.TrueLiteralExpression:
+                obj["_ptype"] = "bool";
+                obj["value"] = true;
+                break;
+            case SyntaxKind.FalseLiteralExpression:
+                obj["_ptype"] = "bool";
+                obj["value"] = false;
+                break;
+            case SyntaxKind.NullLiteralExpression:
+                obj["_ptype"] = "null";
+                break;
+            default:
+                obj["_ptype"] = "unknown";
+                break;
+        }
+        return obj;
+    }
+
+    // SyntaxNode -> recurse; SyntaxToken -> plain ValueText string (covers
+    // identifiers -- `.ValueText` already strips a verbatim `@` prefix, so
+    // `@if`'s `Identifier` property reads back as the plain string "if",
+    // exactly the un-escaped name @gltfi/emit-cs's `csIdent` started from --
+    // and operator/keyword tokens, whose exact spelling is rarely needed
+    // since the containing node's own `Kind()` already disambiguates, same
+    // as Python's dedicated `ops.Add`/`ops.Eq`/... AST nodes); SyntaxTokenList
+    // -> array of ValueText strings (`Modifiers`, e.g. "public"/"static"/
+    // "const"/"readonly"); SyntaxList<T>/SeparatedSyntaxList<T> -> array,
+    // each element recursively encoded; primitives -> boxed straight into
+    // JsonValue. Returns null for anything that should be OMITTED (a
+    // missing/default token or null child node) so the caller skips the key
+    // entirely, mirroring Python ast.dump()'s own "field absent" convention.
+    private static JsonNode EncodePropertyValue(object value)
+    {
+        switch (value)
+        {
+            case null:
+                return null;
+            case SyntaxNode childNode:
+                return AstNodeToJson(childNode);
+            case SyntaxToken token:
+                return token.RawKind == 0 ? null : JsonValue.Create(token.ValueText);
+            case SyntaxTokenList tokenList:
+            {
+                var arr = new JsonArray();
+                foreach (var t in tokenList)
+                {
+                    arr.Add(JsonValue.Create(t.ValueText));
+                }
+                return arr;
+            }
+            case bool b:
+                return JsonValue.Create(b);
+            case int i:
+                return JsonValue.Create(i);
+            case string s:
+                return JsonValue.Create(s);
+            case IEnumerable enumerable when value is not string:
+            {
+                var arr = new JsonArray();
+                foreach (var el in enumerable)
+                {
+                    if (el is SyntaxNode elNode)
+                    {
+                        arr.Add(AstNodeToJson(elNode));
+                    }
+                    else if (el is SyntaxToken elToken)
+                    {
+                        if (elToken.RawKind != 0)
+                        {
+                            arr.Add(JsonValue.Create(elToken.ValueText));
+                        }
+                    }
+                }
+                return arr;
+            }
+            default:
+                // SyntaxKind enum values (e.g. a would-be `Kind` property, or
+                // any other enum-typed property some node subtype declares)
+                // and anything else not otherwise handled: stringify -- never
+                // reached by any shape @gltfi/emit-cs actually produces, but
+                // a defensive fallback beats silently dropping the field.
+                return JsonValue.Create(value.ToString());
+        }
+    }
+
     public JsonObject Handle(JsonObject req)
     {
         var cmd = (string)req["cmd"]!;
@@ -389,6 +608,7 @@ internal sealed class Harness
             "sent_events" => CmdSentEvents(req),
             "event_defaults" => CmdEventDefaults(req),
             "eval_m" => CmdEvalM(req),
+            "ast" => CmdAst(req),
             "ping" => CmdPing(req),
             _ => new JsonObject { ["ok"] = false, ["error"] = $"unknown command '{cmd}'" }
         };

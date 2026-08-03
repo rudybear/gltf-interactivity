@@ -40,6 +40,13 @@ Code namespaces:
   checker pass analogous to parse-ts's `GI001` (`GP001` instead covers a genuine
   `ast.parse` `SyntaxError`, the Python-grammar counterpart of `GL001`'s luaparse
   syntax error).
+- **`GC1xx`** — `@gltfi/parse-cs`'s `parseModuleCs` (emitted C# → IR). Always
+  **error** severity (a `ParseError` thrown mid-parse always aborts with an empty
+  module), except `GC180` which is informational. The C#-surface counterpart to
+  `GI1xx`/`GL1xx`/`GP1xx` — same numbering scheme, same "mechanical inverse of the
+  emitter" design, distinct namespace. `GC001` covers a Roslyn `CSharpSyntaxTree.
+  ParseText` syntax error (a SYNTAX-only check, no semantic analysis — see the
+  table below for what that does and doesn't catch).
 
 ## GI0xx — `@gltfi/ir` importGraph (graph → IR)
 
@@ -180,6 +187,52 @@ parsed on its own. This is the one place `parse-py` genuinely had to differ
 from `parse-lua`'s structurally-simpler read of the same shape, driven purely
 by the two backends' different emitted wrapping, not a soundness gap.
 
+## GC1xx — `@gltfi/parse-cs` parseModuleCs (C# → IR)
+
+The C#-surface counterpart to `GI1xx`/`GL1xx`/`GP1xx` above — same design (a
+mechanical inverse of `emit-cs`'s `emit.ts`, case for case), same convention
+that any `ParseError` thrown mid-parse aborts with an empty module — except
+`GC180`, pushed directly as `info`. Like Lua and Python, there is no ambient
+type-checker pass analogous to parse-ts's TS-diagnostics `GI001`: C# itself
+*does* have static types, but this parser never runs semantic analysis
+(binding/type-checking) against the source, only a syntax parse — see below.
+Unlike all three siblings, this one doesn't run its own grammar in-process at
+all, nor does it shell out to a stock compiler binary — it hands the source
+to `@gltfi/runtime-cs`'s own `Harness.cs` (already a Roslyn dependency for
+compiling the *compiled*-backend's modules) via a NEW `{"cmd":"ast", source}`
+command, and lowers **Roslyn's own** `CSharpSyntaxTree.ParseText` tree,
+serialized to JSON by generic reflection over each concrete `SyntaxNode`
+subtype's own declared properties (mirrors Python's `ast.dump()`-style
+`_fields` reflection — see `Harness.cs`'s `AstNodeToJson` doc comment and
+`packages/parse-cs/src/session.ts`/`ast-helpers.ts` for the full protocol).
+
+| Code | Severity | Meaning | Spec rationale |
+| --- | --- | --- | --- |
+| `GC001` | error | Roslyn's `CSharpSyntaxTree.ParseText` raised one or more syntax-error diagnostics against the source (surfaced by the harness's `CmdAst` as an ordinary failed-command response). | The C#-grammar counterpart to `GL001`'s luaparse syntax error / `GP001`'s CPython `SyntaxError` — a real C# parse failure, not a structural-shape mismatch (those are `GC1xx`+). Emitted modules are supposed to always be valid C# 12 syntax, so any syntax error here is fatal. Note this is a SYNTAX check only (`ParseText`, no `CSharpCompilation`) — a semantically invalid-but-syntactically-valid source (e.g. an unresolvable identifier) is NOT caught here; it instead falls through to a `GC1xx`+ structural-shape mismatch or a `GC150` unresolved-identifier error, same as Lua's/Python's own untyped parsers. |
+| `GC100` | error | The module's top level doesn't match `namespace GltfiCompiled; public static class Module { public sealed class Vars {...} public static class Events {...} public static void Build(Engine rt) {...} }` (missing/misnamed namespace or class, or `Build`'s parameter isn't `Engine rt`). | This exact shape is what `@gltfi/emit-cs` always produces (see `emit.ts`'s header comment); `parse-cs` is a mechanical *inverse* of that emitter, so anything else means the source wasn't produced by (or compatible with) this pipeline. |
+| `GC101` | error | The `Module` class has no nested `public sealed class Vars { ... }`. | Variable names come from `Vars`'s own property declarations (see `GC103`'s note on why types+initial values come from the paired `rt.DeclareVar` calls instead) — the IR needs both before it can structure anything that reads/writes them. |
+| `GC102` | error | The `Module` class has no nested `public static class Events { ... }`. | Same rigidity as `GC101`, for event names (`public const int <Name> = <i>;` declarations). |
+| `GC103` | error | An `rt.DeclareVar(...)`/`rt.DeclareEvent(...)` call in `Build` doesn't match the corresponding `Vars` property / `Events` const declaration at that position (wrong callee, non-literal type/value argument), or there are fewer such calls than declarations. | Unlike Python/Lua (whose `rt.vars({...})`/`rt.events({...})` single dict/table literal carries name+type+initial all at once), C#'s split representation (name from `Vars`/`Events`' own declarations, type+initial from `Build`'s `DeclareVar`/`DeclareEvent` calls) needs BOTH halves to agree positionally — declaration order IS variable/event index order on both sides (see `emit.ts`'s own header comment), so this is the "the two halves didn't line up" catch-all. |
+| `GC104` | error | A top-level statement in `Build` (after the var/event declarations, `var V = new Vars(rt);`, and any state-slot locals) isn't a local function declaration (a proc or handler body). | Procs and handlers are the only things left at `Build` scope besides the fixed header — anything else has no IR shape to parse into. |
+| `GC105` | error | `Build`'s statements don't contain `var V = new Vars(rt);` immediately after the `DeclareVar`/`DeclareEvent` run. | `V` is the ONLY name every `V.<name>` read/write in the rest of the body resolves through — a missing or differently-shaped constructor call means the source diverged from `emit.ts`'s own convention. |
+| `GC110` | error | A statement inside a handler/proc body (or an assignment statement's own shape) doesn't match any recognized statement shape. | The statement-level mechanical inverse of `emit.ts`'s statement emission — every `IRStmt` variant emits one specific C# shape, and this is the fallback when none match (including an `==`-headed `if` not consumed by a preceding multiGate/setPointer lookahead). |
+| `GC122` | error | An unrecognized local function declaration (`void ContN() {...}`) where an async done-continuation was expected. | Async ops (`SetDelay`, `VarInterp`, `PtrInterp`, `AnimStart`, ...) emit their "on complete" continuation as either an inline local function or a proc reference — anything else can't be lowered back. |
+| `GC123` | error | `V.<name> = ...` assigns to a name that isn't one of `Vars`'s own declared properties. | Every `setVar` target must resolve to a real declared variable — an unrecognized property name means the source was hand-edited or corrupted. |
+| `GC124` | error | `rt.Send`'s event-index argument isn't a numeric literal or `Events.<name>`, or its payload argument isn't `new EventPayload(bool, int, float, float)`. | `event/send`'s payload is a fixed-shape 4-tuple — anything else doesn't round-trip to a valid graph node. |
+| `GC125` | error | A pointer op's (`rt.PtrGet`/`PtrSet`/`PtrInterp`) `pointer`/`type` arguments aren't string literals, or its args argument isn't a `new Dictionary<string, object> { [name] = value, ... }` initializer missing a declared template parameter. | Pointer templates are resolved statically at export time (`@gltfi/ir/pointer.ts`), so every part of the call must be literal, not computed. C#'s fixed positional-argument order (`pointer, type, value[, args]`) needs no shape-sniffing dance the way Python's older positional convention did (see `GP125`'s own note) — a malformed *following* `if (...)` here still never raises this code, mirroring `GP125`. |
+| `GC126` | error | `rt.VarInterp`/`rt.PtrInterp`'s numeric/string-literal arguments are missing, or its done-continuation isn't a proc reference/inline local function/`null`. | Same static-literal requirement as `GC125`/`GC123`, applied to the interpolation ops' arguments. |
+| `GC127` | error | An expression expected to be a state-slot identifier isn't one, or names an unknown slot. | `doN`/`multiGate`/`waitAll`/`throttle`/`for`/`delay` state reads go through the fixed set of `Build()`-level local names the emitter itself generated — an unrecognized one means the source was hand-edited or corrupted. |
+| `GC128` | error | A `flow/multiGate` `switch` case label (in the native-`switch` 2+-output shape) isn't a numeric literal. | Mirrors `flow/switch`'s own `GC130` for multiGate's own emitted dispatch shape. |
+| `GC129` | error | A for-loop reconstruction failed: no `while` loop follows a for-slot assignment, the loop condition isn't `<slot> < (end)`, or the body's last statement isn't the index increment. | `flow/for` always emits this exact three-part shape (`slot = start; while (slot < (end)) { body; slot = slot + 1; }`); any deviation means it wasn't produced by `emit.ts`. |
+| `GC130` | error | A `flow/switch` native-`switch` case label isn't a numeric literal. | Switch cases are graph flow-socket names, which must be statically known integers, not computed. |
+| `GC140` | error | An expression doesn't match any recognized value-expression shape (including an array literal with the wrong element count/non-literal elements, or an unrecognized state-slot field read). | The expression-level mechanical inverse of `emit.ts`'s expression emission; the catch-all when nothing else in `ModuleParser`'s expression dispatch matches. |
+| `GC141` | error | A pointer's `pointer`/`type` string-literal arguments are missing (in a value-expression context, i.e. `rt.PtrGet(...)`). | Same static-literal requirements as `GC123`/`GC125`, enforced again at the expression level. |
+| `GC142` | error | `M.SwitchCase(...)`'s `cases`/`values` arguments aren't plain array literals, or a case value isn't numeric. | `math/switch`'s case table must be statically enumerable, same requirement as `flow/switch`'s `GC130`. |
+| `GC143` | error | An `M.<Fn>(...)` call references an unknown function, an op missing from the registry, the wrong argument count, an unresolvable overload for the given argument types, an unrecognized multi-output socket/index, or an output socket the op doesn't have. | The single broadest bucket — every way a math-namespace call can fail to map back onto a concrete `OpSpec` overload via `@gltfi/kernel`'s `fn-naming.ts`'s `lookupMFunctions`, after first resolving `emit-cs`'s own PascalCase naming convention (try the call's exact spelling against the shared reverse table first — covers `M.Pi`/`Tau`/`Inf`/`NaN`/`E`, whose registered op segment is already capitalized — only falling back to a lower-cased first letter otherwise; see `lowerMCall`'s own doc comment). |
+| `GC150` | error | An identifier doesn't resolve to any known binding (a temp, a `for`-slot's own bare index read, or an onTick time parameter — variable/proc/other-state-slot references go through `V.<name>`/a bare call/`<slot>.<Field>` instead, never a plain identifier lookup). | The final fallback when an identifier reference can't be matched to anything the parser tracks — usually a genuinely free variable that shouldn't exist in emitted code. |
+| `GC161` | error | A native C# operator expression (`+`/`-`/`*`/`/`/`==`/`!=`/`<`/`<=`/`>`/`>=`/`&&`/`\|\|`/`!`/unary `-`) couldn't be resolved to a kernel overload for its inferred operand type. | The native-operator counterpart to `GC143` — `@gltfi/emit-cs` substitutes a broader set of ops as native C# operators than any other backend (int arithmetic AND int/float/bool comparisons — see `emit.ts`'s own header table), so `tryLowerNativeOp` has correspondingly more inference work (`inferScalarKind`/`inferNumericOperandType`) than parse-py's/parse-lua's narrower equivalents; this is what fires when that inference still can't resolve a real overload. |
+| `GC180` | info | Best-effort reconstruction of a cross-handler event-output read (`rt.EventOutRead(sourceNode, socket)`). | The parse-side counterpart to `import.ts`'s `GI012`, mirroring `GI180`/`GL180`/`GP180` for the C# surface: `emit-cs` emits a dedicated call for these reads, and reconstructing it is inherently approximate, but never an error — informational only. Unlike the other three backends, this one CAN sometimes recover the read's exact `IRType` rather than falling back to `"ref"`: `emit-cs` wraps every `EventOutRead` call in an explicit C# cast (`(int)`/`(bool)`/`(string)`/`(double)`/`(double[])`, one per `IRType` — see `Engine.EventOutRead`'s own boxing convention), and `unwrapCast` reads that cast's target type directly when it unambiguously maps to one (every case except `(double[])`, which stays ambiguous across the vector/matrix family — see `ast-helpers.ts`'s own `unwrapCast` doc comment). |
+
 ## GI2xx — `@gltfi/ir` exportGraph (IR → graph)
 
 All **error** severity except `GI212` (informational). An export error means the
@@ -257,11 +310,11 @@ execution equivalence via the conformance judge protocol).
 ## Regenerating this table
 
 ```sh
-grep -rn -oE '"(GI|GIC|GV|GL|GP)[0-9]+"' packages/*/src/*.ts | sort -u
+grep -rn -oE '"(GI|GIC|GV|GL|GP|GC)[0-9]+"' packages/*/src/*.ts | sort -u
 ```
 
 Cross-check severities against each producing module's own emission helper
 (`warn`/`error` methods in `import.ts`/`export.ts`/`check.ts`, `err` in
 `verify/src/index.ts`, `fail`/direct `diagnostics.push` in `parse-ts/src/index.ts`,
-`parse-lua/src/index.ts`, and `parse-py/src/index.ts`) rather than assuming from
-the code's numeric range alone.
+`parse-lua/src/index.ts`, `parse-py/src/index.ts`, and `parse-cs/src/index.ts`)
+rather than assuming from the code's numeric range alone.

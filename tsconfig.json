@@ -12,6 +12,7 @@
     { "path": "packages/parse-ts" },
     { "path": "packages/parse-lua" },
     { "path": "packages/parse-py" },
+    { "path": "packages/parse-cs" },
     { "path": "packages/runtime-lib" },
     { "path": "packages/runtime-lua" },
     { "path": "packages/runtime-py" },

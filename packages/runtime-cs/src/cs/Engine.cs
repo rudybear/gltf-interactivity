@@ -122,12 +122,23 @@ public readonly struct SentEvent
     }
 }
 
+// DefaultBool/DefaultInt/DefaultFloat are nullable (unlike the doc's naive
+// "always concrete" shape) so a value's mere DECLARED-ness on the source
+// event survives round-tripping through @gltfi/emit-cs's generated
+// `Build()` -> a Roslyn-parsed `Module.Events`/`DeclareEvent` call ->
+// @gltfi/parse-cs -- see emit-cs's own `emitEventDecls` doc comment for the
+// full rationale (mirrors @gltfi/emit-py's/@gltfi/emit-lua's own
+// conditional-field emission for the exact same reason). Every READ site
+// below (`EventPayloadOf`) already falls back to false/0/0.0 via `??`
+// regardless of whether these are nullable or not, so this is purely an
+// additive precision gain with no behavior change for a value that WAS
+// declared.
 internal sealed class EventDecl
 {
     public string? ExternalId;
-    public bool DefaultBool;
-    public int DefaultInt;
-    public double DefaultFloat;
+    public bool? DefaultBool;
+    public int? DefaultInt;
+    public double? DefaultFloat;
     public double? ExpectedDuration;
 }
 
@@ -271,7 +282,7 @@ public sealed class Engine
         _varRaw.Add(initial);
     }
 
-    public void DeclareEvent(string? externalId, bool defaultBool, int defaultInt, double defaultFloat, double? expectedDuration)
+    public void DeclareEvent(string? externalId, bool? defaultBool, int? defaultInt, double? defaultFloat, double? expectedDuration)
     {
         _eventDecls.Add(new EventDecl
         {

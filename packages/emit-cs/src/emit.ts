@@ -620,12 +620,26 @@ class Emitter {
   }
 
   // `rt.DeclareEvent(externalId, defaultBool, defaultInt, defaultFloat,
-  // expectedDuration)` — the FIRST FOUR always carry a concrete default
-  // (used unconditionally by Engine.Send/EventPayloadOf regardless of
-  // whether the graph's event actually declared that field); only
-  // `expectedDuration`'s PRESENCE matters operationally (it feeds
-  // judgeTest's max-over-every-declared-default deadline computation — see
-  // protocol.ts), so it alone is passed as `(double?)null` when undeclared.
+  // expectedDuration)` — every one of the last four is passed as an
+  // explicitly nullable literal (`(bool?)`/`(int?)`/`(double?)`), `null`
+  // when the source event didn't declare that value at all. Runtime
+  // behavior is unaffected either way — Engine.EventPayloadOf/DefaultPayload
+  // already fall back to false/0/0.0 via `??` regardless of presence (see
+  // Engine.cs's own `EventDecl`/`DefaultPayload`) — but PARSE-SOUNDNESS
+  // needs it: @gltfi/parse-cs reconstructs `module.events[i].values`
+  // (which fields were actually DECLARED, not merely their default) from
+  // this call's own arguments, and a `null` is the only way that
+  // information survives the round trip through Roslyn-parsed C# source —
+  // exactly mirroring `expectedDuration`'s existing null-when-undeclared
+  // convention (previously the ONLY nullable one here) one level further,
+  // and matching @gltfi/emit-py's/@gltfi/emit-lua's own conditional-field
+  // emission for the identical reason (see either's own emitEvent(s) doc
+  // comment). A prior revision of this method passed the first three as
+  // always-concrete non-nullable literals purely because Engine.
+  // DeclareEvent's OWN parameter types used to be non-nullable `bool`/
+  // `int`/`double` — see this task's own report for the accompanying
+  // Engine.cs signature change (EventDecl.DefaultBool/DefaultInt/
+  // DefaultFloat all became nullable) that made this possible.
   private emitEventDecls() {
     this.module.events.forEach((e) => {
       const boolDefault = e.values.find((v) => v.name === "boolParameter");
@@ -633,9 +647,9 @@ class Emitter {
       const floatDefault = e.values.find((v) => v.name === "floatParameter");
       const duration = e.values.find((v) => v.name === "expectedDuration");
       const externalIdCode = e.id ? csStringLiteral(e.id) : "null";
-      const boolCode = Boolean(boolDefault?.default.data[0] ?? false) ? "true" : "false";
-      const intCode = csIntLiteral(Math.trunc(Number(intDefault?.default.data[0] ?? 0)));
-      const floatCode = csFloatLiteral(Number(floatDefault?.default.data[0] ?? 0));
+      const boolCode = boolDefault ? `(bool?)${Boolean(boolDefault.default.data[0] ?? false) ? "true" : "false"}` : "(bool?)null";
+      const intCode = intDefault ? `(int?)${csIntLiteral(Math.trunc(Number(intDefault.default.data[0] ?? 0)))}` : "(int?)null";
+      const floatCode = floatDefault ? `(double?)${csFloatLiteral(Number(floatDefault.default.data[0] ?? 0))}` : "(double?)null";
       const durationCode = duration ? `(double?)${csFloatLiteral(Number(duration.default.data[0] ?? 0))}` : "(double?)null";
       this.push(`rt.DeclareEvent(${externalIdCode}, ${boolCode}, ${intCode}, ${floatCode}, ${durationCode});`);
     });
