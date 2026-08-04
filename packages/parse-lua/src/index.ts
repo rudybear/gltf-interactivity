@@ -320,9 +320,34 @@ const HANDLER_PARAMS: Record<HandlerKind, IRHandlerParam[]> = {
     { name: "expectedDuration", type: "float" },
     { name: "event", type: "ref" }
   ],
-  onSelect: [],
-  onHoverIn: [],
-  onHoverOut: []
+  // KHR_node_selectability/hoverability: unlike parse-ts, @gltfi/emit-lua
+  // deliberately does NOT emit rt.onSelect/onHoverIn/onHoverOut (see that
+  // file's header "Scope note" and runtime-lua's engine.lua header note —
+  // it's a viewer-only extra beyond the corpus this Lua backend targets,
+  // and runtime-lua has no rt.onSelect/onHoverIn/onHoverOut implementation
+  // at all). These entries are filled in anyway purely for type-shape
+  // parity with parse-ts's identical table (see this block's own doc
+  // comment above) — the handler-registration loop below still does NOT
+  // accept rt.onSelect/onHoverIn/onHoverOut syntax (GL104), so these three
+  // are dead data unless/until a real emitted Lua shape exists to parse.
+  onSelect: [
+    { name: "selectedNode", type: "ref" },
+    { name: "selectedNodeIndex", type: "int" },
+    { name: "controllerIndex", type: "int" },
+    { name: "selectionPoint", type: "float3" },
+    { name: "selectionRayOrigin", type: "float3" },
+    { name: "event", type: "ref" }
+  ],
+  onHoverIn: [
+    { name: "hoveredNode", type: "ref" },
+    { name: "controllerIndex", type: "int" },
+    { name: "event", type: "ref" }
+  ],
+  onHoverOut: [
+    { name: "hoveredNode", type: "ref" },
+    { name: "controllerIndex", type: "int" },
+    { name: "event", type: "ref" }
+  ]
 };
 
 const PAYLOAD_FIELDS = ["boolParameter", "intParameter", "floatParameter", "expectedDuration"] as const;
@@ -1816,7 +1841,7 @@ class ModuleParser {
     if (expr.type === "MemberExpression" && expr.indexer === ".") {
       const ptrGet = asCallExpr(expr.base, "rt", "ptrGet");
       if (ptrGet) {
-        return this.lowerPtrGet(ptrGet, expr.identifier.name === "isValid");
+        return this.lowerPtrGet(ptrGet, expr.identifier.name === "isValid", ctx);
       }
     }
     // rt.eventPayload(i)[k] (1-based Lua index -> 0-based field index)
@@ -1932,7 +1957,7 @@ class ModuleParser {
     fail("GL140", undefined, `unrecognized state-slot field read "${field}" on slot kind "${kind}"`);
   }
 
-  private lowerPtrGet(call: CallExpression, wantIsValid: boolean): IRExpr {
+  private lowerPtrGet(call: CallExpression, wantIsValid: boolean, ctx: Ctx): IRExpr {
     const argNodes = call.arguments;
     // Args-less form (see emit-lua's pointerCall doc comment): every
     // template param was a compile-time constant, already inlined into the
@@ -1947,7 +1972,7 @@ class ModuleParser {
     const pointerLit = stringLiteralValue(pointerExpr) ?? fail("GL141", pointerExpr, "pointer must be a string literal");
     const template = parsePointerTemplate(pointerLit);
     const valueType = (stringLiteralValue(typeExpr) as IRType | undefined) ?? fail("GL141", typeExpr, "pointer type must be a string literal");
-    const args = this.lowerPointerArgs(argsObjExpr, template, { kind: "proc" });
+    const args = this.lowerPointerArgs(argsObjExpr, template, ctx);
     return { k: "ptrGet", template, args, type: wantIsValid ? "bool" : valueType, valueType, wantIsValid };
   }
 

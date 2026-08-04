@@ -381,6 +381,9 @@ importers:
       '@gltfi/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@gltfi/verify':
+        specifier: workspace:*
+        version: link:../verify
 
   packages/runtime:
     dependencies:

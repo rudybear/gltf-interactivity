@@ -82,6 +82,22 @@ declare module "@gltfi/runtime-lib" {
     onStart(fn: () => void): void;
     onTick(fn: (timeSinceStart: number, timeSinceLastTick: number) => void): void;
     onReceive(eventIndex: number, fn: (payload: [boolean, number, number, number]) => void): void;
+    // KHR_node_selectability/hoverability (see emit-ts's emitHandler
+    // "onSelect"/"onHoverIn"/"onHoverOut" cases for the exact emitted call
+    // shape and params destructure this mirrors).
+    onSelect(
+      nodeIndex: number,
+      stopPropagation: boolean,
+      fn: (params: {
+        selectedNode: string;
+        selectedNodeIndex: number;
+        controllerIndex: number;
+        selectionPoint: number[];
+        selectionRayOrigin: number[];
+      }) => void
+    ): void;
+    onHoverIn(nodeIndex: number, fn: (params: { hoveredNode: string; controllerIndex: number }) => void): void;
+    onHoverOut(nodeIndex: number, fn: (params: { hoveredNode: string; controllerIndex: number }) => void): void;
     // Combined signature — see engine.ts's EngineBuilder.send doc comment
     // for the three call shapes this covers.
     send(eventIndex: number, secondArg?: string | [boolean, number, number, number], thirdArg?: [boolean, number, number, number]): void;

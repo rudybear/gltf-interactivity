@@ -295,12 +295,47 @@ const HANDLER_PARAMS: Record<HandlerKind, IRHandlerParam[]> = {
     { name: "expectedDuration", type: "float" },
     { name: "event", type: "ref" }
   ],
-  onSelect: [],
-  onHoverIn: [],
-  onHoverOut: []
+  onSelect: [
+    { name: "selectedNode", type: "ref" },
+    { name: "selectedNodeIndex", type: "int" },
+    { name: "controllerIndex", type: "int" },
+    { name: "selectionPoint", type: "float3" },
+    { name: "selectionRayOrigin", type: "float3" },
+    { name: "event", type: "ref" }
+  ],
+  onHoverIn: [
+    { name: "hoveredNode", type: "ref" },
+    { name: "controllerIndex", type: "int" },
+    { name: "event", type: "ref" }
+  ],
+  onHoverOut: [
+    { name: "hoveredNode", type: "ref" },
+    { name: "controllerIndex", type: "int" },
+    { name: "event", type: "ref" }
+  ]
 };
 
 const PAYLOAD_FIELDS = ["boolParameter", "intParameter", "floatParameter", "expectedDuration"] as const;
+
+// Bare-identifier param types for onSelect/onHoverIn/onHoverOut bodies — the
+// names bound by the emitted `const {...} = params;` destructure (see
+// stripParamsDestructure) that lowerExpr's identifier case resolves to
+// `{k:"param", ...}` reads, mirroring onTick's timeSinceStart/
+// timeSinceLastTick literal-name mechanism. Deliberately excludes "event"
+// (never bound as a bare identifier — emit-ts routes it through
+// paramAccess("event") as a string-literal arg to rt.stopPropagation, which
+// this parser's rt.stopPropagation handling discards positionally).
+const ONSELECT_LOCAL_PARAMS: Record<string, IRType> = {
+  selectedNode: "ref",
+  selectedNodeIndex: "int",
+  controllerIndex: "int",
+  selectionPoint: "float3",
+  selectionRayOrigin: "float3"
+};
+const HOVER_LOCAL_PARAMS: Record<string, IRType> = {
+  hoveredNode: "ref",
+  controllerIndex: "int"
+};
 
 // ---------------------------------------------------------------------------
 // Parser
@@ -369,14 +404,18 @@ class ModuleParser {
       i += 1;
     }
 
-    // Handlers: a run of rt.onStart / rt.onTick / rt.onReceive registrations.
-    type HandlerDesc = { kind: HandlerKind; eventRef?: number; bodyStmts: Statement[] };
+    // Handlers: a run of rt.onStart / rt.onTick / rt.onReceive / rt.onSelect /
+    // rt.onHoverIn / rt.onHoverOut registrations.
+    type HandlerDesc = { kind: HandlerKind; eventRef?: number; config?: Record<string, unknown>; bodyStmts: Statement[] };
     const handlerDescs: HandlerDesc[] = [];
     while (i < stmts.length) {
       const expr = this.exprOf(stmts[i]);
       const onStart = asCall(expr, "rt", "onStart");
       const onTick = asCall(expr, "rt", "onTick");
       const onReceive = asCall(expr, "rt", "onReceive");
+      const onSelect = asCall(expr, "rt", "onSelect");
+      const onHoverIn = asCall(expr, "rt", "onHoverIn");
+      const onHoverOut = asCall(expr, "rt", "onHoverOut");
       if (onStart) {
         const fn = onStart.getArguments()[0];
         handlerDescs.push({ kind: "onStart", bodyStmts: this.arrowBody(fn) });
@@ -390,8 +429,39 @@ class ModuleParser {
           fail("GI104", args[0], "rt.onReceive's first argument must be a numeric event index literal or `E.<name>`");
         }
         handlerDescs.push({ kind: "receive", eventRef: idx, bodyStmts: this.arrowBody(args[1]) });
+      } else if (onSelect) {
+        const args = onSelect.getArguments();
+        const nodeIndex = readNumber(args[0]);
+        if (nodeIndex === undefined) {
+          fail("GI104", args[0], "rt.onSelect's first argument must be a numeric node-index literal");
+        }
+        const stopPropagation = readBool(args[1]);
+        if (stopPropagation === undefined) {
+          fail("GI104", args[1], "rt.onSelect's second argument must be a boolean literal (stopPropagation)");
+        }
+        handlerDescs.push({
+          kind: "onSelect",
+          config: { nodeIndex: Math.trunc(nodeIndex), stopPropagation },
+          bodyStmts: this.stripParamsDestructure(this.arrowBody(args[2]))
+        });
+      } else if (onHoverIn || onHoverOut) {
+        const call = (onHoverIn ?? onHoverOut)!;
+        const args = call.getArguments();
+        const nodeIndex = readNumber(args[0]);
+        if (nodeIndex === undefined) {
+          fail("GI104", args[0], "rt.onHoverIn/rt.onHoverOut's first argument must be a numeric node-index literal");
+        }
+        handlerDescs.push({
+          kind: onHoverIn ? "onHoverIn" : "onHoverOut",
+          config: { nodeIndex: Math.trunc(nodeIndex) },
+          bodyStmts: this.stripParamsDestructure(this.arrowBody(args[1]))
+        });
       } else {
-        fail("GI104", stmts[i], "expected a handler registration (rt.onStart/rt.onTick/rt.onReceive) or unrecognized top-level statement");
+        fail(
+          "GI104",
+          stmts[i],
+          "expected a handler registration (rt.onStart/rt.onTick/rt.onReceive/rt.onSelect/rt.onHoverIn/rt.onHoverOut) or unrecognized top-level statement"
+        );
       }
       i += 1;
     }
@@ -405,7 +475,7 @@ class ModuleParser {
     handlerDescs.forEach((desc) => {
       const params = HANDLER_PARAMS[desc.kind];
       const body = this.lowerBlock(desc.bodyStmts, { kind: "handler", handlerKind: desc.kind });
-      this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, params, body });
+      this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, config: desc.config, params, body });
     });
 
     return {
@@ -436,6 +506,29 @@ class ModuleParser {
     }
     const body = fn.getBody();
     return Node.isBlock(body) ? body.getStatements() : [];
+  }
+
+  // Strips a leading `const { <field>, ... } = params;` destructure (emit-
+  // ts's onSelect/onHoverIn/onHoverOut shape — see that file's emitHandler
+  // cases) so the destructured names bind as handler params in the rest of
+  // the body via lowerExpr's onSelect/onHoverIn/onHoverOut identifier
+  // special-case below (mirroring onTick's timeSinceStart/timeSinceLastTick
+  // mechanism — same idea, different handler kinds).
+  private stripParamsDestructure(stmts: Statement[]): Statement[] {
+    const first = stmts[0];
+    if (!first || !Node.isVariableStatement(first)) {
+      return stmts;
+    }
+    const decls = first.getDeclarationList().getDeclarations();
+    if (decls.length !== 1) {
+      return stmts;
+    }
+    const decl = decls[0];
+    const init = decl.getInitializer();
+    if (!Node.isObjectBindingPattern(decl.getNameNode()) || !init || !Node.isIdentifier(init) || init.getText() !== "params") {
+      return stmts;
+    }
+    return stmts.slice(1);
   }
 
   private findEngineBody(topStmts: Statement[]): import("ts-morph").Block {
@@ -1636,7 +1729,7 @@ class ModuleParser {
     if (Node.isPropertyAccessExpression(expr)) {
       const ptrGet = asCall(expr.getExpression(), "rt", "ptrGet");
       if (ptrGet) {
-        return this.lowerPtrGet(ptrGet, expr.getName() === "isValid");
+        return this.lowerPtrGet(ptrGet, expr.getName() === "isValid", ctx);
       }
     }
     // rt.eventPayload(i)[k]
@@ -1701,6 +1794,12 @@ class ModuleParser {
       const text = expr.getText();
       if (ctx.kind === "handler" && ctx.handlerKind === "onTick" && (text === "timeSinceStart" || text === "timeSinceLastTick")) {
         return { k: "param", name: text, type: "float" };
+      }
+      if (ctx.kind === "handler" && ctx.handlerKind === "onSelect" && text in ONSELECT_LOCAL_PARAMS) {
+        return { k: "param", name: text, type: ONSELECT_LOCAL_PARAMS[text] };
+      }
+      if (ctx.kind === "handler" && (ctx.handlerKind === "onHoverIn" || ctx.handlerKind === "onHoverOut") && text in HOVER_LOCAL_PARAMS) {
+        return { k: "param", name: text, type: HOVER_LOCAL_PARAMS[text] };
       }
       const slotIdx = this.stateSlotIndexByName.get(text);
       if (slotIdx !== undefined && this.stateSlots[slotIdx].kind === "for") {
@@ -1934,7 +2033,7 @@ class ModuleParser {
     return allowed.includes("float") ? "float" : allowed[0];
   }
 
-  private lowerPtrGet(call: import("ts-morph").CallExpression, wantIsValid: boolean): IRExpr {
+  private lowerPtrGet(call: import("ts-morph").CallExpression, wantIsValid: boolean, ctx: Ctx): IRExpr {
     const argNodes = call.getArguments();
     const hasArgsObj = argNodes.length >= 2 && Node.isObjectLiteralExpression(argNodes[1]);
     const pointerExpr = argNodes[0];
@@ -1943,7 +2042,7 @@ class ModuleParser {
     const pointerLit = stringLiteralValue(pointerExpr) ?? fail("GI141", pointerExpr, "pointer must be a string literal");
     const template = parsePointerTemplate(pointerLit);
     const valueType = (stringLiteralValue(typeExpr) as IRType | undefined) ?? fail("GI141", typeExpr, "pointer type must be a string literal");
-    const args = this.lowerPointerArgs(argsObjExpr, template, { kind: "proc" });
+    const args = this.lowerPointerArgs(argsObjExpr, template, ctx);
     return { k: "ptrGet", template, args, type: wantIsValid ? "bool" : valueType, valueType, wantIsValid };
   }
 

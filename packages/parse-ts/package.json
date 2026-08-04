@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "@gltfi/emit-ts": "workspace:*",
-    "@gltfi/runtime": "workspace:*"
+    "@gltfi/runtime": "workspace:*",
+    "@gltfi/verify": "workspace:*"
   }
 }
