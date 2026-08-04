@@ -216,6 +216,18 @@ initWebGpu(canvas)
     const message = err instanceof Error ? err.message : String(err);
     rendererStatus.textContent = `WebGPU unavailable: ${message}`;
     console.error("[gltfi] WebGPU init failed:", err);
+    const overlay = document.createElement("div");
+    overlay.style.cssText =
+      "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;" +
+      "background:rgba(12,14,18,0.92);color:#e8e8ea;z-index:1000;text-align:center;" +
+      "font:15px/1.6 system-ui,sans-serif;padding:2rem;";
+    overlay.innerHTML =
+      `<div style="max-width:34rem"><h2 style="margin:0 0 .5rem">WebGPU is not available in this browser</h2>` +
+      `<p style="opacity:.85">${message}</p>` +
+      `<p>This viewer renders with raw WebGPU. Options:</p>` +
+      `<ul style="text-align:left;display:inline-block;margin:0"><li>Open this page in <b>Chrome / Chromium</b></li>` +
+      `<li>Firefox users: use the <b>three.js demo</b> (gltf-interactivity-three, <code>pnpm demo</code>) — it falls back to WebGL2 automatically</li></ul></div>`;
+    document.body.appendChild(overlay);
   });
 
 function resizeCanvas(): void {
