@@ -503,3 +503,175 @@ export function equivalentGraphs(a: VGraph, b: VGraph): EquivalenceResult {
   }
   return { equivalent: true };
 }
+
+// ---------------------------------------------------------------------------
+// compareDeclarations
+// ---------------------------------------------------------------------------
+//
+// Advisory declaration-table diff, deliberately separate from
+// equivalentGraphs above: equivalentGraphs walks *reachable node behavior*
+// and never looks at graph.variables/graph.events at all (a variable that's
+// declared but never read/written, or an event value the graph never
+// receives, is invisible to it). An editing loop (extract -> edit -> apply)
+// wants exactly that visibility — did the edit round-trip drop a variable
+// id, change a declared type, or change an event's default? — so this
+// walks the declaration tables directly, index by index, since edit
+// round-trips are expected to preserve declaration order.
+//
+// Like POINTER_TYPE_OPS's config-type comparison above, "type" is compared
+// as the *resolved* signature via each graph's own types table, not the
+// raw index — the two graphs build that table independently, so the same
+// signature can legitimately sit at a different index on each side.
+
+export type DeclarationsComparison = { same: boolean; changes: string[] };
+
+function resolvedTypeSig(g: VGraph, typeIndex: number): string {
+  return g.types[typeIndex]?.signature ?? `<invalid:${typeIndex}>`;
+}
+
+function formatId(id: string | undefined): string {
+  return id === undefined ? "(none)" : `"${id}"`;
+}
+
+// Mirrors stableDataKey's NaN/Infinity string coercion above (KHR_interactivity
+// encodes non-finite floats as strings in glTF JSON, but a graph that's been
+// through @gltfi/ir materializes them as real JS numbers) so both spellings
+// compare equal here too.
+function coerceScalar(raw: number | boolean | string): number | boolean | string {
+  if (raw === "NaN") return NaN;
+  if (raw === "Infinity") return Infinity;
+  if (raw === "-Infinity") return -Infinity;
+  return raw;
+}
+
+// Numeric-family tolerant scalar comparison: 0 and 0.0 are the same JS
+// number already, and using plain `===` after coercion also makes -0 and 0
+// compare equal (Object.is would not) — matching this file's existing
+// "0 vs 0.0, -0 vs 0" tolerance convention.
+function sameScalar(a: number | boolean | string, b: number | boolean | string): boolean {
+  const ca = coerceScalar(a);
+  const cb = coerceScalar(b);
+  if (typeof ca === "number" || typeof cb === "number") {
+    const na = Number(ca);
+    const nb = Number(cb);
+    if (Number.isNaN(na) && Number.isNaN(nb)) return true;
+    return na === nb;
+  }
+  return ca === cb;
+}
+
+function sameValueArray(
+  a: ReadonlyArray<number | boolean | string> | undefined,
+  b: ReadonlyArray<number | boolean | string> | undefined
+): boolean {
+  if (!a || !b) return a === b;
+  if (a.length !== b.length) return false;
+  return a.every((v, i) => sameScalar(v, b[i]));
+}
+
+function formatValue(value: ReadonlyArray<number | boolean | string> | undefined): string {
+  if (!value) return "(none)";
+  if (value.length === 1) return String(value[0]);
+  return `[${value.map(String).join(",")}]`;
+}
+
+function compareVariableDeclarations(a: VGraph, b: VGraph, changes: string[]): void {
+  const varsA = a.variables ?? [];
+  const varsB = b.variables ?? [];
+  if (varsA.length !== varsB.length) {
+    changes.push(`variables: count ${varsA.length} -> ${varsB.length}`);
+  }
+  const count = Math.max(varsA.length, varsB.length);
+  for (let i = 0; i < count; i += 1) {
+    const va = varsA[i];
+    const vb = varsB[i];
+    if (va && !vb) {
+      changes.push(`variables[${i}]: type "${resolvedTypeSig(a, va.type)}" -> (none)`);
+      continue;
+    }
+    if (!va && vb) {
+      changes.push(`variables[${i}]: (none) -> type "${resolvedTypeSig(b, vb.type)}"`);
+      continue;
+    }
+    if (!va || !vb) continue;
+
+    if (va.id !== vb.id) {
+      changes.push(`variables[${i}]: id ${formatId(va.id)} -> ${formatId(vb.id)}`);
+    }
+    const sigA = resolvedTypeSig(a, va.type);
+    const sigB = resolvedTypeSig(b, vb.type);
+    if (sigA !== sigB) {
+      changes.push(`variables[${i}]: type "${sigA}" -> "${sigB}"`);
+    }
+    if (!sameValueArray(va.value, vb.value)) {
+      changes.push(`variables[${i}]: initial ${formatValue(va.value)} -> ${formatValue(vb.value)}`);
+    }
+  }
+}
+
+function compareEventDeclarations(a: VGraph, b: VGraph, changes: string[]): void {
+  const eventsA = a.events ?? [];
+  const eventsB = b.events ?? [];
+  if (eventsA.length !== eventsB.length) {
+    changes.push(`events: count ${eventsA.length} -> ${eventsB.length}`);
+  }
+  const count = Math.max(eventsA.length, eventsB.length);
+  for (let i = 0; i < count; i += 1) {
+    const ea = eventsA[i];
+    const eb = eventsB[i];
+    if (ea && !eb) {
+      changes.push(`events[${i}]: present -> (none)`);
+      continue;
+    }
+    if (!ea && eb) {
+      changes.push(`events[${i}]: (none) -> present`);
+      continue;
+    }
+    if (!ea || !eb) continue;
+
+    if (ea.id !== eb.id) {
+      changes.push(`events[${i}]: id ${formatId(ea.id)} -> ${formatId(eb.id)}`);
+    }
+
+    const valuesA = ea.values ?? {};
+    const valuesB = eb.values ?? {};
+    const keysA = new Set(Object.keys(valuesA));
+    const keysB = new Set(Object.keys(valuesB));
+    for (const key of keysA) {
+      if (!keysB.has(key)) {
+        changes.push(`events[${i}].values: key "${key}" removed`);
+      }
+    }
+    for (const key of keysB) {
+      if (!keysA.has(key)) {
+        changes.push(`events[${i}].values: key "${key}" added`);
+      }
+    }
+    for (const key of keysA) {
+      if (!keysB.has(key)) continue;
+      const valA = valuesA[key];
+      const valB = valuesB[key];
+      const sigA = resolvedTypeSig(a, valA.type);
+      const sigB = resolvedTypeSig(b, valB.type);
+      if (sigA !== sigB) {
+        changes.push(`events[${i}].values.${key}: type "${sigA}" -> "${sigB}"`);
+      }
+      if (!sameValueArray(valA.value, valB.value)) {
+        changes.push(`events[${i}].values.${key}: default ${formatValue(valA.value)} -> ${formatValue(valB.value)}`);
+      }
+    }
+  }
+}
+
+// Declaration-table diff between two graphs' variables/events, index by
+// index: resolved type signature (not raw index — see note above), initial/
+// default value (numeric-family tolerant), and id presence/equality for
+// variables; id, value key set, and per-key resolved type + default for
+// events. Never gates exit codes on its own — an advisory signal for an
+// edit round-trip's change report (see the R3 plan's A5 apply report).
+export function compareDeclarations(a: VGraph, b: VGraph): DeclarationsComparison {
+  const changes: string[] = [];
+  compareVariableDeclarations(a, b, changes);
+  compareEventDeclarations(a, b, changes);
+  return { same: changes.length === 0, changes };
+}

@@ -1,3 +1,5 @@
+export * from "./container.js";
+
 export type GltfJson = {
   asset: {
     version: string;
