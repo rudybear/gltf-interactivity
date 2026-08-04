@@ -40,12 +40,51 @@ pnpm conf:interp
 ```bash
 gltfi decompile <in.glb|in.gltf> [-o out.ts] [--js] [--graph N]   # graph -> TS/JS module + <out>.names.json sidecar
 gltfi compile <in.ts> [-o out.gltf|out.glb] [--merge-into base.glb] # TS module -> standalone asset, or merged into base.glb
+gltfi extract <in.glb|in.gltf> [-o out] [--lang ts|lua|py|cs|gd] [--graph N] [--force] # graph -> script in any of the five languages
+gltfi apply <asset> <script> [--graph N] [--lang ts|lua|py|cs|gd] [--dry-run] [--backup] # script -> byte-preserving splice back into asset
 gltfi roundtrip <in.glb|in.gltf> [--graph N]                       # decompile -> compile in memory; equivalentGraphs + interpreter judge verdict
 gltfi verify-equal <a.gltf|glb> <b.gltf|glb> [--graph-a N] [--graph-b N] # equivalentGraphs verdict with first-divergence path
 gltfi conform <interp|compiled|roundtrip> [--filter x]             # thin wrapper spawning the corresponding conf: runner
 ```
 
-Diagnostics from every stage print to stderr; see `docs/diagnostics.md` for what each code means. Run `gltfi --help` for the full usage summary. `packages/cli/test/cli.test.ts` exercises all five subcommands against real corpus assets by invoking the built `dist/main.js` via `child_process`, so `pnpm build` must run before `pnpm test`.
+Diagnostics from every stage print to stderr; see `docs/diagnostics.md` for what each code means. Run `gltfi --help` for the full usage summary. `packages/cli/test/cli.test.ts` exercises decompile/compile/roundtrip/verify-equal/conform against real corpus assets by invoking the built `dist/main.js` via `child_process`, so `pnpm build` must run before `pnpm test`.
+
+### `extract`/`apply`: the byte-preserving edit workflow
+
+`decompile`/`compile` round-trip through TypeScript only, and `compile --merge-into` fully
+re-stringifies the target asset (floats reformat, unrecognized GLB chunks drop). `extract`/
+`apply` are the safe "decompile a script out of a real asset, edit it, write it back" loop —
+byte-identical outside the edited graph, and id-stable across the edit (every backend now
+round-trips a variable's declared id, not just events' — see `docs/design/asset-editing.md`):
+
+```bash
+gltfi extract scene.glb --lang lua          # -> scene.lua, beside the asset
+$EDITOR scene.lua
+gltfi apply scene.glb scene.lua --backup    # splices graphs[0] back in; scene.glb.bak keeps the original
+```
+
+`apply` prints a stable report *before* writing anything — a declaration diff against the
+asset's existing graph, `equivalentGraphs`'s structural verdict, an interpreter-judge PASS/FAIL
+(reusing `roundtrip`'s own oracle-discovery convention) old vs. new, and the splice's byte
+counts:
+
+```
+apply: parsed xor.lua (lua)
+validate: OK
+declarations vs graphs[0]:  variables[0]: initial false -> true
+                            events: unchanged (3)
+graph equivalence: EQUIV
+interpreter judge: old PASS / new PASS
+splice: extensions.KHR_interactivity.graphs[0] (12789 -> 10805 bytes)
+wrote xor.glb (backup: xor.glb.bak)
+```
+
+`.cs` scripts need `dotnet` on `PATH` (`@gltfi/parse-cs`'s AST harness); `.py` scripts need
+`python3`. Both are loaded lazily — only the language actually used ever spawns a subprocess.
+`packages/cli/test/apply.test.ts` covers all five languages against a representative corpus
+subset (`GLTFI_APPLY_FULL=1` runs the full ~145-asset corpus per language instead), plus
+synthetic fixtures for an unrecognized GLB chunk, a UUID variable id, a no-interactivity asset,
+and the `--dry-run`/`--backup` flags.
 
 ## Examples
 
@@ -91,6 +130,7 @@ node packages/conformance/dist/fuzz.js --seed 42 --count 500
 - [docs/diagnostics.md](docs/diagnostics.md) — every `GI`/`GIC`/`GV` diagnostic code, its meaning, and the spec rationale behind it.
 - [docs/design/ir-and-transpiler.md](docs/design/ir-and-transpiler.md) — the IR's design principles and the graph ↔ IR ↔ TypeScript pivot.
 - [docs/design/op-registry.md](docs/design/op-registry.md) — the kernel op registry's shape and conventions.
+- [docs/design/asset-editing.md](docs/design/asset-editing.md) — `gltfi extract`/`gltfi apply`'s byte-preserving splice writer, the id round-trip contract, and the `compile --merge-into` deprecation note.
 
 ## License
 

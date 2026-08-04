@@ -33,7 +33,7 @@
 //   - every `variable/set` IRStmt becomes its own single-variable
 //     `variable/set` graph node (never re-merged with an adjacent one into a
 //     multi-variable node) — always spec-valid, just not maximally compact.
-import type { TypeSig } from "@gltfi/kernel";
+import { formatValueArray, type TypeSig } from "@gltfi/kernel";
 import { formatPointerTemplate, pointerTemplateParams } from "./pointer.js";
 import type {
   Cont,
@@ -167,13 +167,18 @@ class Exporter {
       variables: this.module.variables.map((v) => ({
         id: v.extras && typeof v.extras.id === "string" ? (v.extras.id as string) : undefined,
         type: this.typeIndex(v.type),
-        value: v.initial.data as Array<number | boolean | string>
+        // formatValueArray: real JS NaN/Infinity in a literal must become
+        // the spec's "NaN"/"Infinity"/"-Infinity" strings before this ever
+        // reaches JSON.stringify (see that function's own doc comment).
+        value: formatValueArray(v.initial.data as Array<number | boolean | string>)
       })),
       events: this.module.events.map((e) => ({
         id: e.id,
         values:
           e.values.length > 0
-            ? Object.fromEntries(e.values.map((v) => [v.name, { type: this.typeIndex(v.type), value: v.default.data as Array<number | boolean | string> }]))
+            ? Object.fromEntries(
+                e.values.map((v) => [v.name, { type: this.typeIndex(v.type), value: formatValueArray(v.default.data as Array<number | boolean | string>) }])
+              )
             : undefined
       })),
       declarations: this.declOrder.map((op) => ({ op })),
@@ -904,7 +909,10 @@ class Exporter {
   private remapNode(b: Builder, finalIndex: Map<number, number>): GraphNode {
     const values: Record<string, GraphNodeValue> = {};
     for (const [socket, v] of Object.entries(b.values)) {
-      values[socket] = "node" in v ? { node: finalIndex.get(v.node) ?? 0, socket: v.socket === "value" ? undefined : v.socket } : { type: this.typeIndex(v.literalType), value: v.data };
+      values[socket] =
+        "node" in v
+          ? { node: finalIndex.get(v.node) ?? 0, socket: v.socket === "value" ? undefined : v.socket }
+          : { type: this.typeIndex(v.literalType), value: formatValueArray(v.data) };
     }
     // Drop `socket: undefined` cleanly (matches import.ts's GraphValueRef
     // shape, which treats a missing socket as "value").

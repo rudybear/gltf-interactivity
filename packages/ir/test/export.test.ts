@@ -218,3 +218,75 @@ describe("exportGraph - CSE regression rules", () => {
     expect(stats.mergedCount).toBeGreaterThanOrEqual(1);
   });
 });
+
+// Regression test for a real bug found while building `gltfi apply`
+// (packages/cli/test/apply.test.ts's full-corpus mode): exportGraph left
+// non-finite literal values (NaN/Infinity/-Infinity) as real JS numbers in
+// every `value:` array it returns — variable initial values, event
+// defaults, and node-level value-socket literals alike. Every EXISTING
+// consumer of exportGraph's output happened to use it as a plain in-memory
+// JS object (the interpreter, `gltfi roundtrip`'s judge), so this was
+// invisible: `JSON.stringify` silently collapses NaN/Infinity/-Infinity to
+// `null` with no error, and nothing had ever actually JSON.stringify'd an
+// exported graph containing one of these values until @gltfi/gltf's
+// spliceGraph did, for real, via `gltfi apply` (see math/length,
+// math/matDecompose, pointer/interpolate, variable/interpolate in the
+// corpus — all four hit this once `apply` actually wrote them to disk).
+// The fix is @gltfi/kernel's `formatValueArray` (the exact inverse of
+// `parseScalar`, which is what @gltfi/ir/import.ts already uses on the way
+// IN) applied at export.ts's three literal-materializing sites.
+describe("exportGraph - non-finite literals survive a JSON round trip", () => {
+  function moduleWithLiteral(data: number[]): IRModule {
+    return {
+      variables: [{ name: "v0", type: "float", initial: { type: "float", data: [0] } }],
+      events: [],
+      stateSlots: [],
+      procs: [],
+      handlers: [
+        {
+          kind: "onStart",
+          params: [{ name: "event", type: "ref" }],
+          body: { k: "seq", stmts: [{ k: "setVar", varId: 0, expr: { k: "const", type: "float", data } }] }
+        }
+      ],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+  }
+
+  it.each([
+    ["NaN", NaN, "NaN"],
+    ["Infinity", Infinity, "Infinity"],
+    ["-Infinity", -Infinity, "-Infinity"]
+  ] as const)("a %s node-value literal serializes to the spec's %s string, not null", (_label, raw, expectedEncoding) => {
+    const { graph, diagnostics } = exportGraph(moduleWithLiteral([raw]));
+    expect(diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+
+    const setVarNode = graph.nodes.find((n) => graph.declarations[n.declaration].op === "variable/set");
+    expect(setVarNode).toBeDefined();
+    const literalValue = Object.values(setVarNode!.values ?? {}).find((v) => "value" in v) as { value: unknown[] } | undefined;
+    expect(literalValue).toBeDefined();
+
+    // The bug: JSON.stringify(NaN) === "null" — round-tripping through the
+    // exact serialization spliceGraph/cmdCompile actually perform is the
+    // only assertion that would have caught the original defect.
+    const roundTripped = JSON.parse(JSON.stringify(literalValue!.value));
+    expect(roundTripped[0]).toBe(expectedEncoding);
+  });
+
+  it("a NaN variable initial value and event default both survive the same way", () => {
+    const module: IRModule = {
+      variables: [{ name: "v0", type: "float", initial: { type: "float", data: [NaN] } }],
+      events: [{ name: "e0", values: [{ name: "p", type: "float", default: { type: "float", data: [Infinity] } }] }],
+      stateSlots: [],
+      procs: [],
+      handlers: [],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+    const { graph, diagnostics } = exportGraph(module);
+    expect(diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+
+    const roundTripped = JSON.parse(JSON.stringify(graph));
+    expect(roundTripped.variables[0].value[0]).toBe("NaN");
+    expect(roundTripped.events[0].values.p.value[0]).toBe("Infinity");
+  });
+});

@@ -31,6 +31,42 @@ export function parseScalar(value: number | boolean | string): number | boolean 
   return value;
 }
 
+// Inverse of parseScalar's NaN/Infinity/-Infinity branches — glTF JSON has
+// no way to represent a non-finite IEEE float, so KHR_interactivity encodes
+// those three as the literal strings "NaN"/"Infinity"/"-Infinity" (every
+// consumer of raw graph JSON already round-trips this: parseScalar above on
+// read, @gltfi/verify's stableDataKey/compareDeclarations' coerceScalar on
+// comparison). Any producer of graph JSON that's ever going to hand its
+// output to `JSON.stringify` — @gltfi/ir's exportGraph chief among them —
+// MUST run every literal value array through this first: plain
+// `JSON.stringify` silently collapses NaN/Infinity/-Infinity to `null`
+// with no error, which is a real, previously-latent bug this comment exists
+// to prevent from recurring (caught by @gltfi/cli's `apply` e2e suite going
+// through an actual JSON round trip via @gltfi/gltf's spliceGraph — the
+// first codepath in this repo to ever serialize an exported graph's literal
+// values to JSON text). A finite number or a boolean passes through
+// unchanged.
+export function formatScalar(value: number | boolean | string): number | boolean | string {
+  if (typeof value === "number") {
+    if (Number.isNaN(value)) {
+      return "NaN";
+    }
+    if (value === Infinity) {
+      return "Infinity";
+    }
+    if (value === -Infinity) {
+      return "-Infinity";
+    }
+  }
+  return value;
+}
+
+// Maps formatScalar over a whole literal value array — the shape every
+// GraphJson `value:`/`configuration.<field>.value:` field actually takes.
+export function formatValueArray(data: ReadonlyArray<number | boolean | string>): Array<number | boolean | string> {
+  return data.map(formatScalar);
+}
+
 export function toValue(signature: ValueType, raw: Array<number | boolean | string>): Value {
   if (signature === "ref") {
     return { type: signature, data: raw.map((item) => String(item)) };

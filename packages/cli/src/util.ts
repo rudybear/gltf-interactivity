@@ -45,9 +45,15 @@ export function readArrayBuffer(filePath: string): ArrayBuffer {
   return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
 }
 
-export function writeBytes(filePath: string, data: ArrayBuffer | string): void {
+export function writeBytes(filePath: string, data: ArrayBuffer | Uint8Array | string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, typeof data === "string" ? data : Buffer.from(data));
+  if (typeof data === "string") {
+    fs.writeFileSync(filePath, data);
+  } else if (data instanceof Uint8Array) {
+    fs.writeFileSync(filePath, Buffer.from(data));
+  } else {
+    fs.writeFileSync(filePath, Buffer.from(data));
+  }
 }
 
 // Swaps the input path's extension for `ext` (e.g. "scene.glb" + ".ts" ->
@@ -76,13 +82,35 @@ export async function loadDocument(filePath: string): Promise<GltfDocument> {
   return loadGltf(readArrayBuffer(filePath));
 }
 
-export function extractGraph(json: GltfJson, graphIndex: number): unknown {
+// Best-effort lookup — returns undefined rather than failing when the asset
+// has no KHR_interactivity extension or no graph at that index. `apply`'s
+// report (main.ts's cmdApply) needs this non-throwing form: an asset with no
+// existing graph is a legitimate starting point (see the "no-interactivity
+// asset" case in the R3 plan's A6), just one with nothing to diff against.
+export function tryExtractGraph(json: GltfJson, graphIndex: number): unknown | undefined {
   const graphs = (json.extensions as { KHR_interactivity?: { graphs?: unknown[] } } | undefined)?.KHR_interactivity?.graphs;
-  const graph = graphs?.[graphIndex];
+  return graphs?.[graphIndex];
+}
+
+export function extractGraph(json: GltfJson, graphIndex: number): unknown {
+  const graph = tryExtractGraph(json, graphIndex);
   if (!graph) {
+    const graphs = (json.extensions as { KHR_interactivity?: { graphs?: unknown[] } } | undefined)?.KHR_interactivity?.graphs;
     fail(`no KHR_interactivity.graphs[${graphIndex}] found (asset has ${graphs?.length ?? 0} graph(s))`);
   }
   return graph;
+}
+
+// Writes `data` to a same-directory temp file first, then renames it over
+// `filePath` — a rename within one filesystem/directory is atomic, so a
+// process killed mid-write (or a concurrent reader) never observes a
+// partially-written asset. Used by `apply` (main.ts's cmdApply) for its
+// final asset write, per the R3 plan's A4/A5 "atomic write" contract.
+export function atomicWriteFile(filePath: string, data: Uint8Array | string): void {
+  const dir = path.dirname(filePath);
+  const tmpPath = path.join(dir, `.${path.basename(filePath)}.gltfi-tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  fs.writeFileSync(tmpPath, typeof data === "string" ? data : Buffer.from(data));
+  fs.renameSync(tmpPath, filePath);
 }
 
 // KHR_interactivity assets in the wild put the test oracle JSON next to the
