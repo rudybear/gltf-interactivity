@@ -350,7 +350,10 @@ const PLACEHOLDER_LOG_ARG: IRExpr = { k: "const", type: "ref", data: ["<log-arg>
 // backend whose own emitter keeps the original name unchanged.
 function stripForComparison(module: IRModule): unknown {
   return {
-    variables: module.variables.map((v) => ({ type: v.type, initial: v.initial })),
+    // id is included (unlike name — see the exclusion note above): variable
+    // ids must round-trip through @gltfi/emit-gd's third array element and
+    // match the original graph-authored id exactly.
+    variables: module.variables.map((v) => ({ type: v.type, initial: v.initial, id: (v.extras as { id?: string } | undefined)?.id })),
     events: module.events.map((e) => ({ id: e.id, values: e.values })),
     stateSlots: module.stateSlots.map((s) => ({ kind: s.kind, config: s.config })),
     handlers: module.handlers.map((h) => ({ ...h, body: normalizeStmt(h.body) })),

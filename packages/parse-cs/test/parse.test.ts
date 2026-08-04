@@ -328,7 +328,10 @@ const PLACEHOLDER_LOG_ARG: IRExpr = { k: "const", type: "ref", data: ["<log-arg>
 
 function stripForComparison(module: IRModule): unknown {
   return {
-    variables: module.variables.map((v) => ({ type: v.type, initial: v.initial })),
+    // id is included (unlike name — see the exclusion note above): variable
+    // ids must round-trip through @gltfi/emit-cs's DeclareVar third-argument
+    // form and match the original graph-authored id exactly.
+    variables: module.variables.map((v) => ({ type: v.type, initial: v.initial, id: (v.extras as { id?: string } | undefined)?.id })),
     events: module.events.map((e) => ({ id: e.id, values: e.values })),
     // .name is excluded — see parse-py's/parse-lua's own test files'
     // identical note: emit-ts renames state slots to short display

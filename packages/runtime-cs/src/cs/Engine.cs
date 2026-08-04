@@ -276,7 +276,12 @@ public sealed class Engine
 
     // -- builder ("rt.*") API, called only from the generated Build() --------
 
-    public void DeclareVar(string type, object initial)
+    // `id` carries the source graph variable's original id through emitted
+    // code (see @gltfi/emit-cs's emitVarDecls doc comment) — it has NO
+    // execution semantics, so it's accepted and ignored here; the third
+    // argument only exists so @gltfi/parse-cs can recover it from the call
+    // site's own AST.
+    public void DeclareVar(string type, object initial, string? id = null)
     {
         _varTypes.Add(type);
         _varRaw.Add(initial);

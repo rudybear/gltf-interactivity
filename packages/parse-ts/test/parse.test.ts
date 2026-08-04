@@ -508,7 +508,9 @@ function canonicalVariableNames(module: IRModule): string[] {
 function stripForComparison(module: IRModule): unknown {
   const varNames = canonicalVariableNames(module);
   return {
-    variables: module.variables.map((v, i) => ({ name: varNames[i], type: v.type, initial: v.initial })),
+    // id is included: variable ids must round-trip through @gltfi/emit-ts's
+    // rt.withId wrapper and match the original graph-authored id exactly.
+    variables: module.variables.map((v, i) => ({ name: varNames[i], type: v.type, initial: v.initial, id: (v.extras as { id?: string } | undefined)?.id })),
     events: module.events.map((e) => ({ name: e.name, id: e.id, values: e.values })),
     stateSlots: module.stateSlots.map((s) => ({ kind: s.kind, config: s.config })),
     handlers: module.handlers.map((h) => ({ ...h, body: normalizeStmt(h.body) })),

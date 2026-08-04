@@ -480,10 +480,17 @@ class Emitter {
   // no guaranteed iteration order, so the name has to travel alongside each
   // array element instead of being decls' own key (see engine.lua's rt.vars
   // doc comment).
+  // Named-entry gains `id = "the-id"` when the source graph variable had an
+  // explicit id (module.variables[i].extras.id — see @gltfi/ir's import.ts/
+  // export.ts) — engine.lua's rt.vars only ever reads `entry.name`/
+  // `entry.decl`, so the extra key is inert at runtime; @gltfi/parse-lua
+  // reads it back into extras.id (see parseVarsNamedArray).
   private emitVars() {
-    const entries = this.module.variables.map(
-      (v, i) => `{ name = "${this.variableDisplayNames[i]}", decl = ${varDeclCall(v.type, v.initial.data)} }`
-    );
+    const entries = this.module.variables.map((v, i) => {
+      const id = (v.extras as { id?: string } | undefined)?.id;
+      const idField = id ? `, id = ${luaStringLiteral(id)}` : "";
+      return `{ name = "${this.variableDisplayNames[i]}", decl = ${varDeclCall(v.type, v.initial.data)}${idField} }`;
+    });
     this.push(`local V = rt.vars({ ${entries.join(", ")} })`);
   }
 

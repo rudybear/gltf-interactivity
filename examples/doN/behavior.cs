@@ -32,18 +32,18 @@ public static class Module
 
     public static void Build(Engine rt)
     {
-        rt.DeclareVar("int", 0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("int", -1);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("int", -1);
-        rt.DeclareVar("int", 0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("int", -1);
-        rt.DeclareVar("int", 0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("int", -1);
+        rt.DeclareVar("int", 0, "467a7f10-2a70-49b0-ac90-a045449a37e9");
+        rt.DeclareVar("bool", false, "TestResult_flow/doN_[out] flow");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_flow/doN_[out] iteration (5)");
+        rt.DeclareVar("int", -1, "TestResult_flow/doN_[out] iteration (5)");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_flow/doN_[currentCount]");
+        rt.DeclareVar("int", -1, "TestResult_flow/doN_[currentCount]");
+        rt.DeclareVar("int", 0, "8043697e-0ae2-4500-a1c9-9d9ff12a4a79");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_flow/doN_[reset] flow (N = 2, out/out/out/reset/out/out)");
+        rt.DeclareVar("int", -1, "TestResult_flow/doN_[reset] flow (N = 2, out/out/out/reset/out/out)");
+        rt.DeclareVar("int", 0, "983a7860-0d44-41f1-abea-9a2ed508a47a");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_flow/doN_Max Iteration flow");
+        rt.DeclareVar("int", -1, "TestResult_flow/doN_Max Iteration flow");
         rt.DeclareEvent("test/onStart", (bool?)null, (int?)null, (double?)null, (double?)0.0);
         rt.DeclareEvent("test/onSuccess", (bool?)null, (int?)null, (double?)null, (double?)null);
         rt.DeclareEvent("test/onFailed", (bool?)null, (int?)null, (double?)null, (double?)null);

@@ -509,8 +509,29 @@ class ModuleParser {
       if (initial.k !== "const") {
         fail("GI101", initExpr, "rt.vars initial value must be a literal");
       }
-      this.variables.push({ name: `var${idx}`, type: type as IRType, initial: { type: type as IRType, data: initial.data as never } });
+      const idProp = el.getProperty("id");
+      const id = Node.isPropertyAssignment(idProp) ? stringLiteralValue(idProp.getInitializer()) : undefined;
+      this.variables.push({ name: `var${idx}`, type: type as IRType, initial: { type: type as IRType, data: initial.data as never }, extras: id ? { id } : undefined });
     });
+  }
+
+  // `rt.withId("the-id", <decl>)` wraps a variable-declaration-shorthand
+  // call with the ORIGINAL graph-authored variable id — see runtime-lib's
+  // engine.ts EngineBuilder.withId doc comment and emit-ts's emitVars.
+  // Unwraps one layer; returns the inner decl expression unchanged plus the
+  // extracted id (undefined when `init` isn't wrapped at all — the common
+  // case for a variable that never had a source id).
+  private unwrapWithId(init: Node): { id: string | undefined; declExpr: Node } {
+    const call = asCall(init, "rt", "withId");
+    if (!call) {
+      return { id: undefined, declExpr: init };
+    }
+    const [idExpr, declExpr] = call.getArguments();
+    const id = stringLiteralValue(idExpr);
+    if (!id || !declExpr) {
+      fail("GI101", init, "rt.withId expects a string-literal id and a variable-declaration helper call");
+    }
+    return { id, declExpr: declExpr! };
   }
 
   // `{name: rt.int(0), name2: rt.bool(false), ...}` — property ORDER is the
@@ -528,9 +549,10 @@ class ModuleParser {
       if (!init) {
         fail("GI101", prop, "rt.vars object property missing an initializer");
       }
-      const decl = this.parseVarDeclShorthand(init);
+      const { id, declExpr } = this.unwrapWithId(init);
+      const decl = this.parseVarDeclShorthand(declExpr);
       const idx = this.variables.length;
-      this.variables.push({ name, type: decl.type, initial: { type: decl.type, data: decl.data } });
+      this.variables.push({ name, type: decl.type, initial: { type: decl.type, data: decl.data }, extras: id ? { id } : undefined });
       this.varIndexByProp.set(`${boundName}.${name}`, idx);
     });
   }

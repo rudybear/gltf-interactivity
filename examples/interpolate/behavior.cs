@@ -35,21 +35,21 @@ public static class Module
 
     public static void Build(Engine rt)
     {
-        rt.DeclareVar("float", 0.0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float", -0.0142);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float", -0.0142);
-        rt.DeclareVar("float", 0.0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float", 0.0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float", 0.0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float", 0.0);
-        rt.DeclareVar("bool", false);
+        rt.DeclareVar("float", 0.0, "varInterpolate_14f3dfe8-bfe3-4e24-b44c-4d23611e2ac5");
+        rt.DeclareVar("bool", false, "TestResult_variable/interpolate_Flow [out]");
+        rt.DeclareVar("bool", false, "TestResult_variable/interpolate_Flow [done]");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_variable/interpolate_Value at 50%");
+        rt.DeclareVar("float", -0.0142, "TestResult_variable/interpolate_Value at 50%");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_variable/interpolate_Value at 100%");
+        rt.DeclareVar("float", -0.0142, "TestResult_variable/interpolate_Value at 100%");
+        rt.DeclareVar("float", 0.0, "varInterpolate_70d07005-5cf3-4096-aff1-64784e4f4a05");
+        rt.DeclareVar("bool", false, "TestResult_variable/interpolate_[Err] flow (duration -1f");
+        rt.DeclareVar("float", 0.0, "varInterpolate_e238c886-965c-4e31-8403-0fb87c761997");
+        rt.DeclareVar("bool", false, "TestResult_variable/interpolate_[Err] flow (duration infinite");
+        rt.DeclareVar("float", 0.0, "varInterpolate_a863aca9-6cb6-4e45-8c24-98370c20b2a1");
+        rt.DeclareVar("bool", false, "TestResult_variable/interpolate_[Err] flow (p1 NaN)");
+        rt.DeclareVar("float", 0.0, "varInterpolate_fea34d13-336d-4b2e-89fd-2b31b1cce966");
+        rt.DeclareVar("bool", false, "TestResult_variable/interpolate_[Err] flow (p2 NaN)");
         rt.DeclareEvent("test/onStart", (bool?)null, (int?)null, (double?)null, (double?)5.0);
         rt.DeclareEvent("test/onSuccess", (bool?)null, (int?)null, (double?)null, (double?)null);
         rt.DeclareEvent("test/onFailed", (bool?)null, (int?)null, (double?)null, (double?)null);

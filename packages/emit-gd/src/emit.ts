@@ -588,11 +588,18 @@ class Emitter {
   // `V = rt.vars([["counter1", rt.int_var(0)], ...])` — Array-of-pairs form
   // (NOT a Dictionary — see engine.gd's `vars()` doc comment for why: it
   // sidesteps ever needing to rely on GDScript Dictionary insertion-order
-  // preservation). Array element order IS the variable index order.
+  // preservation). Array element order IS the variable index order. A THIRD
+  // element carries the source graph variable's original id when it had one
+  // (module.variables[i].extras.id — see @gltfi/ir's import.ts/export.ts):
+  // `["counter1", rt.int_var(0), "the-id"]`. engine.gd's `vars()` only ever
+  // reads `pair[0]`/`pair[1]`, so the extra element is inert at runtime;
+  // @gltfi/parse-gd reads it back into extras.id (see parseVars).
   private emitVars() {
-    const entries = this.module.variables.map(
-      (v, i) => `[${gdStringLiteral(this.variableDisplayNames[i])}, ${varDeclCall(v.type, v.initial.data)}]`
-    );
+    const entries = this.module.variables.map((v, i) => {
+      const id = (v.extras as { id?: string } | undefined)?.id;
+      const idElem = id ? `, ${gdStringLiteral(id)}` : "";
+      return `[${gdStringLiteral(this.variableDisplayNames[i])}, ${varDeclCall(v.type, v.initial.data)}${idElem}]`;
+    });
     this.push(`V = rt.vars([${entries.join(", ")}])`);
   }
 

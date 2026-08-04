@@ -514,8 +514,18 @@ class Emitter {
   // variable index order (Python 3.7+ dicts preserve insertion order, the
   // same load-bearing contract the other two backends rely on via array/
   // table element order — see engine.py's vars doc comment).
+  // `"counter1": rt.with_id("the-id", rt.int_(0))` when the source graph
+  // variable had an explicit id (module.variables[i].extras.id — see
+  // @gltfi/ir's import.ts/export.ts). engine.py's `with_id` is a pure pass-
+  // through (no execution semantics — see its doc comment); @gltfi/parse-py
+  // unwraps it back into extras.id (see parseVarsDict).
   private emitVars() {
-    const entries = this.module.variables.map((v, i) => `${pyStringLiteral(this.variableDisplayNames[i])}: ${varDeclCall(v.type, v.initial.data)}`);
+    const entries = this.module.variables.map((v, i) => {
+      const decl = varDeclCall(v.type, v.initial.data);
+      const id = (v.extras as { id?: string } | undefined)?.id;
+      const wrapped = id ? `rt.with_id(${pyStringLiteral(id)}, ${decl})` : decl;
+      return `${pyStringLiteral(this.variableDisplayNames[i])}: ${wrapped}`;
+    });
     this.push(`V = rt.vars({${entries.join(", ")}})`);
   }
 

@@ -35,21 +35,21 @@ public static class Module
 
     public static void Build(Engine rt)
     {
-        rt.DeclareVar("int", 0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float3", new double[] { -0.0142, -0.0142, -0.0142 });
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float3", new double[] { -0.0142, -0.0142, -0.0142 });
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
+        rt.DeclareVar("int", 0, "FlowSequenceCount_cd624fe9-1c76-4daf-9ebc-5a4014c8fb9b");
+        rt.DeclareVar("bool", false, "TestResult_animation/start_[out] fired right after [in]");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_animation/start_Position at 50%");
+        rt.DeclareVar("float3", new double[] { -0.0142, -0.0142, -0.0142 }, "TestResult_animation/start_Position at 50%");
+        rt.DeclareVar("bool", false, "TestResult_animation/start_Flow [done]");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_animation/start_Position at 100%");
+        rt.DeclareVar("float3", new double[] { -0.0142, -0.0142, -0.0142 }, "TestResult_animation/start_Position at 100%");
+        rt.DeclareVar("bool", false, "TestResult_animation/start_[err] flow (speed -1)");
+        rt.DeclareVar("bool", false, "TestResult_animation/start_[err] flow (speed 0)");
+        rt.DeclareVar("bool", false, "TestResult_animation/start_[err] flow (speed NaN)");
+        rt.DeclareVar("bool", false, "TestResult_animation/start_[err] flow (speed +Inf)");
+        rt.DeclareVar("bool", false, "TestResult_animation/start_[err] flow (startTime NaN)");
+        rt.DeclareVar("bool", false, "TestResult_animation/start_[err] flow (startTime +Inf)");
+        rt.DeclareVar("bool", false, "TestResult_animation/start_[err] flow (endTime NaN)");
+        rt.DeclareVar("bool", false, "TestResult_animation/start_[err] flow (invalid ref)");
         rt.DeclareEvent("test/onStart", (bool?)null, (int?)null, (double?)null, (double?)3.5);
         rt.DeclareEvent("test/onSuccess", (bool?)null, (int?)null, (double?)null, (double?)null);
         rt.DeclareEvent("test/onFailed", (bool?)null, (int?)null, (double?)null, (double?)null);

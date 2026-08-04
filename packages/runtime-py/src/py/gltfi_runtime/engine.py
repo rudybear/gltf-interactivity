@@ -288,6 +288,14 @@ class Engine:
     def ref_(self, pointer: str = "") -> dict:
         return {"type": "ref", "initial": pointer}
 
+    # Carries a variable's original graph-authored id through emitted code
+    # (see @gltfi/emit-py's emitVars doc comment: `rt.with_id("the-id",
+    # rt.int_(0))`) — purely a syntactic marker for @gltfi/parse-py to
+    # recover the id from; it has NO execution semantics, so this just
+    # returns `decl` unchanged.
+    def with_id(self, id: str, decl: dict) -> dict:
+        return decl
+
     # State-slot factories — plain dicts with the exact shape @gltfi/emit-py
     # used to write out literally (see emitStateSlots' previous inline
     # `{"count": 0.0}`/etc — kept byte-for-byte identical here, just

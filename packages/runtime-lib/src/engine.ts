@@ -210,6 +210,15 @@ export interface EngineBuilder {
   float3x3(...values: number[]): VarDecl;
   float4x4(...values: number[]): VarDecl;
   ref(pointer?: string): VarDecl;
+  // Wraps a variable-declaration-shorthand call with the ORIGINAL graph-
+  // authored variable id (`module.variables[i].extras.id` — see @gltfi/ir's
+  // import.ts/export.ts and display-names.ts's own doc comment), emitted as
+  // `rt.withId("the-id", rt.int(0))` by @gltfi/emit-ts whenever a variable's
+  // id survived from the source graph (see emit.ts's emitVars). Purely a
+  // syntactic carrier for @gltfi/parse-ts to recover the id from — it has NO
+  // execution semantics, so the implementation below just returns `decl`
+  // unchanged.
+  withId(id: string, decl: VarDecl): VarDecl;
   // State-slot factories — plain object literals with the exact shape
   // emit-ts used to write out literally (see DelaySlot/DoNSlot/
   // MultiGateSlot/WaitAllSlot/ThrottleSlot above); the optional parameters
@@ -543,6 +552,7 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
         initial: values.length > 0 ? values : [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
       }),
       ref: (pointer = "") => ({ type: "ref", initial: pointer }),
+      withId: (_id, decl) => decl,
       doNState: () => ({ count: 0 }),
       multiGateState: () => ({ lastIndex: -1, used: [] }),
       waitAllState: () => ({ activated: [], remaining: undefined }),

@@ -68,6 +68,12 @@ declare module "@gltfi/runtime-lib" {
     float3x3(...values: number[]): VarDecl<number[]>;
     float4x4(...values: number[]): VarDecl<number[]>;
     ref(pointer?: string): VarDecl<string>;
+    // Carries a variable's original graph-authored id through emitted code
+    // (see runtime-lib's engine.ts EngineBuilder.withId doc comment) —
+    // generic so \`rt.withId(id, rt.int(0))\` still type-checks as \`VarDecl<number>\`,
+    // preserving \`vars()\`'s object-form property typing exactly as if the
+    // wrapper weren't there.
+    withId<T>(id: string, decl: VarDecl<T>): VarDecl<T>;
     doNState(): any;
     multiGateState(outputCount?: number, opts?: { isRandom?: boolean; isLoop?: boolean }): any;
     waitAllState(inputFlows?: number): any;

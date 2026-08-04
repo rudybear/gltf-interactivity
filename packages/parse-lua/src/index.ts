@@ -532,7 +532,8 @@ class ModuleParser {
       if (initial.k !== "const") {
         fail("GL101", initExpr, "rt.vars initial value must be a literal");
       }
-      this.variables.push({ name: `var${idx}`, type: type as IRType, initial: { type: type as IRType, data: initial.data as never } });
+      const id = stringLiteralValue(getTableKeyString(el, "id"));
+      this.variables.push({ name: `var${idx}`, type: type as IRType, initial: { type: type as IRType, data: initial.data as never }, extras: id ? { id } : undefined });
     });
   }
 
@@ -555,8 +556,9 @@ class ModuleParser {
         fail("GL101", el, "rt.vars named element missing `decl`");
       }
       const decl = this.parseVarDeclShorthand(declExpr);
+      const id = stringLiteralValue(getTableKeyString(el, "id"));
       const idx = this.variables.length;
-      this.variables.push({ name, type: decl.type, initial: { type: decl.type, data: decl.data as never } });
+      this.variables.push({ name, type: decl.type, initial: { type: decl.type, data: decl.data as never }, extras: id ? { id } : undefined });
       this.varIndexByProp.set(`${boundName}.${name}`, idx);
     });
   }

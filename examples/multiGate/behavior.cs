@@ -38,24 +38,24 @@ public static class Module
 
     public static void Build(Engine rt)
     {
-        rt.DeclareVar("int", 0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("int", 0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("int", 0);
+        rt.DeclareVar("int", 0, "FlowSequenceCount_4d6b2ece-854e-472a-9d32-d729ba95f407");
+        rt.DeclareVar("bool", false, "TestResult_flow/multiGate_Order (008, 004, 001) > (001, 004, 008)");
+        rt.DeclareVar("bool", false, "FlowTrigger_0ec4af14-ea93-46ce-a5df-16695404c8c2");
+        rt.DeclareVar("bool", false, "FlowTrigger_e50be4f0-c137-4700-8e07-8d76acae1042");
+        rt.DeclareVar("bool", false, "FlowTrigger_214d4c1f-d9df-4042-9dfe-90f62dbadc6a");
+        rt.DeclareVar("bool", false, "FlowTrigger_64736706-47da-49a6-9ca3-7d3fc77ace9d");
+        rt.DeclareVar("bool", false, "TestResult_flow/multiGate_Random (Check if all out flows are triggered once)");
+        rt.DeclareVar("bool", false, "FlowTrigger_4c420572-b7d8-474c-a58d-921b377c23d2");
+        rt.DeclareVar("bool", false, "FlowTrigger_d3646c48-544d-4c39-9110-2290be5657b0");
+        rt.DeclareVar("bool", false, "FlowTrigger_297e5062-e703-428c-900c-4402a65231c8");
+        rt.DeclareVar("bool", false, "FlowTrigger_38d0d0c7-12a7-4c24-b82d-b4854f458219");
+        rt.DeclareVar("bool", false, "TestResult_flow/multiGate_Loop");
+        rt.DeclareVar("int", 0, "fc8156be-fcdf-4726-a2ee-dbee68f9fad2");
+        rt.DeclareVar("bool", false, "FlowTrigger_91501428-bbec-4faa-adae-49be2fe8505f");
+        rt.DeclareVar("bool", false, "FlowTrigger_8ec17845-2ef2-4ce8-ad0c-a390ed07fd05");
+        rt.DeclareVar("bool", false, "FlowTrigger_791b5d4b-dece-46a5-9a82-2dd77c35d2a1");
+        rt.DeclareVar("bool", false, "TestResult_flow/multiGate_Reset Loop");
+        rt.DeclareVar("int", 0, "bdad9aec-b708-4dae-9ffb-a66e18aab67d");
         rt.DeclareEvent("test/onStart", (bool?)null, (int?)null, (double?)null, (double?)0.0);
         rt.DeclareEvent("test/onSuccess", (bool?)null, (int?)null, (double?)null, (double?)null);
         rt.DeclareEvent("test/onFailed", (bool?)null, (int?)null, (double?)null, (double?)null);

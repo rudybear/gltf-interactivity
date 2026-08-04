@@ -558,16 +558,22 @@ class ModuleParser {
   // [name, declCall] pairs (not a dict — mirrors emit-gd's own `vars()`
   // convention, see emit.ts's `emitVars` doc comment for why: it sidesteps
   // ever needing to rely on GDScript Dictionary insertion-order
-  // preservation). Array element order IS the variable index order.
+  // preservation). Array element order IS the variable index order. An
+  // OPTIONAL third element carries the source graph variable's original id
+  // (see emit.ts's emitVars doc comment): `["counter1", rt.int_var(0),
+  // "the-id"]`.
   private parseVars(arg: GExpr) {
     if (arg.t !== "array") this.fail("GG101", "rt.vars expects an array literal argument");
     arg.items.forEach((pair) => {
-      if (pair.t !== "array" || pair.items.length !== 2) this.fail("GG101", "rt.vars element must be a [name, declCall] pair");
+      if (pair.t !== "array" || (pair.items.length !== 2 && pair.items.length !== 3)) {
+        this.fail("GG101", "rt.vars element must be a [name, declCall] or [name, declCall, id] tuple");
+      }
       const name = strLit(pair.items[0]);
       if (name === undefined) this.fail("GG101", "rt.vars pair's first element must be a string literal");
       const decl = this.parseVarDeclShorthand(pair.items[1]);
+      const id = pair.items.length === 3 ? strLit(pair.items[2]) : undefined;
       const idx = this.variables.length;
-      this.variables.push({ name, type: decl.type, initial: { type: decl.type, data: decl.data as never } });
+      this.variables.push({ name, type: decl.type, initial: { type: decl.type, data: decl.data as never }, extras: id ? { id } : undefined });
       this.varIndexByName.set(name, idx);
     });
   }

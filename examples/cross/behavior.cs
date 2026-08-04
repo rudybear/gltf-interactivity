@@ -26,12 +26,12 @@ public static class Module
 
     public static void Build(Engine rt)
     {
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float3", new double[] { -0.0142, -0.0142, -0.0142 });
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float3", new double[] { -0.0142, -0.0142, -0.0142 });
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float3", new double[] { -0.0142, -0.0142, -0.0142 });
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_math/cross_[a] (1.00, 0.00, 0.00) [b] (0.00, 1.00, 0.00) = (0.00, 0.00, 1.00)");
+        rt.DeclareVar("float3", new double[] { -0.0142, -0.0142, -0.0142 }, "TestResult_math/cross_[a] (1.00, 0.00, 0.00) [b] (0.00, 1.00, 0.00) = (0.00, 0.00, 1.00)");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_math/cross_[a] (2.00, 3.00, 4.00) [b] (5.00, 6.00, 7.00) = (-3.00, 6.00, -3.00)");
+        rt.DeclareVar("float3", new double[] { -0.0142, -0.0142, -0.0142 }, "TestResult_math/cross_[a] (2.00, 3.00, 4.00) [b] (5.00, 6.00, 7.00) = (-3.00, 6.00, -3.00)");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_math/cross_[a] (2.00, 4.00, 6.00) [b] (1.00, 2.00, 3.00) = (0.00, 0.00, 0.00)");
+        rt.DeclareVar("float3", new double[] { -0.0142, -0.0142, -0.0142 }, "TestResult_math/cross_[a] (2.00, 4.00, 6.00) [b] (1.00, 2.00, 3.00) = (0.00, 0.00, 0.00)");
         rt.DeclareEvent("test/onStart", (bool?)null, (int?)null, (double?)null, (double?)0.0);
         rt.DeclareEvent("test/onSuccess", (bool?)null, (int?)null, (double?)null, (double?)null);
         rt.DeclareEvent("test/onFailed", (bool?)null, (int?)null, (double?)null, (double?)null);

@@ -35,21 +35,21 @@ public static class Module
 
     public static void Build(Engine rt)
     {
-        rt.DeclareVar("float", 0.0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float", -0.0142);
-        rt.DeclareVar("int", 0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("int", -1);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", true);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", true);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
+        rt.DeclareVar("float", 0.0, "startTime_d2ce0a9f-f380-4188-b9c2-b65f1fcb0caa");
+        rt.DeclareVar("bool", false, "TestResult_flow/setDelay and cancelDelay_Flow [done]");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_flow/setDelay and cancelDelay_Flow [done] \nin correct delay");
+        rt.DeclareVar("float", -0.0142, "TestResult_flow/setDelay and cancelDelay_Flow [done] \nin correct delay");
+        rt.DeclareVar("int", 0, "7f97a35a-b8a7-4a57-88e6-76f9f19dfa4d");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_flow/setDelay and cancelDelay_Flow [out]");
+        rt.DeclareVar("int", -1, "TestResult_flow/setDelay and cancelDelay_Flow [out]");
+        rt.DeclareVar("bool", false, "TestResult_flow/setDelay and cancelDelay_setDelay [cancel]");
+        rt.DeclareVar("bool", true, "TestResult_HasPassed_flow/setDelay and cancelDelay_setDelay [cancel]");
+        rt.DeclareVar("bool", false, "TestResult_flow/setDelay and cancelDelay_cancelDelay triggered");
+        rt.DeclareVar("bool", true, "TestResult_HasPassed_flow/setDelay and cancelDelay_cancelDelay triggered");
+        rt.DeclareVar("bool", false, "TestResult_flow/setDelay and cancelDelay_cancelDelay \nFlow [out]");
+        rt.DeclareVar("bool", false, "TestResult_flow/setDelay and cancelDelay_Flow [err]");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_flow/setDelay and cancelDelay_lastDelay\nref isValid");
+        rt.DeclareVar("bool", false, "TestResult_flow/setDelay and cancelDelay_lastDelay\nref isValid");
         rt.DeclareEvent("test/onStart", (bool?)null, (int?)null, (double?)null, (double?)2.5);
         rt.DeclareEvent("test/onSuccess", (bool?)null, (int?)null, (double?)null, (double?)null);
         rt.DeclareEvent("test/onFailed", (bool?)null, (int?)null, (double?)null, (double?)null);

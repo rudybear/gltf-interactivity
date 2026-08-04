@@ -576,10 +576,18 @@ class Emitter {
     this.push("}");
   }
 
+  // `rt.DeclareVar("int", 0, "the-id")` — the third argument is OMITTED
+  // (rather than passed as an explicit `null`, unlike DeclareEvent's own
+  // always-5-args convention below) unless the source graph variable had an
+  // explicit id (module.variables[i].extras.id — see @gltfi/ir's import.ts/
+  // export.ts). Engine.cs's DeclareVar ignores it entirely (no execution
+  // semantics); @gltfi/parse-cs reads it back into extras.id.
   private emitVarDecls() {
     this.module.variables.forEach((v) => {
       const [typeCode, initialCode] = declareVarArgs(v.type, v.initial.data);
-      this.push(`rt.DeclareVar(${typeCode}, ${initialCode});`);
+      const id = (v.extras as { id?: string } | undefined)?.id;
+      const idArg = id ? `, ${csStringLiteral(id)}` : "";
+      this.push(`rt.DeclareVar(${typeCode}, ${initialCode}${idArg});`);
     });
   }
 

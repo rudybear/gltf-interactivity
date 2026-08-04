@@ -489,8 +489,27 @@ class ModuleParser {
       if (initial.k !== "const") {
         fail("GP101", initExpr, "rt.vars initial value must be a literal");
       }
-      this.variables.push({ name: `var${idx}`, type: type as IRType, initial: { type: type as IRType, data: initial.data as never } });
+      const id = stringLiteralValue(dictField(el, "id"));
+      this.variables.push({ name: `var${idx}`, type: type as IRType, initial: { type: type as IRType, data: initial.data as never }, extras: id ? { id } : undefined });
     });
+  }
+
+  // `rt.with_id("the-id", <decl>)` wraps a variable-declaration-shorthand
+  // call with the ORIGINAL graph-authored variable id — see engine.py's
+  // with_id doc comment and emit-py's emitVars. Unwraps one layer; returns
+  // the inner decl call unchanged plus the extracted id (undefined when
+  // `node` isn't wrapped at all).
+  private unwrapWithId(node: PyNode): { id: string | undefined; declNode: PyNode } {
+    const call = asAttrCall(node, "rt", "with_id");
+    if (!call) {
+      return { id: undefined, declNode: node };
+    }
+    const [idExpr, declExpr] = callArgs(call);
+    const id = stringLiteralValue(idExpr);
+    if (!id || !declExpr) {
+      fail("GP101", node, "rt.with_id expects a string-literal id and a variable-declaration helper call");
+    }
+    return { id, declNode: declExpr! };
   }
 
   // `{"counter1": rt.int_(0.0), ...}` — dict key order is the variable
@@ -504,9 +523,10 @@ class ModuleParser {
       if (!name) {
         fail("GP101", keyNode, "rt.vars dict key must be a string literal");
       }
-      const decl = this.parseVarDeclShorthand(values[idx]);
+      const { id, declNode } = this.unwrapWithId(values[idx]);
+      const decl = this.parseVarDeclShorthand(declNode);
       const varIdx = this.variables.length;
-      this.variables.push({ name, type: decl.type, initial: { type: decl.type, data: decl.data as never } });
+      this.variables.push({ name, type: decl.type, initial: { type: decl.type, data: decl.data as never }, extras: id ? { id } : undefined });
       this.varIndexByProp.set(`${boundName}.${name}`, varIdx);
     });
   }

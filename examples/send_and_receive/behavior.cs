@@ -36,20 +36,20 @@ public static class Module
 
     public static void Build(Engine rt)
     {
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("int", -1);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float", -0.0142);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("int", -1);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float", -0.0142);
+        rt.DeclareVar("bool", false, "TestResult_event/send and receive_Without Parameters");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_event/send and receive_Default Event Value (Int)");
+        rt.DeclareVar("int", -1, "TestResult_event/send and receive_Default Event Value (Int)");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_event/send and receive_Default Event Value (Bool)");
+        rt.DeclareVar("bool", false, "TestResult_event/send and receive_Default Event Value (Bool)");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_event/send and receive_Default Event Value (Float)");
+        rt.DeclareVar("float", -0.0142, "TestResult_event/send and receive_Default Event Value (Float)");
+        rt.DeclareVar("bool", false, "TestResult_event/send and receive_With Parameters (flow received)");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_event/send and receive_Rcv Parameter Int");
+        rt.DeclareVar("int", -1, "TestResult_event/send and receive_Rcv Parameter Int");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_event/send and receive_Rcv Parameter Bool");
+        rt.DeclareVar("bool", false, "TestResult_event/send and receive_Rcv Parameter Bool");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_event/send and receive_Rcv Parameter Float");
+        rt.DeclareVar("float", -0.0142, "TestResult_event/send and receive_Rcv Parameter Float");
         rt.DeclareEvent("_eventWithoutParametersb6d646f8-2845-4396-bf78-97c3d53c1870", (bool?)null, (int?)null, (double?)null, (double?)null);
         rt.DeclareEvent("_eventWithParameters40f08b1d-312c-4968-bed1-f3e2ab96dcbc", (bool?)false, (int?)1, (double?)1.0, (double?)null);
         rt.DeclareEvent("test/onStart", (bool?)null, (int?)null, (double?)null, (double?)1.5);

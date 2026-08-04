@@ -30,16 +30,16 @@ public static class Module
 
     public static void Build(Engine rt)
     {
-        rt.DeclareVar("float", -1.0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float", -0.0142);
-        rt.DeclareVar("int", 0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float", -0.0142);
-        rt.DeclareVar("int", 0);
-        rt.DeclareVar("bool", false);
-        rt.DeclareVar("float", -0.0142);
+        rt.DeclareVar("float", -1.0, "LastRandomNumberbddbf9eb-0219-4ecf-949c-f01dcb0d0e38");
+        rt.DeclareVar("bool", false, "TestResult_math/random_Random (new number in new flow)");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_math/random_Random (same number in current flow)");
+        rt.DeclareVar("float", -0.0142, "TestResult_math/random_Random (same number in current flow)");
+        rt.DeclareVar("int", 0, "6c89dba7-e578-4ac6-a7a1-f316d1f49b17");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_math/random_Monte Carlo 1k(random number distribution)");
+        rt.DeclareVar("float", -0.0142, "TestResult_math/random_Monte Carlo 1k(random number distribution)");
+        rt.DeclareVar("int", 0, "b0a7e119-0a71-4d4a-b9f5-9ea717673aa0");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_math/random_Monte Carlo 10k(random number distribution)");
+        rt.DeclareVar("float", -0.0142, "TestResult_math/random_Monte Carlo 10k(random number distribution)");
         rt.DeclareEvent("test/onStart", (bool?)null, (int?)null, (double?)null, (double?)0.0);
         rt.DeclareEvent("test/onSuccess", (bool?)null, (int?)null, (double?)null, (double?)null);
         rt.DeclareEvent("test/onFailed", (bool?)null, (int?)null, (double?)null, (double?)null);

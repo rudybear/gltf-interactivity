@@ -449,7 +449,7 @@ class ModuleParser {
       if (!declCall) {
         fail("GC103", stmt, "expected an `rt.DeclareVar(...)` matching the `Vars` class's property declarations, in the same order");
       }
-      const [typeExpr, initExpr] = callArgs(declCall);
+      const [typeExpr, initExpr, idExpr] = callArgs(declCall);
       const typeStr = stringLiteralValue(typeExpr);
       const type = typeStr ? CS_TYPE_TO_IR[typeStr] : undefined;
       if (!type) {
@@ -459,8 +459,13 @@ class ModuleParser {
       if (initial.k !== "const") {
         fail("GC103", initExpr, "rt.DeclareVar's initial-value argument must be a literal");
       }
+      // Optional third argument — the source graph variable's original id
+      // (see emit-cs's emitVarDecls doc comment); omitted entirely (not a
+      // `null` literal, unlike DeclareEvent's args) when the variable never
+      // had one.
+      const id = stringLiteralValue(idExpr);
       const varIdx = this.variables.length;
-      this.variables.push({ name, type, initial: { type, data: initial.data as never } });
+      this.variables.push({ name, type, initial: { type, data: initial.data as never }, extras: id ? { id } : undefined });
       this.varIndexByProp.set(`V.${name}`, varIdx);
     });
     return i + varNames.length;

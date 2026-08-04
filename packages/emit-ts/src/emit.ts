@@ -502,8 +502,19 @@ class Emitter {
     return this.module.events[eventId]?.name ?? `event${eventId}`;
   }
 
+  // `counter1: rt.withId("the-id", rt.int(0))` when the source graph
+  // variable had an explicit id (module.variables[i].extras.id — see
+  // @gltfi/ir's import.ts/export.ts), else the bare decl call. See
+  // runtime-lib's engine.ts EngineBuilder.withId doc comment: purely a
+  // syntactic carrier, no execution semantics — @gltfi/parse-ts unwraps it
+  // straight back into extras.id (see that package's parseVarsObject).
   private emitVars() {
-    const entries = this.module.variables.map((v, i) => `${this.variableDisplayNames[i]}: ${varDeclCall(v.type, v.initial.data)}`);
+    const entries = this.module.variables.map((v, i) => {
+      const decl = varDeclCall(v.type, v.initial.data);
+      const id = (v.extras as { id?: string } | undefined)?.id;
+      const wrapped = id ? `rt.withId(${JSON.stringify(id)}, ${decl})` : decl;
+      return `${this.variableDisplayNames[i]}: ${wrapped}`;
+    });
     this.push(`const V = rt.vars({ ${entries.join(", ")} });`);
   }
 
