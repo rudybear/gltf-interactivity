@@ -1,6 +1,8 @@
 # glTF Interactivity ↔ Script
 
-A bidirectional transpiler between glTF KHR_interactivity behavior graphs and constrained scripting-language subsets (TypeScript first, then Luau and typed Python), with a spec-conformant interpreter, a compiled-code engine, and a WebGPU viewer. Everything gated on the official Khronos test suite (KhronosGroup/glTF-Test-Assets-Interactivity).
+A bidirectional transpiler between glTF KHR_interactivity behavior graphs and constrained scripting-language subsets in **five languages — TypeScript, Lua, typed Python, C#, and GDScript** — with a spec-conformant interpreter, per-language compiled engines, a byte-preserving asset edit workflow (`gltfi extract`/`apply`), and a WebGPU viewer. Everything is gated on the official Khronos test suite (KhronosGroup/glTF-Test-Assets-Interactivity): the same graph decompiles to readable code in any of the five languages, executes there with full conformance, and compiles back to an equivalent graph.
+
+Related projects: [gltf-interactivity-vscode](https://github.com/rudybear/gltf-interactivity-vscode) (VS Code graph visualization for .glb/.gltf) · [gltf-interactivity-three](https://github.com/rudybear/gltf-interactivity-three) (three.js engine adapter + conformance-gated demo, in progress).
 
 ## Status
 
