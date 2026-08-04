@@ -22,6 +22,8 @@ import { checkModule, importGraph } from "../packages/ir/dist/index.js";
 import { emitModule } from "../packages/emit-ts/dist/index.js";
 import { emitModuleLua } from "../packages/emit-lua/dist/index.js";
 import { emitModulePy } from "../packages/emit-py/dist/index.js";
+import { emitModuleCs } from "../packages/emit-cs/dist/index.js";
+import { emitModuleGd } from "../packages/emit-gd/dist/index.js";
 import { loadGltf } from "../packages/gltf/dist/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -117,7 +119,7 @@ function exampleReadme(example) {
 
 ${example.summary}
 
-This directory holds the SAME KHR_interactivity behavior graph in four representations: \`graph.json\` (the raw glTF extension node graph, decompiled straight out of the official Khronos \`${example.category}\` conformance asset), and \`behavior.ts\` / \`behavior.lua\` / \`behavior.py\` — what \`gltfi decompile\` produces from that graph in each supported scripting language. All four are behaviorally equivalent, and any of the three scripts round-trips back to an equivalent graph via \`gltfi compile\` (see the repo root README's Examples section, and \`examples/README.md\`, for details). Regenerate with \`pnpm gen:examples\`; do not hand-edit these files.
+This directory holds the SAME KHR_interactivity behavior graph in six representations: \`graph.json\` (the raw glTF extension node graph, decompiled straight out of the official Khronos \`${example.category}\` conformance asset), and \`behavior.ts\` / \`behavior.lua\` / \`behavior.py\` / \`behavior.cs\` / \`behavior.gd\` — what the repo's emitters produce from that graph in each supported scripting language. All six are behaviorally equivalent, and each script round-trips back to an equivalent graph (see the repo root README's Examples section, and \`examples/README.md\`, for details). Regenerate with \`pnpm gen:examples\`; do not hand-edit these files.
 `;
 }
 
@@ -147,12 +149,16 @@ async function genOne(example) {
   const ts = emitModule(module); // default flavor: "ts" — the readable style
   const lua = emitModuleLua(module);
   const py = emitModulePy(module);
+  const cs = emitModuleCs(module);
+  const gd = emitModuleGd(module);
 
   const outDir = path.join(EXAMPLES_ROOT, example.dir);
   writeDeterministic(path.join(outDir, "graph.json"), JSON.stringify(khrInteractivity, null, 2) + "\n");
   writeDeterministic(path.join(outDir, "behavior.ts"), ts.code);
   writeDeterministic(path.join(outDir, "behavior.lua"), lua.code);
   writeDeterministic(path.join(outDir, "behavior.py"), py.code);
+  writeDeterministic(path.join(outDir, "behavior.cs"), cs.code);
+  writeDeterministic(path.join(outDir, "behavior.gd"), gd.code);
   writeDeterministic(path.join(outDir, "README.md"), exampleReadme(example));
 }
 

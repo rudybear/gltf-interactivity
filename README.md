@@ -49,7 +49,7 @@ Diagnostics from every stage print to stderr; see `docs/diagnostics.md` for what
 
 ## Examples
 
-[`examples/`](examples/README.md) has nine worked examples generated straight from the official Khronos conformance corpus (`pnpm gen:examples`) — flow control, math, variable interpolation, object-model pointers, custom events, and animation playback. Each example directory holds the same `KHR_interactivity` behavior graph as `graph.json` (raw extension JSON) *and* as `behavior.ts`/`behavior.lua`/`behavior.py` — all four decompiled from, and behaviorally equivalent to, one another; any of the three scripts round-trips back to an equivalent graph via `gltfi compile`.
+[`examples/`](examples/README.md) has nine worked examples generated straight from the official Khronos conformance corpus (`pnpm gen:examples`) — flow control, math, variable interpolation, object-model pointers, custom events, and animation playback. Each example directory holds the same `KHR_interactivity` behavior graph as `graph.json` (raw extension JSON) *and* as `behavior.ts`/`behavior.lua`/`behavior.py`/`behavior.cs`/`behavior.gd` — all six decompiled from, and behaviorally equivalent to, one another; each script round-trips back to an equivalent graph (TS via `gltfi compile`; every language has a conformance-gated round-trip pipeline).
 
 A taste — `flow/doN`'s counter loop as emitted to TypeScript (`examples/doN/behavior.ts`):
 
