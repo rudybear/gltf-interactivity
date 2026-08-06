@@ -237,8 +237,8 @@ for (const lang of LANGS) {
       const newGraph = (newContainer.json as any).extensions.KHR_interactivity.graphs[0] as VGraph;
       const equiv = equivalentGraphs(oldGraph, newGraph);
 
-      const { interpEngineFromRuntime } = await import("@gltfi/conformance/dist/interp-adapter.js");
-      const { judgeTest } = await import("@gltfi/conformance/dist/protocol.js");
+      const { interpEngineFromRuntime } = await import("@gltfi/conformance/interp-adapter");
+      const { judgeTest } = await import("@gltfi/conformance/protocol");
       const { createRuntime } = await import("@gltfi/runtime");
       const testJson = JSON.parse(fs.readFileSync(testPath, "utf8"));
       const binary = newContainer.kind === "glb" ? newContainer.binaryChunk : undefined;

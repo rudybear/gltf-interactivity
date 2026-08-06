@@ -8,7 +8,20 @@
 // interp-adapter.ts) and the compiled engine satisfy — this file has no
 // knowledge of graph nodes, IR, or generated code at all.
 import type { Value, ValueType } from "@gltfi/kernel";
-import type { EngineLike } from "@gltfi/runtime-lib";
+import type { EngineInteractive, EngineLike } from "@gltfi/runtime-lib";
+
+// F10: the `requiredInteractions` entry shape the `UserInteractions/*`
+// corpus category's own oracle JSON carries (see
+// Tests/Interactivity/UserInteractions/README.md's "How to run these
+// automatically" section — this type mirrors that section's field
+// reference table exactly). Absent on every other corpus test's entries.
+export type RequiredInteraction = {
+  type: "hover" | "select";
+  expectation: "mustFire" | "mustNotFire";
+  targetNodeId: number;
+  targetNodeName?: string;
+  notes?: string;
+};
 
 export type TestJson = {
   glbFileName: string;
@@ -23,6 +36,9 @@ export type TestJson = {
       resultVarType: ValueType;
       expectedResultValue: Array<number | boolean>;
     }>;
+    // UserInteractions/* only — see RequiredInteraction and
+    // judgeInteractionTest below.
+    requiredInteractions?: RequiredInteraction[];
   }>;
 };
 
@@ -55,7 +71,18 @@ export function compareValues(expected: Array<number | boolean>, actual: Value, 
   });
 }
 
-export function judgeTest(makeEngine: () => EngineLike, testJson: TestJson): TestResult {
+type OneTest = TestJson["tests"][number];
+
+// Shared core of judgeTest/judgeInteractionTest below: build a fresh engine,
+// start it (optionally letting the caller inject something — a
+// UserInteractions gesture — right after start() and before the graph is
+// ticked forward), advance to the asset-advertised deadline, then judge
+// every sub-test by the HasPassed boolean the graph computed itself.
+function runJudge<E extends EngineLike>(
+  makeEngine: () => E,
+  testJson: TestJson,
+  afterStart: (engine: E, test: OneTest) => void
+): TestResult {
   const failures: string[] = [];
   for (const test of testJson.tests) {
     const engine = makeEngine();
@@ -64,6 +91,7 @@ export function judgeTest(makeEngine: () => EngineLike, testJson: TestJson): Tes
     // a subset useful for driving sub-tests individually — evaluateGraphTests
     // ignores it too).
     engine.start();
+    afterStart(engine, test);
 
     // Duration = max over every sent event's expectedDuration payload
     // field, UNION every declared event's default expectedDuration —
@@ -101,4 +129,54 @@ export function judgeTest(makeEngine: () => EngineLike, testJson: TestJson): Tes
     }
   }
   return { ok: failures.length === 0, failures };
+}
+
+export function judgeTest(makeEngine: () => EngineLike, testJson: TestJson): TestResult {
+  return runJudge(makeEngine, testJson, () => {});
+}
+
+// F10: the official interaction-injection hook for the `UserInteractions/*`
+// corpus category (`event/onSelect`, `event/onHoverIn`/`onHoverOut`) —
+// structurally excluded from both test-index.json/mathtests-index.json (see
+// discoverUserInteractionTests in assets.ts), and un-runnable through
+// judgeTest alone because their positive-case sub-tests depend on a gesture
+// that must be synthesized from the outside (see
+// Tests/Interactivity/UserInteractions/README.md's own "these tests differ
+// from all other test cases" callout). This follows that README's own
+// suggested automated flow exactly: start the graph, THEN synthesize every
+// `mustFire` requiredInteractions entry (a "mustNotFire" entry needs no
+// action at all — the corresponding sub-test is instant-pass unless the
+// forbidden event fires some other way), THEN advance to the deadline like
+// any other test.
+//
+// Requires an `EngineInteractive` (not just a bare `EngineLike`) since
+// synthesizing a gesture needs fireSelect/fireHoverIn/fireHoverOut —
+// @gltfi/runtime's `InteractivityRuntime.asEngineLike()` and
+// @gltfi/runtime-lib's compiled `EngineInteractive` both implement this.
+// `point`/`rayOrigin` are fixed, finite, arbitrary-but-valid gesture
+// geometry — good enough for every UserInteractions sub-test in the corpus
+// today, none of which asserts a *specific* point/ray value, only that
+// `selectionRayOrigin` (event/onSelect's own output) comes out finite (a
+// real host always has a real ray/point behind a gesture; the interpreter's
+// own no-ray default is NaN-per-component specifically to distinguish "no
+// gesture happened" from "one did", so a synthesized gesture must supply a
+// real one instead of relying on that default).
+export function judgeInteractionTest(makeEngine: () => EngineInteractive, testJson: TestJson): TestResult {
+  const point: [number, number, number] = [0, 0, 0];
+  const rayOrigin: [number, number, number] = [0, 0, 5];
+  return runJudge(makeEngine, testJson, (engine, test) => {
+    for (const interaction of test.requiredInteractions ?? []) {
+      if (interaction.expectation !== "mustFire") {
+        continue;
+      }
+      if (interaction.type === "select") {
+        engine.fireSelect(interaction.targetNodeId, point, rayOrigin);
+      } else if (interaction.type === "hover") {
+        // Both directions, per the README: "move onto it, then off it
+        // again" — event/onHoverIn AND event/onHoverOut must both fire.
+        engine.fireHoverIn(interaction.targetNodeId, point);
+        engine.fireHoverOut(interaction.targetNodeId);
+      }
+    }
+  });
 }

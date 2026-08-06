@@ -319,8 +319,8 @@ async function cmdApply(argv: string[]): Promise<void> {
   let newJudgeFailed = false;
   const testPath = findTestJsonSibling(assetPath);
   if (testPath) {
-    const { interpEngineFromRuntime } = await import("@gltfi/conformance/dist/interp-adapter.js");
-    const { judgeTest } = await import("@gltfi/conformance/dist/protocol.js");
+    const { interpEngineFromRuntime } = await import("@gltfi/conformance/interp-adapter");
+    const { judgeTest } = await import("@gltfi/conformance/protocol");
     const testJson = JSON.parse(fs.readFileSync(testPath, "utf8"));
     const doc = await loadDocument(assetPath);
     const binary = doc.binaryChunk;
@@ -454,8 +454,8 @@ async function cmdRoundtrip(argv: string[]): Promise<void> {
   const testPath = findTestJsonSibling(inPath);
   let judgeOk = true;
   if (testPath) {
-    const { interpEngineFromRuntime } = await import("@gltfi/conformance/dist/interp-adapter.js");
-    const { judgeTest } = await import("@gltfi/conformance/dist/protocol.js");
+    const { interpEngineFromRuntime } = await import("@gltfi/conformance/interp-adapter");
+    const { judgeTest } = await import("@gltfi/conformance/protocol");
     const testJson = JSON.parse(fs.readFileSync(testPath, "utf8"));
     const binary = doc.binaryChunk;
 

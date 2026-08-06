@@ -6,3 +6,4 @@ export * from "./registry.js";
 export * from "./registry-query.js";
 export * from "./fn-naming.js";
 export * from "./animation.js";
+export * from "./pointer-path.js";

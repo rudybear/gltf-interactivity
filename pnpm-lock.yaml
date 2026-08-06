@@ -387,9 +387,6 @@ importers:
 
   packages/runtime:
     dependencies:
-      '@gltfi/gltf':
-        specifier: workspace:*
-        version: link:../gltf
       '@gltfi/kernel':
         specifier: workspace:*
         version: link:../kernel

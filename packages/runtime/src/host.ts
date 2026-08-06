@@ -2,18 +2,62 @@
 // bubbling and dirty tracking for a scene renderer. Ported from the browser
 // fork's runtime/index.ts; adjusted to import the core's own Graph type
 // instead of a host-app-specific KHR_interactivity parser type.
-import { advanceTime, createRuntime, executeFlow, type Graph, type RuntimeGraph } from "./interpreter.js";
+import { advanceTime, createRuntime, executeFlow, type Graph, type RuntimeGraph, type Value } from "./interpreter.js";
 
 export type InteractivityEvent =
   | { type: "pointermove"; x: number; y: number }
   | { type: "pointerdown"; x: number; y: number }
   | { type: "pointerup"; x: number; y: number };
 
+// F3 (see INTEGRATION-NOTES.md-style friction log): earlier drafts of this
+// type also declared setNodeVisibility/setNodeSelectable/setNodeHoverable,
+// but NOTHING in this file (or anywhere else in this package) ever calls
+// them — KHR_node_visibility/KHR_node_selectability/KHR_node_hoverability
+// only ever reach a host as ordinary `/nodes/{N}/extensions/KHR_node_*/...`
+// pointer strings through applyPointer below, exactly like every other
+// pointer-set write. Confirmed against BOTH of this monorepo's own
+// SceneAdapter-shaped implementations independently: apps/viewer's
+// engine-host.ts's makeSceneAdapter and @gltfi/gltf's
+// applyInteractivityPointer (the generic pointer-string dispatcher the
+// viewer's adapter delegates to) both handle these three extensions purely
+// via pointer-string matching (`/nodes/{N}/extensions/KHR_node_visibility/
+// visible` etc. — see packages/gltf/src/index.ts's applyInteractivityPointer),
+// never via a dedicated method call. So the three methods were dead surface
+// with no dispatch path at all; removed rather than wired up, since wiring
+// them would mean firing the SAME write twice (once via applyPointer, once
+// via a new call) for no behavioral gain.
 export type SceneAdapter = {
   applyPointer(pointer: string, value: number[] | boolean[] | number | boolean): void;
-  setNodeVisibility(nodeIndex: number, visible: boolean): void;
-  setNodeSelectable(nodeIndex: number, selectable: boolean): void;
-  setNodeHoverable(nodeIndex: number, hoverable: boolean): void;
+};
+
+// The KHR_interactivity conformance-judge protocol's engine-agnostic
+// surface (mirrors @gltfi/runtime-lib's own EngineLike field-for-field, and
+// packages/conformance/src/interp-adapter.ts's interpEngineFromRuntime,
+// which builds the identical shape by hand over a bare RuntimeGraph). Kept
+// as a local, structural type rather than an import from @gltfi/runtime-lib
+// so this package doesn't grow a dependency on the compiled-engine runtime
+// just for a type — TypeScript's structural typing makes the two
+// interchangeable for any caller that imports the "real" EngineLike instead.
+export type SentEvent = { eventIndex: number; externalId?: string; payload: [boolean, number, number, number] };
+
+export type EngineLike = {
+  start(): void;
+  advance(dt: number): void;
+  getVariableByIndex(index: number): Value;
+  readonly variableCount: number;
+  readonly sentEvents: readonly SentEvent[];
+  readonly time: number;
+  readonly eventDefaults: readonly (number | undefined)[];
+};
+
+// Additive beyond EngineLike: KHR_node_selectability/KHR_node_hoverability
+// gesture injection, mirroring @gltfi/runtime-lib's EngineInteractive
+// exactly (see that type's own doc comments for the bubbling/stopPropagation
+// semantics fireSelect implements, and the fireHoverIn/fireHoverOut split).
+export type EngineInteractive = EngineLike & {
+  fireSelect(nodeIndex: number, point: [number, number, number], rayOrigin?: [number, number, number], controllerIndex?: number): void;
+  fireHoverIn(nodeIndex: number, point?: [number, number, number], controllerIndex?: number): void;
+  fireHoverOut(nodeIndex?: number): void;
 };
 
 export class InteractivityRuntime {
@@ -136,6 +180,102 @@ export class InteractivityRuntime {
 
   get time() {
     return this.runtime.scheduler.time;
+  }
+
+  // F2 (see INTEGRATION-NOTES.md-style friction log): before this getter
+  // existed, a host needing sentEvents to drive the conformance judge
+  // protocol (packages/conformance/src/protocol.ts's judgeTest) had no
+  // public way to get it off an InteractivityRuntime instance — it had to
+  // reach through a private `runtime` field with an `as any` cast (exactly
+  // as this class's own private `runtime: RuntimeGraph` field is declared
+  // above). Mirrors packages/conformance/src/interp-adapter.ts's
+  // interpEngineFromRuntime field-for-field (same source data: each sent
+  // event's payload, one entry per event index that was ever sent via
+  // "event/send" — see interpreter.ts's executeNodeFlow "event/send" case).
+  get sentEvents(): readonly SentEvent[] {
+    const out: SentEvent[] = [];
+    for (const [eventIndex, payload] of this.runtime.eventPayloads) {
+      out.push({
+        eventIndex,
+        externalId: this.runtime.graph.events?.[eventIndex]?.id,
+        payload: [
+          Boolean(payload.boolParameter),
+          Number(payload.intParameter ?? 0),
+          Number(payload.floatParameter ?? 0),
+          Number(payload.expectedDuration ?? 0)
+        ]
+      });
+    }
+    return out;
+  }
+
+  // F2, continued: each declared event's default `expectedDuration` value
+  // (index == event index), read straight from the graph JSON — needed
+  // alongside sentEvents so judgeTest can compute a run's total duration
+  // even when an event's default is never overridden by an actual send
+  // (see protocol.ts's own doc comment on why it folds in every declared
+  // default, not only sent ones).
+  get eventDefaults(): readonly (number | undefined)[] {
+    return (this.runtime.graph.events ?? []).map((event) => {
+      const raw = (event as { values?: Record<string, { value?: unknown[] }> }).values?.expectedDuration?.value?.[0];
+      return raw !== undefined ? Number(raw) : undefined;
+    });
+  }
+
+  // Same value as getVariable — named to match EngineLike.getVariableByIndex
+  // exactly, for callers building an EngineLike from this class by hand
+  // (asEngineLike below does this internally; getVariable is kept as-is for
+  // existing callers, e.g. apps/viewer's smoke-test probe).
+  getVariableByIndex(index: number): Value {
+    return this.runtime.variables[index];
+  }
+
+  // A conformance-judge-ready (EngineInteractive) view of this instance —
+  // the fix for F2's actual reported cost: a host wrapping
+  // InteractivityRuntime (e.g. a third-party engine adapter driving
+  // packages/conformance's judgeTest, or this repo's own future
+  // UserInteractions-category tests) can call this instead of reaching
+  // through a private field. `advance` is `tick` under a EngineLike-
+  // compatible name (safe to alias: a judge-style caller never queues
+  // pointer events, so tick's queued-event drain is always a no-op in that
+  // usage). `fireSelect`/`fireHoverIn`/`fireHoverOut` bridge to
+  // setSelection/setHover exactly like apps/viewer's engine-host.ts's own
+  // InterpreterEngineHost does (see that file's fireSelect/fireHoverIn/
+  // fireHoverOut for the identical mapping).
+  asEngineLike(): EngineInteractive {
+    const self = this;
+    return {
+      start() {
+        self.start();
+      },
+      advance(dt: number) {
+        self.tick(dt);
+      },
+      getVariableByIndex(index: number) {
+        return self.getVariableByIndex(index);
+      },
+      get variableCount() {
+        return self.variableCount;
+      },
+      get sentEvents() {
+        return self.sentEvents;
+      },
+      get time() {
+        return self.time;
+      },
+      get eventDefaults() {
+        return self.eventDefaults;
+      },
+      fireSelect(nodeIndex: number, point: [number, number, number], rayOrigin?: [number, number, number]) {
+        self.setSelection(nodeIndex, point, rayOrigin);
+      },
+      fireHoverIn(nodeIndex: number, point?: [number, number, number]) {
+        self.setHover(nodeIndex, point ?? [0, 0, 0]);
+      },
+      fireHoverOut() {
+        self.setHover(-1, [0, 0, 0]);
+      }
+    };
   }
 
   getDebugState() {

@@ -5,6 +5,25 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./protocol": {
+      "types": "./dist/protocol.d.ts",
+      "default": "./dist/protocol.js"
+    },
+    "./interp-adapter": {
+      "types": "./dist/interp-adapter.d.ts",
+      "default": "./dist/interp-adapter.js"
+    },
+    "./assets": {
+      "types": "./dist/assets.d.ts",
+      "default": "./dist/assets.js"
+    },
+    "./package.json": "./package.json"
+  },
   "dependencies": {
     "@gltfi/emit-cs": "workspace:*",
     "@gltfi/emit-gd": "workspace:*",
