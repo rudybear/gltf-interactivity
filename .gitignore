@@ -8,3 +8,4 @@ fuzz-failures/
 apps/viewer/public/gltfi-runtime-lib.mjs*
 packages/runtime-cs/src/cs/bin/
 packages/runtime-cs/src/cs/obj/
+__pycache__/
