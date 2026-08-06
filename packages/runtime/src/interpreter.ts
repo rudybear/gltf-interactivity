@@ -30,6 +30,7 @@ import {
   mat4Transpose,
   normalizeVec3,
   parseScalar,
+  parsePointerTemplate,
   quatAngleBetween,
   quatFromAxisAngle,
   quatFromDirections,
@@ -38,6 +39,7 @@ import {
   quatNormalize,
   quatSlerp,
   quatToAxisAngle,
+  resolvePointerTemplate,
   rotate2D,
   toValue,
   transformVec3,
@@ -1204,61 +1206,6 @@ function getInputOptional(runtime: RuntimeGraph, nodeId: number, socket: string,
   return entry;
 }
 
-type PointerParam = { name: string; kind: "int" | "ref" };
-
-// Square brackets denote integer template parameters, curly brackets denote
-// reference template parameters (KHR_interactivity JSON Pointer Templates).
-function extractPointerParams(pointer: string): PointerParam[] {
-  const params: PointerParam[] = [];
-  for (const segment of pointer.split("/")) {
-    if (segment.startsWith("[") && segment.endsWith("]") && segment.length > 2) {
-      params.push({ name: segment.slice(1, -1), kind: "int" });
-    } else if (segment.startsWith("{") && segment.endsWith("}") && segment.length > 2) {
-      params.push({ name: segment.slice(1, -1), kind: "ref" });
-    }
-  }
-  return params;
-}
-
-// Substitutes evaluated template parameters into the pointer template.
-// Integer parameters become decimal indices. Reference parameters are our
-// "/collection/index" path strings: the segment is replaced with the ref's
-// trailing index, but only when the template's prefix matches the ref's
-// collection path — otherwise the pointer is unresolvable and null is returned.
-function buildEffectivePointer(
-  pointer: string,
-  inputs: Record<string, number | string>
-): string | null {
-  const segments = pointer.split("/");
-  const out: string[] = [];
-  for (const segment of segments) {
-    if (segment.startsWith("[") && segment.endsWith("]") && segment.length > 2) {
-      out.push(String(inputs[segment.slice(1, -1)] ?? 0));
-      continue;
-    }
-    if (segment.startsWith("{") && segment.endsWith("}") && segment.length > 2) {
-      const ref = String(inputs[segment.slice(1, -1)] ?? "");
-      if (!ref) {
-        return null;
-      }
-      if (ref.startsWith("delay:") || ref.startsWith("event:")) {
-        out.push(ref);
-        continue;
-      }
-      const slash = ref.lastIndexOf("/");
-      const prefix = ref.slice(0, slash);
-      const index = ref.slice(slash + 1);
-      if (out.join("/") !== prefix || !/^\d+$/.test(index)) {
-        return null;
-      }
-      out.push(index);
-      continue;
-    }
-    out.push(segment);
-  }
-  return out.join("/");
-}
-
 function decodePointerToken(token: string) {
   return token.replace(/~1/g, "/").replace(/~0/g, "~");
 }
@@ -1596,9 +1543,21 @@ function setPointerValue(data: any, pointer: string, value: any): boolean {
   return true;
 }
 
+// Boolean pointer-value contract (F4; see also packages/runtime/README.md's
+// "Pointer value contracts" section): a real JS `true`/`false` always
+// matches a "bool"-signature pointer. A bare numeric `0`/`1` is ALSO
+// tolerated here — some graphs wire a numerically-typed literal/value
+// (declared with an "int"/"float" type index in the graph's own type table)
+// straight into a bool-typed pointer/set's "value" socket — but tolerating
+// it here is only half the contract: handlePointerSet always normalizes a
+// tolerated 0/1 to a real boolean (`Boolean(value)`) before it reaches
+// setPointerValue or the host-facing onPointerSet callback, so a
+// SceneAdapter/EngineLike host can assume `typeof value === "boolean"`
+// there — see this function's own callers and coerceBoolLikeForWrite below
+// for the pointer/interpolate-driven write path's equivalent normalization.
 function pointerValueMatchesType(value: any, signature: ValueType): boolean {
   if (signature === "bool") {
-    return typeof value === "boolean";
+    return typeof value === "boolean" || value === 0 || value === 1;
   }
   if (signature === "int") {
     return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value);
@@ -1788,7 +1747,7 @@ function handlePointerInterpolate(runtime: RuntimeGraph, nodeId: number, stack: 
   const typeIndex = getConfigValue(node, "type") as number | undefined;
   const signature = runtime.graph.types[typeIndex ?? 2]?.signature ?? "float";
   const inputs: Record<string, number | string> = {};
-  for (const param of extractPointerParams(pointer)) {
+  for (const param of parsePointerTemplate(pointer)) {
     const input = getInput(runtime, nodeId, param.name, stack);
     if (param.kind === "ref") {
       const ref = input.type === "ref" ? String(input.data[0] ?? "") : "";
@@ -1804,7 +1763,7 @@ function handlePointerInterpolate(runtime: RuntimeGraph, nodeId: number, stack: 
     }
     inputs[param.name] = Math.trunc(raw);
   }
-  const resolved = buildEffectivePointer(pointer, inputs);
+  const resolved = resolvePointerTemplate(pointer, inputs);
   if (resolved === null) {
     return false;
   }
@@ -1847,7 +1806,7 @@ function handlePointerGet(runtime: RuntimeGraph, nodeId: number, stack: Set<stri
   }
   const typeIndex = getConfigValue(node, "type") as number | undefined;
   const signature = runtime.graph.types[typeIndex ?? 2]?.signature ?? "float";
-  const params = extractPointerParams(pointer);
+  const params = parsePointerTemplate(pointer);
   const inputs: Record<string, number | string> = {};
   for (const param of params) {
     const input = getInput(runtime, nodeId, param.name, stack);
@@ -1882,7 +1841,7 @@ function handlePointerGet(runtime: RuntimeGraph, nodeId: number, stack: Set<stri
     }
     return { value: defaultValue(signature), isValid: false };
   }
-  const resolved = buildEffectivePointer(pointer, inputs);
+  const resolved = resolvePointerTemplate(pointer, inputs);
   if (resolved === null) {
     return { value: defaultValue(signature), isValid: false };
   }
@@ -1913,7 +1872,7 @@ function handlePointerSet(runtime: RuntimeGraph, nodeId: number, stack: Set<stri
   const valueInput = getInput(runtime, nodeId, "value", stack);
   const typeIndex = getConfigValue(node, "type") as number | undefined;
   const signature = runtime.graph.types[typeIndex ?? 2]?.signature ?? "float";
-  const params = extractPointerParams(pointer);
+  const params = parsePointerTemplate(pointer);
   const inputs: Record<string, number | string> = {};
   for (const param of params) {
     const input = getInput(runtime, nodeId, param.name, stack);
@@ -1938,7 +1897,7 @@ function handlePointerSet(runtime: RuntimeGraph, nodeId: number, stack: Set<stri
     }
     inputs[param.name] = value;
   }
-  const resolved = buildEffectivePointer(pointer, inputs);
+  const resolved = resolvePointerTemplate(pointer, inputs);
   if (resolved === null) {
     if (runtime.trace) {
       runtime.trace.push(-2000 - nodeId);
@@ -1952,15 +1911,49 @@ function handlePointerSet(runtime: RuntimeGraph, nodeId: number, stack: Set<stri
     }
     return false;
   }
-  const ok = setPointerValue(runtime.gltf, resolved, value);
+  // Normalize a tolerated numeric 0/1 to a real boolean (see
+  // pointerValueMatchesType's doc comment above) BEFORE it reaches the glTF
+  // JSON tree or the host-facing onPointerSet callback — this is the actual
+  // enforcement point of the "always a real boolean over the wire" half of
+  // the bool pointer-value contract.
+  const normalized = signature === "bool" ? Boolean(value) : value;
+  const ok = setPointerValue(runtime.gltf, resolved, normalized);
   if (ok) {
-    runtime.onPointerSet?.(resolved, value as number[] | boolean[] | number | boolean);
+    runtime.onPointerSet?.(resolved, normalized as number[] | boolean[] | number | boolean);
     runtime.onDirty?.();
   }
   if (!ok && runtime.trace) {
     runtime.trace.push(-4000 - nodeId);
   }
   return ok;
+}
+
+// pointer/interpolate's scheduled writes (see makeSchedulerEffects.setPointer
+// below) go through the kernel scheduler's own numeric-only PointerInterp
+// machinery, which has no notion of "bool" at all (it lerps a startValue/
+// endValue number array over time) — so unlike handlePointerSet above, a
+// scheduled write can't consult the pointer/interpolate node's own declared
+// type by the time it fires. This coerces based on what's ALREADY at that
+// pointer path instead: if the current JSON value there is a real boolean
+// (or boolean array), the freshly-computed numeric value is treated as the
+// same tolerated-0/1-standing-in-for-a-boolean case pointerValueMatchesType
+// documents, and normalized the same way, before setPointerValue/
+// onPointerSet ever see it. A pointer whose current value isn't boolean-
+// shaped passes through unchanged (the overwhelmingly common case — TRS/
+// weights/color/etc. interpolation).
+function coerceBoolLikeForWrite(gltf: any, pointer: string, value: number | number[]): number[] | boolean[] | number | boolean {
+  const { value: current, isValid } = resolvePointerValue(gltf, pointer);
+  if (!isValid) {
+    return value;
+  }
+  const toBool = (item: unknown) => Number(item) !== 0;
+  if (typeof current === "boolean") {
+    return toBool(Array.isArray(value) ? value[0] : value);
+  }
+  if (Array.isArray(current) && current.length > 0 && typeof current[0] === "boolean") {
+    return (Array.isArray(value) ? value : [value]).map(toBool);
+  }
+  return value;
 }
 
 function getEventPayload(runtime: RuntimeGraph, node: GraphNode): EventPayload {
@@ -2589,8 +2582,13 @@ function makeSchedulerEffects(runtime: RuntimeGraph): SchedulerEffects<FlowCont>
       applyAnimationAt(runtime, animationIndex, requestedTime);
     },
     setPointer(pointer, value) {
-      if (setPointerValue(runtime.gltf, pointer, value)) {
-        runtime.onPointerSet?.(pointer, value as number[] | boolean[] | number | boolean);
+      // pointer/interpolate's own bool-pointer-write normalization — see
+      // coerceBoolLikeForWrite's doc comment above for why this scheduled-
+      // write path needs its own version of handlePointerSet's Boolean()
+      // cast instead of sharing it directly.
+      const normalized = coerceBoolLikeForWrite(runtime.gltf, pointer, value);
+      if (setPointerValue(runtime.gltf, pointer, normalized)) {
+        runtime.onPointerSet?.(pointer, normalized);
         runtime.onDirty?.();
       }
     },

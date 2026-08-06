@@ -14,8 +14,10 @@ import {
   type TestJson,
   type TestResult
 } from "./interpreter.js";
+import { InteractivityRuntime } from "./host.js";
 
 export * from "./interpreter.js";
+export * from "./host.js";
 
 function readGlb(filePath: string): { json: any; bin: Buffer | null } {
   const data = fs.readFileSync(filePath);
@@ -48,6 +50,19 @@ export function createRuntimeFromGlbFile(glbPath: string): RuntimeGraph {
   const { json: gltf, bin } = readGlb(glbPath);
   const graph = resolveGraph(gltf);
   return createRuntime(graph, gltf, { binary: bin ?? undefined });
+}
+
+// F10: the InteractivityRuntime (host.ts) sibling of createRuntimeFromGlbFile
+// above — builds the higher-level host wrapper (hover/select bubbling,
+// dirty tracking) instead of a bare RuntimeGraph. Needed for
+// UserInteractions-category conformance tests (@gltfi/conformance's
+// judgeInteractionTest), which drive fireSelect/fireHoverIn/fireHoverOut —
+// capabilities the bare RuntimeGraph + interp-adapter.ts's EngineLike don't
+// have (see host.ts's asEngineLike() for the bridge to EngineInteractive).
+export function createInteractivityRuntimeFromGlbFile(glbPath: string): InteractivityRuntime {
+  const { json: gltf, bin } = readGlb(glbPath);
+  const graph = resolveGraph(gltf);
+  return new InteractivityRuntime(graph, gltf, bin ?? undefined);
 }
 
 // Follows the official protocol from glTF-Test-Assets-Interactivity. Thin

@@ -55,3 +55,37 @@ export function loadTestAssets(root: string = DEFAULT_ROOT, filterPrefix?: strin
     return { name: entry.name, glbPath, testPath };
   });
 }
+
+// F10: `UserInteractions/*` (event/onSelect, event/onHoverIn/onHoverOut) is
+// structurally absent from BOTH test-index.json and mathtests-index.json —
+// confirmed by grepping both files in the corpus checkout, neither lists a
+// `UserInteractions/...` entry — so loadTestAssets above can never surface
+// this category no matter what `filterPrefix` is passed. This enumerates it
+// directly from the corpus's own on-disk layout instead
+// (`UserInteractions/<name>/glTF-Binary/<name>.glb` +
+// `UserInteractions/<name>/test-Json/<name>.json`, the exact same two-file
+// shape every other category uses, just not index-listed) — a read-only
+// directory walk, never touching the corpus checkout itself. See
+// `Tests/Interactivity/UserInteractions/README.md` for why this category
+// needs its own judge (`@gltfi/conformance/protocol`'s
+// judgeInteractionTest) rather than plain `judgeTest`.
+export function discoverUserInteractionTests(root: string = DEFAULT_ROOT): TestAsset[] {
+  const categoryDir = path.join(root, "UserInteractions");
+  if (!fs.existsSync(categoryDir)) {
+    return [];
+  }
+  const names = fs
+    .readdirSync(categoryDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+  const assets: TestAsset[] = [];
+  for (const name of names) {
+    const glbPath = path.join(categoryDir, name, "glTF-Binary", `${name}.glb`);
+    const testPath = path.join(categoryDir, name, "test-Json", `${name}.json`);
+    if (fs.existsSync(glbPath) && fs.existsSync(testPath)) {
+      assets.push({ name: `UserInteractions/${name}`, glbPath, testPath });
+    }
+  }
+  return assets;
+}

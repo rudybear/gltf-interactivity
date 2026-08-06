@@ -51,30 +51,20 @@ function toPointerArray(value: number[] | boolean[] | number | boolean): number[
   return [typeof value === "boolean" ? (value ? 1 : 0) : Number(value)];
 }
 
+// F3 upstream fix: @gltfi/runtime's SceneAdapter no longer declares
+// setNodeVisibility/setNodeSelectable/setNodeHoverable (they had no call
+// site anywhere in that package — KHR_node_visibility/selectability/
+// hoverability always arrive here as ordinary `/nodes/{N}/extensions/
+// KHR_node_*/...` pointer strings through applyPointer below, dispatched by
+// applyInteractivityPointer itself; see packages/gltf/src/index.ts). This
+// adapter used to implement all three anyway to be an "honest, complete"
+// SceneAdapter; now that the type only declares applyPointer, there's
+// nothing left to implement.
 function makeSceneAdapter(scene: RenderScene, markDirty: () => void): SceneAdapter {
   return {
     applyPointer(pointer, value) {
       applyInteractivityPointer(scene, pointer, toPointerArray(value));
       markDirty();
-    },
-    setNodeVisibility(nodeIndex, visible) {
-      const node = scene.nodes[nodeIndex];
-      if (node) {
-        node.visible = visible;
-      }
-      markDirty();
-    },
-    setNodeSelectable(nodeIndex, selectable) {
-      const node = scene.nodes[nodeIndex];
-      if (node) {
-        node.selectable = selectable;
-      }
-    },
-    setNodeHoverable(nodeIndex, hoverable) {
-      const node = scene.nodes[nodeIndex];
-      if (node) {
-        node.hoverable = hoverable;
-      }
     }
   };
 }

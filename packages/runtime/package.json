@@ -16,7 +16,6 @@
     }
   },
   "dependencies": {
-    "@gltfi/kernel": "workspace:*",
-    "@gltfi/gltf": "workspace:*"
+    "@gltfi/kernel": "workspace:*"
   }
 }
