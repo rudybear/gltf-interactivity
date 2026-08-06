@@ -217,7 +217,13 @@ public sealed class Engine
             GetAnimationPlayhead = i => _animationPlayheads.TryGetValue(i, out var v) ? v : (0.0, 0.0),
             ActiveCameraPosition = null,
             ActiveCameraRotation = null,
-            OnPointerSet = (p, v) => _onPointerSetHook?.Invoke(p, v)
+            OnPointerSet = (p, v) => _onPointerSetHook?.Invoke(p, v),
+            // Spec pointer/set step 5 (see Pointer.cs's PtrSet): killing any
+            // in-flight pointer/interpolate targeting the same effective
+            // pointer. PtrInterpPrepare's own scheduled tick writes go
+            // through WritePointerRaw instead (the scheduler's SetPointer
+            // effect below), never through here.
+            KillPointerInterp = p => _scheduler.KillPointerInterp(p)
         };
 
         _scheduler = new Scheduler(new SchedulerEffects
@@ -335,16 +341,22 @@ public sealed class Engine
         });
     }
 
+    // Spec variable/set step 2a: every compiled variable/set lowers to one
+    // of these typed setters and must kill any in-flight variable/interpolate
+    // targeting this index — its done flow never fires. The scheduler's OWN
+    // interpolation-tick writes go through EffectSetVariable instead
+    // (straight to `_varRaw`, never through these setters), so they can
+    // never self-kill.
     public int GetVarInt(int idx) => (int)_varRaw[idx];
-    public void SetVarInt(int idx, int v) => _varRaw[idx] = v;
+    public void SetVarInt(int idx, int v) { _varRaw[idx] = v; _scheduler.KillVariableInterp(idx); }
     public double GetVarFloat(int idx) => (double)_varRaw[idx];
-    public void SetVarFloat(int idx, double v) => _varRaw[idx] = v;
+    public void SetVarFloat(int idx, double v) { _varRaw[idx] = v; _scheduler.KillVariableInterp(idx); }
     public bool GetVarBool(int idx) => (bool)_varRaw[idx];
-    public void SetVarBool(int idx, bool v) => _varRaw[idx] = v;
+    public void SetVarBool(int idx, bool v) { _varRaw[idx] = v; _scheduler.KillVariableInterp(idx); }
     public string GetVarRef(int idx) => (string)_varRaw[idx];
-    public void SetVarRef(int idx, string v) => _varRaw[idx] = v;
+    public void SetVarRef(int idx, string v) { _varRaw[idx] = v; _scheduler.KillVariableInterp(idx); }
     public double[] GetVarVec(int idx) => (double[])_varRaw[idx];
-    public void SetVarVec(int idx, double[] v) => _varRaw[idx] = v;
+    public void SetVarVec(int idx, double[] v) { _varRaw[idx] = v; _scheduler.KillVariableInterp(idx); }
 
     public void OnStart(Action fn) => _onStartHandlers.Add(fn);
     public void OnTick(Action<double, double> fn) => _onTickHandlers.Add(fn);

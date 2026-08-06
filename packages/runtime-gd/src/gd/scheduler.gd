@@ -85,9 +85,18 @@ func is_delay_active(ref: String) -> bool:
 
 
 func add_variable_interp(params: Dictionary) -> void:
+	kill_variable_interp(params["variableIndex"])
 	var entry: Dictionary = params.duplicate()
 	entry["startTime"] = time
 	_variable_interps.append(entry)
+
+
+func kill_variable_interp(variable_index: int) -> void:
+	var kept := []
+	for item in _variable_interps:
+		if item["variableIndex"] != variable_index:
+			kept.append(item)
+	_variable_interps = kept
 
 
 func add_pointer_interp(params: Dictionary) -> void:

@@ -125,7 +125,15 @@ class _VarStore:
         if name not in name_to_index:
             raise AttributeError(name)
         engine = object.__getattribute__(self, "_engine")
-        engine._var_raw[name_to_index[name]] = value
+        idx = name_to_index[name]
+        engine._var_raw[idx] = value
+        # Spec variable/set step 2a: every compiled variable/set lowers to
+        # `V.<name> = value` and must kill any in-flight variable/interpolate
+        # targeting this index — its done flow never fires. The scheduler's
+        # OWN interpolation-tick writes go through `_effect_set_variable`
+        # instead (straight to `_var_raw`, never through this `__setattr__`),
+        # so they can never self-kill.
+        engine._scheduler.kill_variable_interp(idx)
 
 
 class Engine:
@@ -157,6 +165,12 @@ class Engine:
             "activeCameraPosition": None,
             "activeCameraRotation": None,
             "onPointerSet": self._on_pointer_set,
+            # Spec pointer/set step 5 (see pointer.py's ptr_set): killing any
+            # in-flight pointer/interpolate targeting the same effective
+            # pointer. ptr_interp_prepare's own scheduled tick writes go
+            # through write_pointer_raw instead (the scheduler's
+            # `setPointer` effect below), never through here.
+            "killPointerInterp": lambda pointer: self._scheduler.kill_pointer_interp(pointer),
         }
         self._accessor_host = {"gltf": self._gltf, "glbBin": self._glb_bin}
 
@@ -234,6 +248,9 @@ class Engine:
 
     def set_var(self, index: int, value) -> None:
         self._var_raw[index] = value
+        # See `_VarStore.__setattr__` above: same spec variable/set step 2a
+        # kill, for the index-based (`set_var`) entry point.
+        self._scheduler.kill_variable_interp(index)
 
     # Additive dict-shaped `rt.events(...)` form — same insertion-order-is-
     # index-order contract as vars() above. Returns a plain name->index dict

@@ -29,5 +29,13 @@ func _get(property: StringName):
 func _set(property: StringName, value) -> bool:
 	if not _name_to_index.has(property):
 		return false
-	_engine.var_raw[_name_to_index[property]] = value
+	var idx: int = _name_to_index[property]
+	_engine.var_raw[idx] = value
+	# Spec variable/set step 2a: every compiled variable/set lowers to
+	# `V.<name> = value` and must kill any in-flight variable/interpolate
+	# targeting this index -- its done flow never fires. The scheduler's OWN
+	# interpolation-tick writes go through `_effect_set_variable` instead
+	# (straight to `var_raw`, never through this `_set` hook), so they can
+	# never self-kill.
+	_engine._scheduler.kill_variable_interp(idx)
 	return true

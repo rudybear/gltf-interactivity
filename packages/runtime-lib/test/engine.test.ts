@@ -182,3 +182,146 @@ describe("createEngine variable indexing", () => {
     expect(engine.getVariableByIndex(2)).toEqual({ type: "float3", data: [1, 2, 3] });
   });
 });
+
+// Task #10: KHR_interactivity spec's interpolation-kill semantics, wired into
+// this compiled engine's two variable/set entry points (the `V.<name>`
+// property setter emit-ts's "setVar" case lowers every compiled
+// variable/set to, and the index-based `rt.setVar` used by hand-authored
+// fixtures/tests) and its pointer/set entry point (`rt.ptrSet`, via
+// pointer.ts's PointerHost.killPointerInterp hook). Companion to
+// packages/kernel/test/scheduler.test.ts (same three rules at the kernel
+// scheduler API level) and packages/runtime/test/interpolation-kill.test.ts
+// (the interpreter equivalent) — all three engines are expected to agree.
+describe("createEngine interpolation-kill semantics (task #10)", () => {
+  it("the `V.<name>` setter kills an in-flight variable/interpolate for that variable (spec variable/set step 2a)", () => {
+    const factory = createEngine((rt) => {
+      const V = rt.vars({ v0: { type: "float", initial: 0 }, v1: { type: "float", initial: 0 } });
+      rt.onStart(() => {
+        rt.varInterp(0, 10, 1, [0, 0], [1, 1], false, () => {
+          V.v1 = 1;
+        });
+        const slot = rt.delayState();
+        rt.setDelay(slot, 0.3, () => {
+          V.v0 = 999;
+        });
+      });
+    });
+    const engine = factory();
+    engine.start();
+    engine.advance(0.3);
+    expect(engine.getVariableByIndex(0)).toEqual({ type: "float", data: [999] });
+    engine.advance(0.5);
+    engine.advance(0.5);
+    expect(engine.getVariableByIndex(0)).toEqual({ type: "float", data: [999] });
+    expect(engine.getVariableByIndex(1)).toEqual({ type: "float", data: [0] });
+  });
+
+  it("rt.setVar (index-based) kills an in-flight variable/interpolate for that variable (spec variable/set step 2a)", () => {
+    const factory = createEngine((rt) => {
+      rt.vars([{ type: "float", initial: 0 }, { type: "float", initial: 0 }]);
+      rt.onStart(() => {
+        rt.varInterp(0, 10, 1, [0, 0], [1, 1], false, () => {
+          rt.setVar(1, 1);
+        });
+        const slot = rt.delayState();
+        rt.setDelay(slot, 0.3, () => {
+          rt.setVar(0, 999);
+        });
+      });
+    });
+    const engine = factory();
+    engine.start();
+    engine.advance(0.3);
+    expect(engine.getVariableByIndex(0)).toEqual({ type: "float", data: [999] });
+    engine.advance(1.0);
+    expect(engine.getVariableByIndex(0)).toEqual({ type: "float", data: [999] });
+    expect(engine.getVariableByIndex(1)).toEqual({ type: "float", data: [0] });
+  });
+
+  it("varInterp for an already-interpolating variable replaces the old entry — only the new one's done fires (spec variable/interpolate step 5)", () => {
+    const factory = createEngine((rt) => {
+      const V = rt.vars({ v0: { type: "float", initial: 0 }, v1: { type: "float", initial: 0 } });
+      rt.onStart(() => {
+        rt.varInterp(0, 10, 1, [0, 0], [1, 1], false, () => {
+          V.v1 = 1;
+        });
+        rt.varInterp(0, 20, 1, [0, 0], [1, 1], false, () => {
+          V.v1 = 2;
+        });
+      });
+    });
+    const engine = factory();
+    engine.start();
+    engine.advance(1.0);
+    engine.advance(0.1);
+    expect(engine.getVariableByIndex(0)).toEqual({ type: "float", data: [20] });
+    expect(engine.getVariableByIndex(1)).toEqual({ type: "float", data: [2] });
+  });
+
+  it("rt.ptrSet kills an in-flight ptrInterp for the same effective pointer (spec pointer/set step 5)", () => {
+    const writes: Array<{ pointer: string; value: unknown }> = [];
+    const factory = createEngine((rt) => {
+      const V = rt.vars({ v0: { type: "float", initial: 0 } });
+      rt.onStart(() => {
+        rt.ptrInterp("/nodes/0/translation", "float3", [10, 10, 10], 1, [0, 0], [1, 1], () => {
+          V.v0 = 1;
+        });
+        const slot = rt.delayState();
+        rt.setDelay(slot, 0.3, () => {
+          rt.ptrSet("/nodes/0/translation", "float3", [999, 999, 999]);
+        });
+      });
+    });
+    const engine = factory({ gltf: { nodes: [{}] }, onPointerSet: (pointer, value) => writes.push({ pointer, value }) });
+    engine.start();
+    engine.advance(0.3);
+    expect(writes[writes.length - 1]).toEqual({ pointer: "/nodes/0/translation", value: [999, 999, 999] });
+    engine.advance(0.5);
+    engine.advance(0.5);
+    expect(writes[writes.length - 1]).toEqual({ pointer: "/nodes/0/translation", value: [999, 999, 999] });
+    expect(engine.getVariableByIndex(0)).toEqual({ type: "float", data: [0] });
+  });
+
+  it("an interpolation's own per-tick writes never self-kill: varInterp ticked to completion in small steps fires done exactly once", () => {
+    const factory = createEngine((rt) => {
+      const V = rt.vars({ v0: { type: "float", initial: 0 }, v1: { type: "float", initial: 0 } });
+      rt.onStart(() => {
+        rt.varInterp(0, 10, 1, [0, 0], [1, 1], false, () => {
+          V.v1 = 1;
+        });
+      });
+    });
+    const engine = factory();
+    engine.start();
+    engine.advance(0.25);
+    engine.advance(0.25);
+    engine.advance(0.25);
+    expect(engine.getVariableByIndex(1)).toEqual({ type: "float", data: [0] });
+    const midValue = (engine.getVariableByIndex(0).data as number[])[0];
+    expect(midValue).toBeGreaterThan(0);
+    expect(midValue).toBeLessThan(10);
+    engine.advance(0.25);
+    expect(engine.getVariableByIndex(0)).toEqual({ type: "float", data: [10] });
+    expect(engine.getVariableByIndex(1)).toEqual({ type: "float", data: [1] });
+  });
+
+  it("an interpolation's own per-tick writes never self-kill: ptrInterp ticked to completion in small steps fires done exactly once", () => {
+    const writes: Array<{ pointer: string; value: unknown }> = [];
+    const factory = createEngine((rt) => {
+      const V = rt.vars({ v0: { type: "float", initial: 0 } });
+      rt.onStart(() => {
+        rt.ptrInterp("/nodes/0/translation", "float3", [10, 10, 10], 1, [0, 0], [1, 1], () => {
+          V.v0 = 1;
+        });
+      });
+    });
+    const engine = factory({ gltf: { nodes: [{}] }, onPointerSet: (pointer, value) => writes.push({ pointer, value }) });
+    engine.start();
+    engine.advance(0.5);
+    engine.advance(0.49);
+    expect(engine.getVariableByIndex(0)).toEqual({ type: "float", data: [0] });
+    engine.advance(0.01);
+    expect(writes[writes.length - 1]).toEqual({ pointer: "/nodes/0/translation", value: [10, 10, 10] });
+    expect(engine.getVariableByIndex(0)).toEqual({ type: "float", data: [1] });
+  });
+});

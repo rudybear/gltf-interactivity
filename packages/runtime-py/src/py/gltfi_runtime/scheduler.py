@@ -75,6 +75,7 @@ class Scheduler:
         return ref in self._active_refs
 
     def add_variable_interp(self, params: dict) -> None:
+        self.kill_variable_interp(params["variableIndex"])
         entry = dict(params)
         entry["startTime"] = self.time
         self._variable_interps.append(entry)

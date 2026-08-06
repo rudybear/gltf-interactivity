@@ -689,8 +689,15 @@ function ptr_ptrSet(host, pointer, args, t, value)
   local resolved = ptr_buildEffectivePointer(pointer, args)
   if resolved == nil then return false end
   local ok = ptr_setPointerValue(host.gltf, resolved, value)
-  if ok and host.onPointerSet then
-    host.onPointerSet(resolved, value)
+  if ok then
+    -- Spec pointer/set step 5: kill any in-flight pointer/interpolate
+    -- targeting this same fully-resolved pointer string — the same one
+    -- ptr_ptrInterpPrepare keys its scheduler table entries on — so its
+    -- done flow never fires. Not called on a failed/rejected set, or by
+    -- ptr_writePointerRaw (the scheduler's OWN interpolation-tick writes,
+    -- which must never self-kill).
+    if host.killPointerInterp then host.killPointerInterp(resolved) end
+    if host.onPointerSet then host.onPointerSet(resolved, value) end
   end
   return ok
 end

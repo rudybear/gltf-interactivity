@@ -385,6 +385,60 @@ execution equivalence via the conformance judge protocol).
 | `GV029` | A scalar config field (`int`/`bool`/`string`) doesn't have exactly one value. | Scalar-typed config fields are 1-element arrays by convention; anything else is malformed (contrast with `int[]`-typed fields like `cases`/`variables`, which may legitimately hold any number of elements — including exactly one, a case the importer itself had to be hardened against; see the fuzzer's findings). |
 | `GV030` | A handler-root node (`event/onStart`/`onTick`/`receive`/`onSelect`/`onHoverIn`/`onHoverOut`) has value inputs wired. | Handler roots are triggered by the runtime/host, not by another node's output — they structurally cannot have value inputs, since nothing produces them synchronously before the handler fires. |
 
+## Interpolation-kill semantics (variable/set, pointer/set, variable/interpolate)
+
+Not a diagnostic code — a spec-mandated runtime behavior worth documenting
+alongside them, since it's silent (no error, no warning, just a dropped
+"done" flow) and easy to miss when reading a graph by hand.
+
+KHR_interactivity's Specification.adoc defines three related "kill" rules
+around the variable- and pointer-interpolation tables:
+
+- **`variable/set` step 2a**: for each variable a `variable/set` node writes,
+  if the variable-interpolation table has an entry for it (an in-flight
+  `variable/interpolate` targeting the same variable), that entry is removed
+  before the write completes. The removed interpolation's `done` flow never
+  fires — it is silently dropped, not fired early and not fired at its
+  original completion time.
+- **`variable/interpolate` step 5**: starting a new interpolation for a
+  variable that already has one in flight replaces it — the OLD entry is
+  removed (and its `done` flow silently dropped) before the new entry is
+  added, the same "last write wins" shape as `pointer/interpolate`'s
+  existing same-pointer replacement.
+- **`pointer/set` step 5**: setting a pointer kills any in-flight
+  `pointer/interpolate` targeting the same **effective** (template-resolved)
+  JSON Pointer, the pointer analogue of the `variable/set` rule above.
+
+All three are implemented identically across every engine this repo ships
+(the interpreter, the compiled TS/Lua/Python/C#/GDScript engines): a
+graph-level `variable/set`/`pointer/set` op — or its compiled-code
+equivalent (a generated property setter, an explicit `setVar`/`ptrSet`
+function, etc.) — calls the scheduler's kill function for the target
+variable index / effective pointer string. Critically, the scheduler's OWN
+per-tick interpolation writes (the eased value written every frame while an
+interpolation is in flight) go through a separate, raw write path that never
+calls kill — otherwise every interpolation would kill itself on its first
+tick. See `packages/kernel/src/scheduler.ts`'s `killVariableInterp`/
+`killPointerInterp` and `addVariableInterp`/`addPointerInterp`, and each
+engine's `variable/set`/`pointer/set` wiring (e.g.
+`packages/runtime/src/interpreter.ts`'s `"variable/set"` case and
+`handlePointerSet`; `packages/runtime-lib/src/engine.ts`'s `V.<name>`
+setter, `setVar`, and `ptrSet`).
+
+**Corpus coverage note**: as of this writing, the official
+`glTF-Test-Assets-Interactivity` conformance corpus does not appear to
+exercise any of these three kill rules directly (no test asset both starts
+an interpolation and sets its target mid-flight, or starts two overlapping
+interpolations on the same variable). This is believed to be a genuine gap
+in the official test suite rather than an intentional omission — a Khronos
+issue describing the gap has been drafted separately (not yet filed as of
+this note). Coverage for this repo's own implementation instead lives in
+this repo's own test suites: `packages/kernel/test/scheduler.test.ts`,
+`packages/runtime/test/interpolation-kill.test.ts`, and
+`packages/runtime-lib/test/engine.test.ts`'s `"createEngine
+interpolation-kill semantics (task #10)"` block, plus the lua/py/cs/gd
+engine ports' own equivalent test files.
+
 ## Regenerating this table
 
 ```sh
