@@ -290,3 +290,115 @@ describe("exportGraph - non-finite literals survive a JSON round trip", () => {
     expect(roundTripped.events[0].values.p.value[0]).toBe("Infinity");
   });
 });
+
+// Regression test for a real bug found during the R4 game build: a
+// `rt.vars({...})` variable that's declared but never read or written
+// anywhere in the script (and, latently, the same for a custom event that's
+// declared but never emitted/received) produced a graph whose
+// `variables[i].type` (or `events[i].values[k].type`) index pointed past the
+// end of `graph.types` — @gltfi/verify's validateGraph (GV010/GV011) rejects
+// this. Root cause: run()'s `types: this.typeOrder.map(...)` field was
+// evaluated (capturing a snapshot of typeOrder) BEFORE the `variables:` and
+// `events:` fields of the same object literal — whose evaluation is what
+// calls `this.typeIndex(v.type)` for a variable/event-value's own declared
+// type. Object literal property values are computed strictly in source
+// order, so any type that isn't already in typeOrder from some node built
+// earlier (e.g. a same-typed literal or pointer access elsewhere in the
+// graph) gets appended to typeOrder too late for the already-captured
+// `types` array — the returned index is genuinely out of range, not merely
+// "unmapped" garbage. This is why it manifests specifically for **unused**
+// declarations: a used variable/event's type is often (coincidentally)
+// already present via some literal/pointer node of the same type built
+// elsewhere first. The fix reorders run() to compute `variables`/`events`
+// (and thus every `typeIndex()` call they make) before snapshotting `types`.
+describe("exportGraph - unused declarations keep in-range type indices (GV010/GV011 regression)", () => {
+  // Inlined mirror of @gltfi/verify's validateGraph GV010/GV011 checks (see
+  // this file's own checkValueBackward/declDedupErrors comment for why: a
+  // dependency on @gltfi/verify from @gltfi/ir would be a package cycle).
+  function checkTypesInRange(graph: ReturnType<typeof exportGraph>["graph"]): string[] {
+    const violations: string[] = [];
+    const typeCount = graph.types.length;
+    (graph.variables ?? []).forEach((v, i) => {
+      if (v.type < 0 || v.type >= typeCount) {
+        violations.push(`variable ${i} has out-of-range type index ${v.type} (types.length=${typeCount})`);
+      }
+    });
+    (graph.events ?? []).forEach((e, i) => {
+      for (const [key, val] of Object.entries(e.values ?? {})) {
+        if (val.type < 0 || val.type >= typeCount) {
+          violations.push(`event ${i} value "${key}" has out-of-range type index ${val.type} (types.length=${typeCount})`);
+        }
+      }
+    });
+    return violations;
+  }
+
+  it("a declared-but-never-referenced variable gets a type index within graph.types' bounds", () => {
+    // "float3" deliberately appears nowhere else in the module (the sole
+    // handler only touches floats via debug/log) so its type can only ever
+    // enter `typeOrder` through the unused variable's own declaration —
+    // exactly the case the pre-fix ordering bug loses.
+    const module: IRModule = {
+      variables: [{ name: "unused", type: "float3", initial: { type: "float3", data: [0, 0, 0] } }],
+      events: [],
+      stateSlots: [],
+      procs: [],
+      handlers: [
+        {
+          kind: "onStart",
+          params: [{ name: "event", type: "ref" }],
+          body: { k: "log", template: "hi", args: [] }
+        }
+      ],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+    const { graph, diagnostics } = exportGraph(module);
+    expect(diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    expect(checkTypesInRange(graph)).toEqual([]);
+  });
+
+  it("a declared-but-never-emitted/received custom event gets in-range value type indices", () => {
+    // Same shape of bug, on the events side: "float4" appears only in the
+    // unused event's value default.
+    const module: IRModule = {
+      variables: [],
+      events: [{ name: "unused-event", values: [{ name: "p", type: "float4", default: { type: "float4", data: [0, 0, 0, 0] } }] }],
+      stateSlots: [],
+      procs: [],
+      handlers: [
+        {
+          kind: "onStart",
+          params: [{ name: "event", type: "ref" }],
+          body: { k: "log", template: "hi", args: [] }
+        }
+      ],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+    const { graph, diagnostics } = exportGraph(module);
+    expect(diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    expect(checkTypesInRange(graph)).toEqual([]);
+  });
+
+  it("both an unused variable and an unused event survive together, alongside used declarations of other types", () => {
+    const module: IRModule = {
+      variables: [
+        { name: "used", type: "int", initial: { type: "int", data: [0] } },
+        { name: "unused", type: "float2x2", initial: { type: "float2x2", data: [1, 0, 0, 1] } }
+      ],
+      events: [{ name: "unused-event", values: [{ name: "p", type: "float3x3", default: { type: "float3x3", data: [1, 0, 0, 0, 1, 0, 0, 0, 1] } }] }],
+      stateSlots: [],
+      procs: [],
+      handlers: [
+        {
+          kind: "onStart",
+          params: [{ name: "event", type: "ref" }],
+          body: { k: "setVar", varId: 0, expr: { k: "const", type: "int", data: [1] } }
+        }
+      ],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+    const { graph, diagnostics } = exportGraph(module);
+    expect(diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    expect(checkTypesInRange(graph)).toEqual([]);
+  });
+});

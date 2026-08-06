@@ -162,25 +162,42 @@ class Exporter {
     const { finalIndex, orderedIds } = this.topoSort();
     const nodes: GraphNode[] = orderedIds.map((placeholderId) => this.remapNode(this.nodes.get(placeholderId)!, finalIndex));
 
+    // `variables`/`events` are computed BEFORE `types` below (rather than
+    // inline inside the `graph` object literal) because their own mapping
+    // calls `this.typeIndex(...)` on each declaration's type — including
+    // ones (e.g. a variable declared via `rt.vars({...})` but never read or
+    // written) whose type would otherwise never be added to `typeOrder` by
+    // any node built above. Object literal property values evaluate in
+    // source order, so if `types: this.typeOrder.map(...)` ran first, it
+    // would snapshot `typeOrder` before these `typeIndex()` calls could add
+    // to it — leaving `variables[i].type`/`events[i].values[k].type`
+    // pointing past the end of the already-captured `types` array
+    // (validateGraph's GV010/GV011). Computing them first (still after
+    // `nodes`, whose own literal/pointer types must land in `typeOrder`
+    // too) ensures every type referenced anywhere in the graph is in
+    // `typeOrder` by the time `types` is finally read.
+    const variables = this.module.variables.map((v) => ({
+      id: v.extras && typeof v.extras.id === "string" ? (v.extras.id as string) : undefined,
+      type: this.typeIndex(v.type),
+      // formatValueArray: real JS NaN/Infinity in a literal must become
+      // the spec's "NaN"/"Infinity"/"-Infinity" strings before this ever
+      // reaches JSON.stringify (see that function's own doc comment).
+      value: formatValueArray(v.initial.data as Array<number | boolean | string>)
+    }));
+    const events = this.module.events.map((e) => ({
+      id: e.id,
+      values:
+        e.values.length > 0
+          ? Object.fromEntries(
+              e.values.map((v) => [v.name, { type: this.typeIndex(v.type), value: formatValueArray(v.default.data as Array<number | boolean | string>) }])
+            )
+          : undefined
+    }));
+
     const graph: GraphJson = {
       types: this.typeOrder.map((t) => ({ signature: t })),
-      variables: this.module.variables.map((v) => ({
-        id: v.extras && typeof v.extras.id === "string" ? (v.extras.id as string) : undefined,
-        type: this.typeIndex(v.type),
-        // formatValueArray: real JS NaN/Infinity in a literal must become
-        // the spec's "NaN"/"Infinity"/"-Infinity" strings before this ever
-        // reaches JSON.stringify (see that function's own doc comment).
-        value: formatValueArray(v.initial.data as Array<number | boolean | string>)
-      })),
-      events: this.module.events.map((e) => ({
-        id: e.id,
-        values:
-          e.values.length > 0
-            ? Object.fromEntries(
-                e.values.map((v) => [v.name, { type: this.typeIndex(v.type), value: formatValueArray(v.default.data as Array<number | boolean | string>) }])
-              )
-            : undefined
-      })),
+      variables,
+      events,
       declarations: this.declOrder.map((op) => ({ op })),
       nodes
     };

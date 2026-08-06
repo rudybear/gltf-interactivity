@@ -122,7 +122,8 @@ import { createEngine, m } from "@gltfi/runtime-lib";
 export default createEngine((rt) => {
   const V = rt.vars({ counter: rt.int(0), hasPassed: rt.bool(false) });   // decl order == index
   const E = rt.events({ testStart: { expectedDuration: rt.float(0) } });
-  const S = { delay3: rt.delayState(), gate9: rt.multiGateState(3, { isRandom: false, isLoop: true }) };
+  const delay3 = rt.delayState();
+  const gate9 = rt.multiGateState();
   rt.onStart(() => { ... });
   rt.onReceive(E.testStart, (p) => { ... });
   rt.onSelect(4, { stopPropagation: false }, (p) => { ... });
@@ -133,7 +134,7 @@ export default createEngine((rt) => {
 - Ints: branded `Int` type + `m.*_i` kernel calls (brand makes native `+` on ints
   a type error). Floats: native operators (JS number IS spec float — IEEE double).
 - Pointer access in the parseable form `rt.ptrGet("/nodes/[n]/translation", { n: expr })`.
-- Async: `rt.setDelay(S.delay3, dur, () => { /* done */ })` returns ok:boolean →
+- Async: `rt.setDelay(delay3, dur, () => { /* done */ })` returns ok:boolean →
   `if (ok) { out } else { err }`; same shape for interpolate/animation ops.
 - `--js` flavor: identical emission minus type annotations (for in-browser Blob import).
 - Sidecar `out.names.json`: node/var/event ↔ name maps.
@@ -141,8 +142,10 @@ export default createEngine((rt) => {
 ## GIscript subset (packages/parse-ts) — what code→graph accepts
 
 - Exactly one `export default createEngine((rt) => { ... })`; inside, in order:
-  optional `rt.vars({...})`, optional `rt.events({...})`, optional `const S = {...}`
-  state-slot object, then only handler registrations and `function procN() {}` decls.
+  optional `rt.vars({...})`, optional `rt.events({...})`, then zero or more
+  `const <name> = rt.<kind>State();` state-slot declarations (one `const` per
+  slot — never a grouped object literal), then only handler registrations and
+  `function procN() {}` decls.
 - Statements: `const x = <pure expr>`, `V.x.set(e)`, `rt.ptrSet(...)`,
   `rt.send(E.x, {...})`, `rt.log(...)`, `rt.stopPropagation()`, `if/else`, `while`,
   `for (let i = e0; i < e1; i++)`, `switch` on int with literal cases + `break`,
