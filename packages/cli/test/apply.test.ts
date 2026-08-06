@@ -96,6 +96,35 @@ function setupCase(name: string, tag: string): { glbPath: string; testPath: stri
 
 const REPRESENTATIVE_CASES = ["math/xor", "flow/branch", "event/send_and_receive", "pointer/set_and_get", "animation/start", "variable/set_and_get"];
 
+// FORMER GLTFI_APPLY_FULL=1 EXCEPTION (FIXED for TS, bug #18): "math/
+// transform" used to fail re-extract with a GIC021 type mismatch on the
+// SECOND import, reproducing identically via plain `gltfi decompile`/
+// `compile`/`decompile` chained twice. Root cause: parse-ts's
+// disambiguateOverload skipped literal-ish call args entirely, so math/
+// transform's four all-literal-arg call sites (see @gltfi/kernel's
+// registry.ts ~line 283 for the four fixed (float4x4,float3)/
+// (float3,float4x4)/(float4x4,float4)/(float4,float4x4) rows) always fell
+// through to candidates[0], mistyping both literals; a second import then
+// resolved the generic-output var correctly and reported the mismatch.
+// Fixed in parse-ts by filtering candidates on each literal arg's own shape
+// (array length / scalar / bool), narrowed progressively across all args —
+// see disambiguateOverload's doc comment in packages/parse-ts/src/index.ts
+// and packages/parse-ts/test/overload-disambiguation.test.ts for the
+// isolated unit coverage.
+// This fix is parse-ts-only (that's this task's scope — parse-lua/py/cs/gd
+// are owned elsewhere), so "math/transform" is added ONLY to the ts
+// language's representative cases below, not the shared list every language
+// runs by default: parse-lua/py/cs/gd each have their OWN, still-unfixed,
+// analogous disambiguation gap and would fail the same way. Under
+// GLTFI_APPLY_FULL=1 (full corpus, all languages) math/transform still
+// exercises those other four languages' unfixed bug — a pre-existing,
+// documented condition this change doesn't newly introduce.
+// (A related, in-scope bug this same full-corpus mode DID catch and get
+// fixed as part of an earlier milestone: exportGraph silently corrupting
+// NaN/Infinity literals via JSON.stringify — see @gltfi/kernel's
+// formatValueArray and packages/ir/test/export.test.ts's regression tests.)
+const TS_ONLY_REPRESENTATIVE_CASES = ["math/transform"];
+
 function allCorpusCaseNames(): string[] {
   const names: string[] = [];
   for (const file of ["test-index.json", "mathtests-index.json"]) {
@@ -105,22 +134,12 @@ function allCorpusCaseNames(): string[] {
   return names;
 }
 
-const CASES = process.env.GLTFI_APPLY_FULL === "1" ? allCorpusCaseNames() : REPRESENTATIVE_CASES;
-
-// KNOWN GLTFI_APPLY_FULL=1 EXCEPTION: "math/transform" fails re-extract with
-// a GIC021 type mismatch (a generically-typed TestResult variable declared
-// float4, fed a float3 on the SECOND import). This reproduces identically
-// via plain `gltfi decompile`/`compile`/`decompile` chained twice — a
-// pre-existing double-round-trip defect in @gltfi/ir's export/parse-ts's
-// type inference, unrelated to `extract`/`apply` or this milestone (R3-A4/
-// A5/A6) — `apply` itself only ever does ONE round trip per invocation, the
-// same one `gltfi roundtrip`/the conf:roundtrip-* gates already cover at
-// 145/145. Left as a documented, out-of-scope exception rather than masked;
-// worth fixing in a follow-up focused on export.ts's generic-type handling.
-// (A related, in-scope bug this same full-corpus mode DID catch and get
-// fixed as part of this milestone: exportGraph silently corrupting NaN/
-// Infinity literals via JSON.stringify — see @gltfi/kernel's
-// formatValueArray and packages/ir/test/export.test.ts's regression tests.)
+function casesFor(langId: LangId): string[] {
+  if (process.env.GLTFI_APPLY_FULL === "1") {
+    return allCorpusCaseNames();
+  }
+  return langId === "ts" ? [...REPRESENTATIVE_CASES, ...TS_ONLY_REPRESENTATIVE_CASES] : REPRESENTATIVE_CASES;
+}
 
 type LangCase = { id: LangId; runIf: boolean };
 const LANGS: LangCase[] = [
@@ -150,7 +169,7 @@ function assertValidGlbHeader(bytes: Buffer): void {
 
 for (const lang of LANGS) {
   describe.runIf(lang.runIf)(`gltfi extract/apply round trip (${lang.id})`, () => {
-    it.each(CASES)(`%s: byte-preserving, id-stable, judge-passing`, async (caseName) => {
+    it.each(casesFor(lang.id))(`%s: byte-preserving, id-stable, judge-passing`, async (caseName) => {
       const ext = LANG_EXTENSIONS[lang.id];
       const { glbPath, testPath } = setupCase(caseName, lang.id);
       const originalBytes = fs.readFileSync(glbPath);
