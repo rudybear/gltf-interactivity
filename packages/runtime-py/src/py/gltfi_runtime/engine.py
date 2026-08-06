@@ -20,9 +20,14 @@
 # packages/runtime/src/interpreter.ts's per-op case exactly (see
 # packages/runtime-lib/src/engine.ts, this file's direct TS oracle).
 #
-# Scope note: KHR_node_selectability/hoverability (onSelect/onHoverIn/
-# onHoverOut) is intentionally NOT ported here, same as the Lua backend —
-# the official conformance corpus this backend targets never exercises it.
+# Scope note: KHR_node_selectability/hoverability EXECUTION (actually
+# firing onSelect/onHoverIn/onHoverOut) is intentionally NOT ported here,
+# same as the Lua backend — the official conformance corpus this backend
+# targets never exercises it, and this runtime has no DOM/pointer-input
+# concept to drive it from. @gltfi/emit-py DOES emit rt.on_select/
+# on_hover_in/on_hover_out REGISTRATION calls (R4 #20-4 — authoring parity
+# with emit-ts), so no-op-tolerant stubs exist below purely so emitted
+# modules load; they never fire.
 import re
 
 from . import animation as anim
@@ -323,6 +328,25 @@ class Engine:
 
     def on_receive(self, event_index: int, fn) -> None:
         self._on_receive_handlers.setdefault(event_index, []).append(fn)
+
+    # KHR_node_selectability/hoverability registration stubs — this backend
+    # never FIRES select/hover (see this file's own "Scope note" header: no
+    # DOM/pointer-input concept exists here, and the conformance corpus this
+    # backend targets never exercises UserInteractions), but @gltfi/emit-py
+    # now emits rt.on_select/on_hover_in/on_hover_out registrations (R4
+    # #20-4 — Python backend authoring parity with emit-ts), so these must
+    # exist purely so an emitted module LOADS without an AttributeError. The
+    # handler function is intentionally discarded (not stored anywhere) —
+    # registering it would have no observable effect since nothing ever
+    # calls it.
+    def on_select(self, node_index: int, stop_propagation: bool, fn) -> None:
+        pass
+
+    def on_hover_in(self, node_index: int, fn) -> None:
+        pass
+
+    def on_hover_out(self, node_index: int, fn) -> None:
+        pass
 
     # Combined signature covering three call shapes (mirrors engine.ts's
     # send exactly): the OLD `(event_index, external_id, payload)`

@@ -27,10 +27,14 @@
 # mirrors packages/runtime-lib/src/engine.ts's per-op case exactly (via
 # engine.py, its closest-syntax sibling).
 #
-# Scope note: KHR_node_selectability/hoverability (onSelect/onHoverIn/
-# onHoverOut) is intentionally NOT ported here, same as the Lua/Python
-# backends — the official conformance corpus this backend targets never
-# exercises it.
+# Scope note: KHR_node_selectability/hoverability EXECUTION (actually
+# firing onSelect/onHoverIn/onHoverOut) is intentionally NOT ported here,
+# same as the Lua/Python/C# backends — the official conformance corpus this
+# backend targets never exercises it, and this runtime has no DOM/pointer-
+# input concept to drive it from. @gltfi/emit-gd DOES emit rt.on_select/
+# on_hover_in/on_hover_out REGISTRATION calls (R4 #20-4 — authoring parity
+# with emit-ts), so no-op-tolerant stubs exist below purely so emitted
+# modules load and run; they never fire.
 extends RefCounted
 
 const Pointer = preload("res://pointer.gd")
@@ -339,6 +343,28 @@ func on_receive(event_index: int, fn: Callable) -> void:
 	if not _on_receive_handlers.has(event_index):
 		_on_receive_handlers[event_index] = []
 	_on_receive_handlers[event_index].append(fn)
+
+
+# KHR_node_selectability/hoverability registration stubs — this backend
+# never FIRES select/hover (see this file's own "Scope note" header: no
+# DOM/pointer-input concept exists here, and the conformance corpus this
+# backend targets never exercises UserInteractions), but @gltfi/emit-gd now
+# emits rt.on_select/on_hover_in/on_hover_out registrations (R4 #20-4 —
+# GDScript backend authoring parity with emit-ts), so these must exist
+# purely so an emitted module LOADS without a missing-method error. The
+# handler Callable is intentionally discarded (not stored anywhere) —
+# registering it would have no observable effect since nothing ever calls
+# it.
+func on_select(_node_index: int, _stop_propagation: bool, _fn: Callable) -> void:
+	pass
+
+
+func on_hover_in(_node_index: int, _fn: Callable) -> void:
+	pass
+
+
+func on_hover_out(_node_index: int, _fn: Callable) -> void:
+	pass
 
 
 # Combined signature covering the additive `(event_index, payload)` and

@@ -59,11 +59,18 @@
 // specific necessity with no TS analog), `if not x:` for empty-then
 // branches, and omitted default-payload `rt.send`/arg-less `rt.log` calls.
 //
-// Scope note: KHR_node_selectability/hoverability (onSelect/onHoverIn/
-// onHoverOut) is intentionally NOT emitted here — see
-// @gltfi/runtime-py/src/py/gltfi_runtime/engine.py's header note for why
-// (viewer-only, never exercised by the conformance corpus this backend
-// targets), same scope decision as the Lua backend.
+// KHR_node_selectability/hoverability (onSelect/onHoverIn/onHoverOut) IS
+// emitted here (R4 #20-4 — authoring parity with emit-ts's onSelect/
+// onHoverIn/onHoverOut cases, which this mirrors, same as emit-lua), even
+// though the official conformance corpus this backend targets never
+// exercises it and runtime-py's rt.on_select/on_hover_in/on_hover_out are
+// no-op-tolerant registration stubs that never fire (see engine.py's header
+// note) — EXECUTION of select/hover stays out of scope, only round-
+// tripping authored code that registers these handlers. `params` (a dict
+// keyed by the same camelCase names emit-ts's `params` object uses) is
+// destructured to snake_case locals via a tuple assignment right at the
+// handler function's top, same shape/intent as emit-ts's `const {...} =
+// params;`.
 import {
   computeStateSlotDisplayNames,
   computeVariableDisplayNames,
@@ -332,7 +339,13 @@ function varDeclCall(type: IRType, data: Array<number | boolean | string>): stri
 // @gltfi/emit-lua — see that file's own doc comment.
 // ---------------------------------------------------------------------------
 
-type HandlerEventCtx = { kind: "onStart" } | { kind: "onTick" } | { kind: "receive"; eventRef: number };
+type HandlerEventCtx =
+  | { kind: "onStart" }
+  | { kind: "onTick" }
+  | { kind: "receive"; eventRef: number }
+  | { kind: "onSelect" }
+  | { kind: "onHoverIn" }
+  | { kind: "onHoverOut" };
 
 class Emitter {
   private readonly module: IRModule;
@@ -691,14 +704,42 @@ class Emitter {
       this.push(`rt.on_receive(${this.eventArgCode(handler.eventRef)}, ${name})`);
       return;
     }
-    // KHR_node_selectability/hoverability — viewer-only, never emitted by
-    // the official conformance corpus this backend targets, same scope
-    // decision as the Lua backend (see runtime-py's engine.py header note).
-    throw new EmitError(
-      `handler kind "${handler.kind}" is not supported by the Python backend (KHR_node_selectability/hoverability is viewer-only)`,
-      handler.kind,
-      this.originNodeId
-    );
+    // KHR_node_selectability/hoverability — not exercised by the official
+    // conformance corpus this backend targets, but emitted for authoring
+    // parity with emit-ts (see this file's header note); runtime-py's
+    // rt.on_select/on_hover_in/on_hover_out are no-op-tolerant registration
+    // stubs (see engine.py) — the registration round-trips, it just never
+    // fires.
+    if (handler.kind === "onSelect") {
+      const nodeIndex = Math.trunc(Number((handler.config as { nodeIndex?: number } | undefined)?.nodeIndex ?? -1));
+      const stopPropagation = Boolean((handler.config as { stopPropagation?: boolean } | undefined)?.stopPropagation);
+      this.handlerEventCtx = { kind: "onSelect" };
+      this.resetBodyCounters();
+      const name = `__on_select_${index}`;
+      this.push(`def ${name}(params: dict) -> None:`);
+      this.indent += 1;
+      this.push(
+        "selected_node, selected_node_index, controller_index, selection_point, selection_ray_origin = " +
+          '(params["selectedNode"], params["selectedNodeIndex"], params["controllerIndex"], params["selectionPoint"], params["selectionRayOrigin"])'
+      );
+      this.emitHandlerBody(handler.body);
+      this.indent -= 1;
+      this.push(`rt.on_select(${nodeIndex}, ${stopPropagation ? "True" : "False"}, ${name})`);
+      return;
+    }
+    if (handler.kind === "onHoverIn" || handler.kind === "onHoverOut") {
+      const nodeIndex = Math.trunc(Number((handler.config as { nodeIndex?: number } | undefined)?.nodeIndex ?? -1));
+      this.handlerEventCtx = { kind: handler.kind };
+      this.resetBodyCounters();
+      const name = handler.kind === "onHoverIn" ? `__on_hover_in_${index}` : `__on_hover_out_${index}`;
+      this.push(`def ${name}(params: dict) -> None:`);
+      this.indent += 1;
+      this.push('hovered_node, controller_index = params["hoveredNode"], params["controllerIndex"]');
+      this.emitHandlerBody(handler.body);
+      this.indent -= 1;
+      this.push(`rt.${handler.kind === "onHoverIn" ? "on_hover_in" : "on_hover_out"}(${nodeIndex}, ${name})`);
+      return;
+    }
   }
 
   private emitHandlerBody(body: IRStmt) {
@@ -1240,11 +1281,28 @@ class Emitter {
     if (name === "event") {
       if (ctx.kind === "onStart") return '"event:onStart"';
       if (ctx.kind === "onTick") return '"event:onTick"';
+      if (ctx.kind === "onSelect") return '"event:onSelect"';
+      if (ctx.kind === "onHoverIn") return '"event:onHoverIn"';
+      if (ctx.kind === "onHoverOut") return '"event:onHoverOut"';
       return `"event:custom:${ctx.eventRef}"`;
     }
     if (ctx.kind === "onTick") {
       if (name === "timeSinceStart") return "time_since_start";
       if (name === "timeSinceLastTick") return "time_since_last_tick";
+    }
+    // Destructured to snake_case locals right at the handler function's top
+    // (see emitHandler) — same shape as every other handler kind's params,
+    // one identifier per named socket.
+    if (ctx.kind === "onSelect") {
+      if (name === "selectedNode") return "selected_node";
+      if (name === "selectedNodeIndex") return "selected_node_index";
+      if (name === "controllerIndex") return "controller_index";
+      if (name === "selectionPoint") return "selection_point";
+      if (name === "selectionRayOrigin") return "selection_ray_origin";
+    }
+    if (ctx.kind === "onHoverIn" || ctx.kind === "onHoverOut") {
+      if (name === "hoveredNode") return "hovered_node";
+      if (name === "controllerIndex") return "controller_index";
     }
     if (ctx.kind === "receive") {
       // payload is a 0-based Python list here, matching the TS backend's

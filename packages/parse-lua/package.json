@@ -15,6 +15,7 @@
     "@gltfi/emit-ts": "workspace:*",
     "@gltfi/parse-ts": "workspace:*",
     "@gltfi/runtime": "workspace:*",
+    "@gltfi/verify": "workspace:*",
     "@types/luaparse": "^0.2.13"
   }
 }

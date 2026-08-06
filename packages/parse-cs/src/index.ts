@@ -206,9 +206,30 @@ const HANDLER_PARAMS: Record<HandlerKind, IRHandlerParam[]> = {
     { name: "expectedDuration", type: "float" },
     { name: "event", type: "ref" }
   ],
-  onSelect: [],
-  onHoverIn: [],
-  onHoverOut: []
+  // KHR_node_selectability/hoverability (R4 #20-4): @gltfi/emit-cs now
+  // emits rt.OnSelect/OnHoverIn/OnHoverOut REGISTRATIONS (authoring parity
+  // with emit-ts — see that file's header note); runtime-cs's own
+  // rt.OnSelect/OnHoverIn/OnHoverOut are still no-op-tolerant stubs that
+  // never fire (execution stays out of scope, see Engine.cs's header
+  // note), but that's a runtime concern, not a parse one.
+  onSelect: [
+    { name: "selectedNode", type: "ref" },
+    { name: "selectedNodeIndex", type: "int" },
+    { name: "controllerIndex", type: "int" },
+    { name: "selectionPoint", type: "float3" },
+    { name: "selectionRayOrigin", type: "float3" },
+    { name: "event", type: "ref" }
+  ],
+  onHoverIn: [
+    { name: "hoveredNode", type: "ref" },
+    { name: "controllerIndex", type: "int" },
+    { name: "event", type: "ref" }
+  ],
+  onHoverOut: [
+    { name: "hoveredNode", type: "ref" },
+    { name: "controllerIndex", type: "int" },
+    { name: "event", type: "ref" }
+  ]
 };
 
 const PAYLOAD_FIELDS = ["boolParameter", "intParameter", "floatParameter", "expectedDuration"] as const;
@@ -217,6 +238,25 @@ const PAYLOAD_PROP: Record<string, (typeof PAYLOAD_FIELDS)[number]> = {
   IntParameter: "intParameter",
   FloatParameter: "floatParameter",
   ExpectedDuration: "expectedDuration"
+};
+
+// `SelectParams`/`HoverParams` PascalCase field name -> IR param name/type
+// (see emit-cs's own SelectParams/HoverParams struct field names, mirrored
+// exactly). Used both by the `selectParams.<Field>`/`hoverParams.<Field>`
+// member-access read below (no destructuring — see emit-cs's header note)
+// and is intentionally the ONLY lookup table needed here, unlike parse-ts/
+// parse-lua/parse-py's separate "local param" tables, since C# never binds
+// these to bare locals at all.
+const SELECT_PARAM_PROP: Record<string, { name: string; type: IRType }> = {
+  SelectedNode: { name: "selectedNode", type: "ref" },
+  SelectedNodeIndex: { name: "selectedNodeIndex", type: "int" },
+  ControllerIndex: { name: "controllerIndex", type: "int" },
+  SelectionPoint: { name: "selectionPoint", type: "float3" },
+  SelectionRayOrigin: { name: "selectionRayOrigin", type: "float3" }
+};
+const HOVER_PARAM_PROP: Record<string, { name: string; type: IRType }> = {
+  HoveredNode: { name: "hoveredNode", type: "ref" },
+  ControllerIndex: { name: "controllerIndex", type: "int" }
 };
 
 // Reverse of emit-cs's `mFunctionName`'s/`pascalCase(...)`'s final
@@ -326,21 +366,21 @@ class ModuleParser {
     // Procs and handlers: a run of Build-body-level local functions, each
     // either a plain proc (referenced later by a bare call) or a handler
     // whose very next statement is its registration call (`rt.OnStart`/
-    // `rt.OnTick`/`rt.OnReceive`) referencing it — see
-    // matchHandlerRegistration.
+    // `rt.OnTick`/`rt.OnReceive`/`rt.OnSelect`/`rt.OnHoverIn`/
+    // `rt.OnHoverOut`) referencing it — see matchHandlerRegistration.
     const procBodies: CsNode[][] = [];
-    type HandlerDesc = { kind: HandlerKind; eventRef?: number; bodyStmts: CsNode[] };
+    type HandlerDesc = { kind: HandlerKind; eventRef?: number; config?: Record<string, unknown>; bodyStmts: CsNode[] };
     const handlerDescs: HandlerDesc[] = [];
     while (i < stmts.length) {
       const s = stmts[i];
       if (!isType(s, "LocalFunctionStatement")) {
-        fail("GC104", s, "expected a proc definition or a handler registration (local function + rt.OnStart/rt.OnTick/rt.OnReceive)");
+        fail("GC104", s, "expected a proc definition or a handler registration (local function + rt.OnStart/rt.OnTick/rt.OnReceive/rt.OnSelect/rt.OnHoverIn/rt.OnHoverOut)");
       }
       const defName = s.Identifier as string;
       const bodyStmts = nodeList((s.Body as CsNode).Statements);
       const handlerMatch = this.matchHandlerRegistration(stmts[i + 1], defName);
       if (handlerMatch) {
-        handlerDescs.push({ kind: handlerMatch.kind, eventRef: handlerMatch.eventRef, bodyStmts });
+        handlerDescs.push({ kind: handlerMatch.kind, eventRef: handlerMatch.eventRef, config: handlerMatch.config, bodyStmts });
         i += 2;
         continue;
       }
@@ -357,7 +397,7 @@ class ModuleParser {
     handlerDescs.forEach((desc) => {
       const params = HANDLER_PARAMS[desc.kind];
       const body = this.lowerBlock(desc.bodyStmts, { kind: "handler", handlerKind: desc.kind });
-      this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, params, body });
+      this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, config: desc.config, params, body });
     });
 
     return {
@@ -582,7 +622,7 @@ class ModuleParser {
   // the local function it registers — see parse-py's identically-purposed
   // `matchHandlerRegistration` doc comment (same "superficial match on the
   // attribute name commits to failing loudly, not falling through" policy).
-  private matchHandlerRegistration(next: CsNode | undefined, defName: string): { kind: HandlerKind; eventRef?: number } | undefined {
+  private matchHandlerRegistration(next: CsNode | undefined, defName: string): { kind: HandlerKind; eventRef?: number; config?: Record<string, unknown> } | undefined {
     const call = this.exprCallOf(next);
     if (!call) {
       return undefined;
@@ -614,6 +654,36 @@ class ModuleParser {
         fail("GC103", next, "rt.OnReceive's second argument must reference the immediately preceding local function");
       }
       return { kind: "receive", eventRef: idx };
+    }
+    const onSelect = asAttrCall(call, "rt", "OnSelect");
+    if (onSelect) {
+      const args = callArgs(onSelect);
+      const nodeIndex = readNumberLiteral(unwrap(args[0]));
+      if (nodeIndex === undefined) {
+        fail("GC103", next, "rt.OnSelect's first argument must be a numeric node-index literal");
+      }
+      const stopPropagation = readBoolLiteral(unwrap(args[1]));
+      if (stopPropagation === undefined) {
+        fail("GC103", next, "rt.OnSelect's second argument must be a boolean literal (stopPropagation)");
+      }
+      if (identifierNameOf(unwrap(args[2])) !== defName) {
+        fail("GC103", next, "rt.OnSelect's third argument must reference the immediately preceding local function");
+      }
+      return { kind: "onSelect", config: { nodeIndex: Math.trunc(nodeIndex), stopPropagation } };
+    }
+    const onHoverIn = asAttrCall(call, "rt", "OnHoverIn");
+    const onHoverOut = asAttrCall(call, "rt", "OnHoverOut");
+    if (onHoverIn || onHoverOut) {
+      const c = (onHoverIn ?? onHoverOut)!;
+      const args = callArgs(c);
+      const nodeIndex = readNumberLiteral(unwrap(args[0]));
+      if (nodeIndex === undefined) {
+        fail("GC103", next, "rt.OnHoverIn/rt.OnHoverOut's first argument must be a numeric node-index literal");
+      }
+      if (identifierNameOf(unwrap(args[1])) !== defName) {
+        fail("GC103", next, "rt.OnHoverIn/rt.OnHoverOut's second argument must reference the immediately preceding local function");
+      }
+      return { kind: onHoverIn ? "onHoverIn" : "onHoverOut", config: { nodeIndex: Math.trunc(nodeIndex) } };
     }
     return undefined;
   }
@@ -1505,8 +1575,8 @@ class ModuleParser {
 
       const ptrGetCall = asAttrCall(base, "rt", "PtrGet");
       if (ptrGetCall) {
-        if (access.name === "IsValid") return this.lowerPtrGet(ptrGetCall, true);
-        if (access.name === "Value") return this.lowerPtrGet(ptrGetCall, false);
+        if (access.name === "IsValid") return this.lowerPtrGet(ptrGetCall, true, ctx);
+        if (access.name === "Value") return this.lowerPtrGet(ptrGetCall, false, ctx);
       }
 
       const payloadOfCall = asAttrCall(base, "rt", "EventPayloadOf");
@@ -1522,6 +1592,22 @@ class ModuleParser {
         const field = PAYLOAD_PROP[access.name];
         if (field) {
           return { k: "param", name: field, type: field === "boolParameter" ? "bool" : field === "intParameter" ? "int" : "float" };
+        }
+      }
+
+      // `selectParams.<Field>`/`hoverParams.<Field>` — no destructuring
+      // step in this backend (see emit-cs's header note): the handler's own
+      // typed parameter is read directly, mirroring `payload.<Field>` above.
+      if (access.base === "selectParams" && ctx.kind === "handler" && ctx.handlerKind === "onSelect") {
+        const p = SELECT_PARAM_PROP[access.name];
+        if (p) {
+          return { k: "param", name: p.name, type: p.type };
+        }
+      }
+      if (access.base === "hoverParams" && ctx.kind === "handler" && (ctx.handlerKind === "onHoverIn" || ctx.handlerKind === "onHoverOut")) {
+        const p = HOVER_PARAM_PROP[access.name];
+        if (p) {
+          return { k: "param", name: p.name, type: p.type };
         }
       }
 
@@ -1589,12 +1675,12 @@ class ModuleParser {
     fail("GC140", undefined, `unrecognized state-slot field read "${field}" on slot kind "${kind}"`);
   }
 
-  private lowerPtrGet(call: CsNode, wantIsValid: boolean): IRExpr {
+  private lowerPtrGet(call: CsNode, wantIsValid: boolean, ctx: Ctx): IRExpr {
     const [pointerExpr, typeExpr, argsObjExpr] = callArgs(call);
     const pointerLit = stringLiteralValue(pointerExpr) ?? fail("GC141", pointerExpr, "pointer must be a string literal");
     const template = parsePointerTemplate(pointerLit);
     const valueType = (stringLiteralValue(typeExpr) as IRType | undefined) ?? fail("GC141", typeExpr, "pointer type must be a string literal");
-    const args = this.lowerPointerArgs(argsObjExpr, template, { kind: "proc" });
+    const args = this.lowerPointerArgs(argsObjExpr, template, ctx);
     return { k: "ptrGet", template, args, type: wantIsValid ? "bool" : valueType, valueType, wantIsValid };
   }
 

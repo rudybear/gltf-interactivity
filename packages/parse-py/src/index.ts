@@ -224,12 +224,53 @@ const HANDLER_PARAMS: Record<HandlerKind, IRHandlerParam[]> = {
     { name: "expectedDuration", type: "float" },
     { name: "event", type: "ref" }
   ],
-  onSelect: [],
-  onHoverIn: [],
-  onHoverOut: []
+  // KHR_node_selectability/hoverability (R4 #20-4): @gltfi/emit-py now
+  // emits rt.on_select/on_hover_in/on_hover_out REGISTRATIONS (authoring
+  // parity with emit-ts — see that file's header note); runtime-py's own
+  // rt.on_select/on_hover_in/on_hover_out are still no-op-tolerant stubs
+  // that never fire (execution stays out of scope, see engine.py's header
+  // note), but that's a runtime concern, not a parse one.
+  onSelect: [
+    { name: "selectedNode", type: "ref" },
+    { name: "selectedNodeIndex", type: "int" },
+    { name: "controllerIndex", type: "int" },
+    { name: "selectionPoint", type: "float3" },
+    { name: "selectionRayOrigin", type: "float3" },
+    { name: "event", type: "ref" }
+  ],
+  onHoverIn: [
+    { name: "hoveredNode", type: "ref" },
+    { name: "controllerIndex", type: "int" },
+    { name: "event", type: "ref" }
+  ],
+  onHoverOut: [
+    { name: "hoveredNode", type: "ref" },
+    { name: "controllerIndex", type: "int" },
+    { name: "event", type: "ref" }
+  ]
 };
 
 const PAYLOAD_FIELDS = ["boolParameter", "intParameter", "floatParameter", "expectedDuration"] as const;
+
+// Bare-identifier param types for onSelect/onHoverIn/onHoverOut bodies — the
+// snake_case names bound by the emitted tuple assignment (see
+// stripParamsDestructure) that lowerExpr's Name case resolves to
+// `{k:"param", ...}` reads, mirroring onTick's time_since_start/
+// time_since_last_tick literal-name mechanism. Deliberately excludes
+// "event" (never bound as a bare identifier — emit-py routes it through
+// paramAccess("event") as a string-literal arg to rt.stop_propagation,
+// which this parser's rt.stop_propagation handling discards positionally).
+const ONSELECT_LOCAL_PARAMS: Record<string, { camel: string; type: IRType }> = {
+  selected_node: { camel: "selectedNode", type: "ref" },
+  selected_node_index: { camel: "selectedNodeIndex", type: "int" },
+  controller_index: { camel: "controllerIndex", type: "int" },
+  selection_point: { camel: "selectionPoint", type: "float3" },
+  selection_ray_origin: { camel: "selectionRayOrigin", type: "float3" }
+};
+const HOVER_LOCAL_PARAMS: Record<string, { camel: string; type: IRType }> = {
+  hovered_node: { camel: "hoveredNode", type: "ref" },
+  controller_index: { camel: "controllerIndex", type: "int" }
+};
 
 // Reverse of emit-py's `PY_RENAME` (only the bare, non-Int-suffixed forms
 // collide with a Python keyword/builtin — see that table's own doc comment).
@@ -368,19 +409,22 @@ class ModuleParser {
     // Procs and handlers: a run of top-level `def`s, each either a plain
     // proc (referenced later by name via a bare call) or a handler whose
     // very next statement is its registration call (`rt.on_start`/
-    // `rt.on_tick`/`rt.on_receive`) referencing it — see matchHandlerRegistration.
+    // `rt.on_tick`/`rt.on_receive`/`rt.on_select`/`rt.on_hover_in`/
+    // `rt.on_hover_out`) referencing it — see matchHandlerRegistration.
     const procBodies: PyNode[][] = [];
-    type HandlerDesc = { kind: HandlerKind; eventRef?: number; bodyStmts: PyNode[] };
+    type HandlerDesc = { kind: HandlerKind; eventRef?: number; config?: Record<string, unknown>; bodyStmts: PyNode[] };
     const handlerDescs: HandlerDesc[] = [];
     while (i < stmts.length) {
       const s = stmts[i];
       if (!isType(s, "FunctionDef")) {
-        fail("GP104", s, "expected a proc definition or a handler registration (def + rt.on_start/rt.on_tick/rt.on_receive)");
+        fail("GP104", s, "expected a proc definition or a handler registration (def + rt.on_start/rt.on_tick/rt.on_receive/rt.on_select/rt.on_hover_in/rt.on_hover_out)");
       }
       const defName = s.name as string;
       const handlerMatch = this.matchHandlerRegistration(stmts[i + 1], defName);
       if (handlerMatch) {
-        handlerDescs.push({ kind: handlerMatch.kind, eventRef: handlerMatch.eventRef, bodyStmts: nodeList(s.body) });
+        const localNames = handlerMatch.kind === "onSelect" ? Object.keys(ONSELECT_LOCAL_PARAMS) : handlerMatch.kind === "onHoverIn" || handlerMatch.kind === "onHoverOut" ? Object.keys(HOVER_LOCAL_PARAMS) : undefined;
+        const bodyStmts = localNames ? this.stripParamsDestructure(nodeList(s.body), localNames) : nodeList(s.body);
+        handlerDescs.push({ kind: handlerMatch.kind, eventRef: handlerMatch.eventRef, config: handlerMatch.config, bodyStmts });
         i += 2;
         continue;
       }
@@ -397,7 +441,7 @@ class ModuleParser {
     handlerDescs.forEach((desc) => {
       const params = HANDLER_PARAMS[desc.kind];
       const body = this.lowerBlock(desc.bodyStmts, { kind: "handler", handlerKind: desc.kind });
-      this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, params, body });
+      this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, config: desc.config, params, body });
     });
 
     return {
@@ -721,14 +765,16 @@ class ModuleParser {
   }
 
   // Matches a top-level handler registration (`rt.on_start(name)`/
-  // `rt.on_tick(name)`/`rt.on_receive(idx, name)`) immediately following the
-  // `def <name>` it registers. Returns `undefined` (not a diagnostic) when
-  // `next` isn't an attempt at one of these three calls at all — the caller
-  // then treats the preceding `def` as a plain proc — but throws once it
-  // superficially matches one of the three attribute names, since at that
-  // point a mismatch (wrong referenced name, non-literal event index) can
-  // only mean the source diverged from emit.ts's own convention.
-  private matchHandlerRegistration(next: PyNode | undefined, defName: string): { kind: HandlerKind; eventRef?: number } | undefined {
+  // `rt.on_tick(name)`/`rt.on_receive(idx, name)`/`rt.on_select(idx, stop,
+  // name)`/`rt.on_hover_in(idx, name)`/`rt.on_hover_out(idx, name)`)
+  // immediately following the `def <name>` it registers. Returns
+  // `undefined` (not a diagnostic) when `next` isn't an attempt at one of
+  // these calls at all — the caller then treats the preceding `def` as a
+  // plain proc — but throws once it superficially matches one of the known
+  // attribute names, since at that point a mismatch (wrong referenced name,
+  // non-literal event index) can only mean the source diverged from
+  // emit.ts's own convention.
+  private matchHandlerRegistration(next: PyNode | undefined, defName: string): { kind: HandlerKind; eventRef?: number; config?: Record<string, unknown> } | undefined {
     if (!isType(next, "Expr")) {
       return undefined;
     }
@@ -761,7 +807,68 @@ class ModuleParser {
       }
       return { kind: "receive", eventRef: idx };
     }
+    const onSelect = asAttrCall(call, "rt", "on_select");
+    if (onSelect) {
+      const args = callArgs(onSelect);
+      const nodeIndex = readNumberLiteral(args[0]);
+      if (nodeIndex === undefined) {
+        fail("GP103", next, "rt.on_select's first argument must be a numeric node-index literal");
+      }
+      const stopPropagation = readBoolLiteral(args[1]);
+      if (stopPropagation === undefined) {
+        fail("GP103", next, "rt.on_select's second argument must be a boolean literal (stop_propagation)");
+      }
+      if (!(isType(args[2], "Name") && args[2].id === defName)) {
+        fail("GP103", next, "rt.on_select's third argument must reference the immediately preceding `def`");
+      }
+      return { kind: "onSelect", config: { nodeIndex: Math.trunc(nodeIndex), stopPropagation } };
+    }
+    const onHoverIn = asAttrCall(call, "rt", "on_hover_in");
+    const onHoverOut = asAttrCall(call, "rt", "on_hover_out");
+    if (onHoverIn || onHoverOut) {
+      const c = (onHoverIn ?? onHoverOut)!;
+      const args = callArgs(c);
+      const nodeIndex = readNumberLiteral(args[0]);
+      if (nodeIndex === undefined) {
+        fail("GP103", next, "rt.on_hover_in/rt.on_hover_out's first argument must be a numeric node-index literal");
+      }
+      if (!(isType(args[1], "Name") && args[1].id === defName)) {
+        fail("GP103", next, "rt.on_hover_in/rt.on_hover_out's second argument must reference the immediately preceding `def`");
+      }
+      return { kind: onHoverIn ? "onHoverIn" : "onHoverOut", config: { nodeIndex: Math.trunc(nodeIndex) } };
+    }
     return undefined;
+  }
+
+  // Strips a leading `<n1>, <n2>, ... = params["<n1CamelCase>"],
+  // params["<n2CamelCase>"], ...` tuple assignment (emit-py's onSelect/
+  // onHoverIn/onHoverOut shape — see that file's emitHandler cases; the
+  // snake_case local NAMES are `expectedNames` verbatim, but the dict keys
+  // they read are the camelCase IR param names, so this only checks the
+  // ASSIGNMENT TARGET names, not the subscript keys, mirroring parse-ts's
+  // stripParamsDestructure's own lenience) so the bound names resolve as
+  // handler params in the rest of the body via lowerExpr's onSelect/
+  // onHoverIn/onHoverOut Name special-case below (mirroring onTick's
+  // time_since_start/time_since_last_tick mechanism — same idea, different
+  // handler kinds).
+  private stripParamsDestructure(stmts: PyNode[], expectedNames: string[]): PyNode[] {
+    const first = stmts[0];
+    if (!first || !isType(first, "Assign")) {
+      return stmts;
+    }
+    const targets = nodeList(first.targets);
+    if (targets.length !== 1 || !isType(targets[0], "Tuple")) {
+      return stmts;
+    }
+    const names = nodeList((targets[0] as PyNode).elts);
+    if (names.length !== expectedNames.length || !names.every((n, k) => isType(n, "Name") && n.id === expectedNames[k])) {
+      return stmts;
+    }
+    const value = first.value as PyNode;
+    if (!isType(value, "Tuple") || nodeList(value.elts).length !== expectedNames.length) {
+      return stmts;
+    }
+    return stmts.slice(1);
   }
 
   // -------------------------------------------------------------------
@@ -1888,7 +1995,7 @@ class ModuleParser {
 
       const ptrGet = asAttrCall(base, "rt", "ptr_get");
       if (ptrGet) {
-        return this.lowerPtrGet(ptrGet, stringLiteralValue(sliceNode) === "isValid");
+        return this.lowerPtrGet(ptrGet, stringLiteralValue(sliceNode) === "isValid", ctx);
       }
       const payloadCall = asAttrCall(base, "rt", "event_payload");
       if (payloadCall) {
@@ -1946,6 +2053,14 @@ class ModuleParser {
       const text = expr.id as string;
       if (ctx.kind === "handler" && ctx.handlerKind === "onTick" && (text === "time_since_start" || text === "time_since_last_tick")) {
         return { k: "param", name: text === "time_since_start" ? "timeSinceStart" : "timeSinceLastTick", type: "float" };
+      }
+      if (ctx.kind === "handler" && ctx.handlerKind === "onSelect" && text in ONSELECT_LOCAL_PARAMS) {
+        const p = ONSELECT_LOCAL_PARAMS[text];
+        return { k: "param", name: p.camel, type: p.type };
+      }
+      if (ctx.kind === "handler" && (ctx.handlerKind === "onHoverIn" || ctx.handlerKind === "onHoverOut") && text in HOVER_LOCAL_PARAMS) {
+        const p = HOVER_LOCAL_PARAMS[text];
+        return { k: "param", name: p.camel, type: p.type };
       }
       if (this.tempTypeByName.has(text)) {
         return { k: "temp", id: text };
@@ -2015,7 +2130,7 @@ class ModuleParser {
     fail("GP140", undefined, `unrecognized state-slot field read "${field}" on slot kind "${kind}"`);
   }
 
-  private lowerPtrGet(call: PyNode, wantIsValid: boolean): IRExpr {
+  private lowerPtrGet(call: PyNode, wantIsValid: boolean, ctx: Ctx): IRExpr {
     const argNodes = callArgs(call);
     // Args-less form (see emit-py's pointerCall doc comment): every
     // template param was a compile-time constant, already inlined into the
@@ -2030,7 +2145,7 @@ class ModuleParser {
     const pointerLit = stringLiteralValue(pointerExpr) ?? fail("GP141", pointerExpr, "pointer must be a string literal");
     const template = parsePointerTemplate(pointerLit);
     const valueType = (stringLiteralValue(typeExpr) as IRType | undefined) ?? fail("GP141", typeExpr, "pointer type must be a string literal");
-    const args = this.lowerPointerArgs(argsObjExpr, template, { kind: "proc" });
+    const args = this.lowerPointerArgs(argsObjExpr, template, ctx);
     return { k: "ptrGet", template, args, type: wantIsValid ? "bool" : valueType, valueType, wantIsValid };
   }
 

@@ -37,9 +37,14 @@
 // to an empty dict — no positional-shape sniffing needed anywhere in this
 // file.
 //
-// Scope note: KHR_node_selectability/hoverability (onSelect/onHoverIn/
-// onHoverOut) is intentionally NOT ported here, matching every other backend
-// in this monorepo (viewer-only, never exercised by the conformance corpus).
+// Scope note: KHR_node_selectability/hoverability EXECUTION (actually firing
+// onSelect/onHoverIn/onHoverOut) is intentionally NOT ported here, matching
+// every other backend in this monorepo (viewer-only, never exercised by the
+// conformance corpus, and this runtime has no DOM/pointer-input concept to
+// drive it from). @gltfi/emit-cs DOES emit rt.OnSelect/OnHoverIn/OnHoverOut
+// REGISTRATION calls (R4 #20-4 — authoring parity with emit-ts), so
+// SelectParams/HoverParams plus no-op-tolerant registration stubs exist
+// below purely so emitted modules compile and run; they never fire.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -119,6 +124,37 @@ public readonly struct SentEvent
         EventIndex = eventIndex;
         ExternalId = externalId;
         Payload = payload;
+    }
+}
+
+// KHR_node_selectability/hoverability handler-param shapes (R4 #20-4 — see
+// this file's own "Scope note" header: emitted, never fired). Mirrors
+// emit-ts's onSelect/onHoverIn/onHoverOut `params` object field-for-field.
+public readonly struct SelectParams
+{
+    public readonly string SelectedNode;
+    public readonly int SelectedNodeIndex;
+    public readonly int ControllerIndex;
+    public readonly double[] SelectionPoint;
+    public readonly double[] SelectionRayOrigin;
+    public SelectParams(string selectedNode, int selectedNodeIndex, int controllerIndex, double[] selectionPoint, double[] selectionRayOrigin)
+    {
+        SelectedNode = selectedNode;
+        SelectedNodeIndex = selectedNodeIndex;
+        ControllerIndex = controllerIndex;
+        SelectionPoint = selectionPoint;
+        SelectionRayOrigin = selectionRayOrigin;
+    }
+}
+
+public readonly struct HoverParams
+{
+    public readonly string HoveredNode;
+    public readonly int ControllerIndex;
+    public HoverParams(string hoveredNode, int controllerIndex)
+    {
+        HoveredNode = hoveredNode;
+        ControllerIndex = controllerIndex;
     }
 }
 
@@ -321,6 +357,21 @@ public sealed class Engine
         }
         _onReceiveHandlers[eventIndex].Add(fn);
     }
+
+    // KHR_node_selectability/hoverability registration stubs — this backend
+    // never FIRES select/hover (see this file's own "Scope note" header: no
+    // DOM/pointer-input concept exists here, and the conformance corpus this
+    // backend targets never exercises UserInteractions), but @gltfi/emit-cs
+    // now emits rt.OnSelect/OnHoverIn/OnHoverOut registrations (R4 #20-4 —
+    // C# backend authoring parity with emit-ts), so these must exist purely
+    // so an emitted module COMPILES and RUNS. The handler delegate is
+    // intentionally discarded (not stored anywhere) — registering it would
+    // have no observable effect since nothing ever calls it.
+    public void OnSelect(int nodeIndex, bool stopPropagation, Action<SelectParams> fn) { }
+
+    public void OnHoverIn(int nodeIndex, Action<HoverParams> fn) { }
+
+    public void OnHoverOut(int nodeIndex, Action<HoverParams> fn) { }
 
     private EventPayload DefaultPayload(int eventIndex)
     {

@@ -41,10 +41,17 @@
 // two-field read still needs one), `if not x then` for empty-then branches,
 // and omitted default-payload `rt.send`/arg-less `rt.log` calls.
 //
-// Scope note: KHR_node_selectability/hoverability (onSelect/onHoverIn/
-// onHoverOut) is intentionally NOT emitted here — see
-// @gltfi/runtime-lua/src/lua/engine.lua's header note for why (viewer-only,
-// never exercised by the conformance corpus this backend targets).
+// KHR_node_selectability/hoverability (onSelect/onHoverIn/onHoverOut) IS
+// emitted here (R4 #20-4 — authoring parity with emit-ts's onSelect/
+// onHoverIn/onHoverOut cases, which this mirrors), even though the official
+// conformance corpus this backend targets never exercises it and
+// runtime-lua's rt.onSelect/onHoverIn/onHoverOut are no-op-tolerant
+// registration stubs that never fire (see engine.lua's header note) —
+// EXECUTION of select/hover stays out of scope, only round-tripping
+// authored code that registers these handlers. `params` is destructured to
+// plain locals via Lua's multiple-assignment idiom (`local a, b = t.a,
+// t.b` — Lua has no object-destructuring syntax) right at the callback's
+// top, same shape/intent as emit-ts's `const {...} = params;`.
 import {
   computeStateSlotDisplayNames,
   computeVariableDisplayNames,
@@ -314,7 +321,13 @@ function varDeclCall(type: IRType, data: Array<number | boolean | string>): stri
 // @gltfi/emit-py — see that file's own doc comment.
 // ---------------------------------------------------------------------------
 
-type HandlerEventCtx = { kind: "onStart" } | { kind: "onTick" } | { kind: "receive"; eventRef: number };
+type HandlerEventCtx =
+  | { kind: "onStart" }
+  | { kind: "onTick" }
+  | { kind: "receive"; eventRef: number }
+  | { kind: "onSelect" }
+  | { kind: "onHoverIn" }
+  | { kind: "onHoverOut" };
 
 class Emitter {
   private readonly module: IRModule;
@@ -655,15 +668,42 @@ class Emitter {
       this.push("end)");
       return;
     }
-    // KHR_node_selectability/hoverability — viewer-only, never emitted by
-    // the official conformance corpus this backend targets (see
-    // @gltfi/runtime-lua's engine.lua header note); intentionally
-    // unsupported here rather than ported, unlike emit-ts.
-    throw new EmitError(
-      `handler kind "${handler.kind}" is not supported by the Lua backend (KHR_node_selectability/hoverability is viewer-only)`,
-      handler.kind,
-      this.originNodeId
-    );
+    // KHR_node_selectability/hoverability — not exercised by the official
+    // conformance corpus this backend targets, but emitted for authoring
+    // parity with emit-ts (see this file's header note); runtime-lua's
+    // rt.onSelect/onHoverIn/onHoverOut are no-op-tolerant registration
+    // stubs (see engine.lua) — the registration round-trips, it just
+    // never fires.
+    if (handler.kind === "onSelect") {
+      const nodeIndex = Math.trunc(Number((handler.config as { nodeIndex?: number } | undefined)?.nodeIndex ?? -1));
+      const stopPropagation = Boolean((handler.config as { stopPropagation?: boolean } | undefined)?.stopPropagation);
+      this.handlerEventCtx = { kind: "onSelect" };
+      this.resetBodyCounters();
+      this.push(`rt.onSelect(${floatLiteral(nodeIndex)}, ${stopPropagation ? "true" : "false"}, function(params)`);
+      this.indent += 1;
+      this.push(
+        "local selectedNode, selectedNodeIndex, controllerIndex, selectionPoint, selectionRayOrigin = " +
+          "params.selectedNode, params.selectedNodeIndex, params.controllerIndex, params.selectionPoint, params.selectionRayOrigin"
+      );
+      this.emitEventOutWrites();
+      this.emitStmt(handler.body);
+      this.indent -= 1;
+      this.push("end)");
+      return;
+    }
+    if (handler.kind === "onHoverIn" || handler.kind === "onHoverOut") {
+      const nodeIndex = Math.trunc(Number((handler.config as { nodeIndex?: number } | undefined)?.nodeIndex ?? -1));
+      this.handlerEventCtx = { kind: handler.kind };
+      this.resetBodyCounters();
+      this.push(`rt.${handler.kind}(${floatLiteral(nodeIndex)}, function(params)`);
+      this.indent += 1;
+      this.push("local hoveredNode, controllerIndex = params.hoveredNode, params.controllerIndex");
+      this.emitEventOutWrites();
+      this.emitStmt(handler.body);
+      this.indent -= 1;
+      this.push("end)");
+      return;
+    }
   }
 
   private emitEventOutWrites() {
@@ -1216,11 +1256,28 @@ class Emitter {
     if (name === "event") {
       if (ctx.kind === "onStart") return '"event:onStart"';
       if (ctx.kind === "onTick") return '"event:onTick"';
+      if (ctx.kind === "onSelect") return '"event:onSelect"';
+      if (ctx.kind === "onHoverIn") return '"event:onHoverIn"';
+      if (ctx.kind === "onHoverOut") return '"event:onHoverOut"';
       return `"event:custom:${ctx.eventRef}"`;
     }
     if (ctx.kind === "onTick") {
       if (name === "timeSinceStart") return "timeSinceStart";
       if (name === "timeSinceLastTick") return "timeSinceLastTick";
+    }
+    // Destructured to bare locals right at the rt.onSelect/onHoverIn/
+    // onHoverOut callback's top (see emitHandler) — same shape as every
+    // other handler kind's params, one identifier per named socket.
+    if (ctx.kind === "onSelect") {
+      if (name === "selectedNode") return "selectedNode";
+      if (name === "selectedNodeIndex") return "selectedNodeIndex";
+      if (name === "controllerIndex") return "controllerIndex";
+      if (name === "selectionPoint") return "selectionPoint";
+      if (name === "selectionRayOrigin") return "selectionRayOrigin";
+    }
+    if (ctx.kind === "onHoverIn" || ctx.kind === "onHoverOut") {
+      if (name === "hoveredNode") return "hoveredNode";
+      if (name === "controllerIndex") return "controllerIndex";
     }
     if (ctx.kind === "receive") {
       // payload is a Lua 1-based table here (vs. TS's 0-based JS array).
