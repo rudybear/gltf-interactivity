@@ -84,11 +84,19 @@
 // empty-then branches, and omitted default-payload `rt.send`/arg-less
 // `rt.log_msg` calls.
 //
-// Scope note: KHR_node_selectability/hoverability (onSelect/onHoverIn/
-// onHoverOut) is intentionally NOT emitted here — see @gltfi/runtime-gd's
-// engine.gd header note for why (viewer-only, never exercised by the
-// conformance corpus this backend targets), same scope decision as every
-// other backend.
+// KHR_node_selectability/hoverability (onSelect/onHoverIn/onHoverOut) IS
+// emitted here (R4 #20-4 — authoring parity with emit-ts's onSelect/
+// onHoverIn/onHoverOut cases, which this mirrors, same as the other three
+// backends), even though the official conformance corpus this backend
+// targets never exercises it and runtime-gd's rt.on_select/on_hover_in/
+// on_hover_out are no-op-tolerant registration stubs that never fire (see
+// engine.gd's header note) — EXECUTION of select/hover stays out of scope,
+// only round-tripping authored code that registers these handlers. Like the
+// `receive` handler's own `payload: Array` parameter (whose elements are
+// read positionally, no destructure), onSelect/onHoverIn/onHoverOut's own
+// `params: Dictionary` parameter is read via `params["<camelCaseKey>"]`
+// directly — no destructuring step needed at all, so parse-gd has nothing
+// to strip.
 import {
   computeStateSlotDisplayNames,
   computeVariableDisplayNames,
@@ -364,7 +372,13 @@ function varDeclCall(type: IRType, data: Array<number | boolean | string>): stri
 // @gltfi/ir/display-names.ts, shared verbatim with the other backends.
 // ---------------------------------------------------------------------------
 
-type HandlerEventCtx = { kind: "onStart" } | { kind: "onTick" } | { kind: "receive"; eventRef: number };
+type HandlerEventCtx =
+  | { kind: "onStart" }
+  | { kind: "onTick" }
+  | { kind: "receive"; eventRef: number }
+  | { kind: "onSelect" }
+  | { kind: "onHoverIn" }
+  | { kind: "onHoverOut" };
 
 // One handler, fully planned before any code is emitted for it — `regCode`
 // is the ONE line appended inside `build()`'s body (a bare registration
@@ -741,14 +755,37 @@ class Emitter {
           regCode: `rt.on_receive(${this.eventArgCode(handler.eventRef)}, ${funcName})`
         };
       }
-      // KHR_node_selectability/hoverability — viewer-only, never emitted by
-      // the official conformance corpus this backend targets, same scope
-      // decision as every other backend.
-      throw new EmitError(
-        `handler kind "${handler.kind}" is not supported by the GDScript backend (KHR_node_selectability/hoverability is viewer-only)`,
-        handler.kind,
-        this.originNodeId
-      );
+      // KHR_node_selectability/hoverability — not exercised by the official
+      // conformance corpus this backend targets, but emitted for authoring
+      // parity with emit-ts (see this file's header note); runtime-gd's
+      // rt.on_select/on_hover_in/on_hover_out are no-op-tolerant
+      // registration stubs (see engine.gd) — the registration round-trips,
+      // it just never fires.
+      if (handler.kind === "onSelect") {
+        const nodeIndex = Math.trunc(Number((handler.config as { nodeIndex?: number } | undefined)?.nodeIndex ?? -1));
+        const stopPropagation = Boolean((handler.config as { stopPropagation?: boolean } | undefined)?.stopPropagation);
+        const funcName = `__on_select_${index}`;
+        return {
+          handler,
+          index,
+          funcName,
+          paramsCode: "params: Dictionary",
+          regCode: `rt.on_select(${nodeIndex}, ${stopPropagation ? "true" : "false"}, ${funcName})`
+        };
+      }
+      if (handler.kind === "onHoverIn" || handler.kind === "onHoverOut") {
+        const nodeIndex = Math.trunc(Number((handler.config as { nodeIndex?: number } | undefined)?.nodeIndex ?? -1));
+        const funcName = handler.kind === "onHoverIn" ? `__on_hover_in_${index}` : `__on_hover_out_${index}`;
+        const regFn = handler.kind === "onHoverIn" ? "on_hover_in" : "on_hover_out";
+        return {
+          handler,
+          index,
+          funcName,
+          paramsCode: "params: Dictionary",
+          regCode: `rt.${regFn}(${nodeIndex}, ${funcName})`
+        };
+      }
+      throw new EmitError(`handler kind "${(handler as IRHandler).kind}" is not supported by the GDScript backend`, (handler as IRHandler).kind, this.originNodeId);
     });
   }
 
@@ -762,7 +799,11 @@ class Emitter {
           ? { kind: "onStart" }
           : handler.kind === "onTick"
             ? { kind: "onTick" }
-            : { kind: "receive", eventRef: handler.eventRef as number };
+            : handler.kind === "receive"
+              ? { kind: "receive", eventRef: handler.eventRef as number }
+              : handler.kind === "onSelect"
+                ? { kind: "onSelect" }
+                : { kind: handler.kind };
       this.resetBodyCounters();
       this.push(`func ${funcName}(${paramsCode}) -> void:`);
       this.indent = 1;
@@ -1032,15 +1073,28 @@ class Emitter {
   // emitHandlerBodies' per-item loop body.
   private pendingConts: Array<{ name: string; body: IRStmt }> = [];
 
+  // Recurses (via the `while`) rather than draining `pendingConts` once:
+  // a continuation's OWN body can itself contain another async op whose
+  // `done` continuation is inline (e.g. a chained `set_delay` -> `set_delay`
+  // -> ... sequence — see TrafficLight.glb's onSelect handlers, discovered
+  // via this file's R4 #20-4 onSelect corpus test, the first real-world
+  // asset in this repo's test suite to exercise a chain 3+ deep), which
+  // calls emitCont -> allocCont and pushes a FRESH entry onto
+  // `this.pendingConts` WHILE this method's own `for` loop is still
+  // running over an earlier snapshot. A single non-recursive drain missed
+  // that freshly-queued entry, silently referencing an undefined func
+  // (parse-gd's GG122) once nesting went two levels deep.
   private flushPendingConts() {
-    const conts = this.pendingConts;
-    this.pendingConts = [];
-    for (const { name, body } of conts) {
-      this.push(`func ${name}() -> void:`);
-      this.indent += 1;
-      this.emitBlock(body);
-      this.indent -= 1;
-      this.lines.push("");
+    while (this.pendingConts.length > 0) {
+      const conts = this.pendingConts;
+      this.pendingConts = [];
+      for (const { name, body } of conts) {
+        this.push(`func ${name}() -> void:`);
+        this.indent += 1;
+        this.emitBlock(body);
+        this.indent -= 1;
+        this.lines.push("");
+      }
     }
   }
 
@@ -1321,11 +1375,28 @@ class Emitter {
     if (name === "event") {
       if (ctx.kind === "onStart") return '"event:onStart"';
       if (ctx.kind === "onTick") return '"event:onTick"';
+      if (ctx.kind === "onSelect") return '"event:onSelect"';
+      if (ctx.kind === "onHoverIn") return '"event:onHoverIn"';
+      if (ctx.kind === "onHoverOut") return '"event:onHoverOut"';
       return `"event:custom:${ctx.eventRef}"`;
     }
     if (ctx.kind === "onTick") {
       if (name === "timeSinceStart") return "time_since_start";
       if (name === "timeSinceLastTick") return "time_since_last_tick";
+    }
+    // No destructuring step — `params` is a plain Dictionary, read via a
+    // string-keyed subscript exactly like `receive`'s positional `payload`
+    // array above (see this file's header note).
+    if (ctx.kind === "onSelect") {
+      if (name === "selectedNode") return 'params["selectedNode"]';
+      if (name === "selectedNodeIndex") return 'params["selectedNodeIndex"]';
+      if (name === "controllerIndex") return 'params["controllerIndex"]';
+      if (name === "selectionPoint") return 'params["selectionPoint"]';
+      if (name === "selectionRayOrigin") return 'params["selectionRayOrigin"]';
+    }
+    if (ctx.kind === "onHoverIn" || ctx.kind === "onHoverOut") {
+      if (name === "hoveredNode") return 'params["hoveredNode"]';
+      if (name === "controllerIndex") return 'params["controllerIndex"]';
     }
     if (ctx.kind === "receive") {
       // payload is a 0-based GDScript Array here, matching the TS/Python

@@ -240,12 +240,50 @@ const HANDLER_PARAMS: Record<HandlerKind, IRHandlerParam[]> = {
     { name: "expectedDuration", type: "float" },
     { name: "event", type: "ref" }
   ],
-  onSelect: [],
-  onHoverIn: [],
-  onHoverOut: []
+  // KHR_node_selectability/hoverability (R4 #20-4): @gltfi/emit-gd now
+  // emits rt.on_select/on_hover_in/on_hover_out REGISTRATIONS (authoring
+  // parity with emit-ts — see that file's header note); runtime-gd's own
+  // rt.on_select/on_hover_in/on_hover_out are still no-op-tolerant stubs
+  // that never fire (execution stays out of scope, see engine.gd's header
+  // note), but that's a runtime concern, not a parse one.
+  onSelect: [
+    { name: "selectedNode", type: "ref" },
+    { name: "selectedNodeIndex", type: "int" },
+    { name: "controllerIndex", type: "int" },
+    { name: "selectionPoint", type: "float3" },
+    { name: "selectionRayOrigin", type: "float3" },
+    { name: "event", type: "ref" }
+  ],
+  onHoverIn: [
+    { name: "hoveredNode", type: "ref" },
+    { name: "controllerIndex", type: "int" },
+    { name: "event", type: "ref" }
+  ],
+  onHoverOut: [
+    { name: "hoveredNode", type: "ref" },
+    { name: "controllerIndex", type: "int" },
+    { name: "event", type: "ref" }
+  ]
 };
 
 const PAYLOAD_FIELDS = ["boolParameter", "intParameter", "floatParameter", "expectedDuration"] as const;
+
+// `params["<key>"]` string key -> IR param name/type (see emit-gd's own
+// paramAccess onSelect/onHoverIn/onHoverOut cases, mirrored exactly). No
+// destructuring exists in this backend at all (see emit-gd's header note),
+// so — unlike parse-ts/parse-lua/parse-py's separate "local param" tables —
+// this is the ONLY lookup table needed for these three handler kinds.
+const ONSELECT_PARAM_KEY: Record<string, { name: string; type: IRType }> = {
+  selectedNode: { name: "selectedNode", type: "ref" },
+  selectedNodeIndex: { name: "selectedNodeIndex", type: "int" },
+  controllerIndex: { name: "controllerIndex", type: "int" },
+  selectionPoint: { name: "selectionPoint", type: "float3" },
+  selectionRayOrigin: { name: "selectionRayOrigin", type: "float3" }
+};
+const HOVER_PARAM_KEY: Record<string, { name: string; type: IRType }> = {
+  hoveredNode: { name: "hoveredNode", type: "ref" },
+  controllerIndex: { name: "controllerIndex", type: "int" }
+};
 
 // Reverse of emit-gd's `GD_RENAME` (only the bare, non-Int-suffixed forms
 // collide with a GDScript keyword/@GlobalScope builtin — see that table's
@@ -321,7 +359,7 @@ const VECTOR_MATRIX_DEFAULTS: Record<string, number[]> = {
 // ---------------------------------------------------------------------------
 
 type Ctx = { kind: "proc" } | { kind: "handler"; handlerKind: HandlerKind };
-type HandlerDesc = { kind: HandlerKind; eventRef?: number; funcName: string };
+type HandlerDesc = { kind: HandlerKind; eventRef?: number; config?: Record<string, unknown>; funcName: string };
 
 class ModuleParser {
   diagnostics: Diagnostic[] = [];
@@ -441,7 +479,7 @@ class ModuleParser {
       }
       this.tempTypeByName = new Map();
       const body = this.lowerBlock(fn.body, { kind: "handler", handlerKind: desc.kind });
-      this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, params: HANDLER_PARAMS[desc.kind], body });
+      this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, config: desc.config, params: HANDLER_PARAMS[desc.kind], body });
     });
 
     return {
@@ -524,7 +562,7 @@ class ModuleParser {
       const s = bodyStmts[j];
       this.currentLine = s.line;
       if (s.t !== "exprStmt" || s.expr.t !== "call" || s.expr.callee.t !== "attr" || identName(s.expr.callee.base) !== "rt") {
-        this.fail("GG104", "expected a handler-registration call (rt.on_start/rt.on_tick/rt.on_receive)");
+        this.fail("GG104", "expected a handler-registration call (rt.on_start/rt.on_tick/rt.on_receive/rt.on_select/rt.on_hover_in/rt.on_hover_out)");
       }
       const attrName = s.expr.callee.name;
       const args = s.expr.args;
@@ -542,6 +580,20 @@ class ModuleParser {
         if (eventRef === undefined) this.fail("GG104", 'rt.on_receive\'s first argument must be a numeric literal or E["<name>"]');
         if (fnName === undefined) this.fail("GG104", "rt.on_receive's second argument must be a bare function reference");
         handlerDescs.push({ kind: "receive", eventRef, funcName: fnName });
+      } else if (attrName === "on_select") {
+        const nodeIndex = numLit(args[0]);
+        const stopPropagation = boolLit(args[1]);
+        const fnName = identName(args[2]);
+        if (nodeIndex === undefined) this.fail("GG104", "rt.on_select's first argument must be a numeric node-index literal");
+        if (stopPropagation === undefined) this.fail("GG104", "rt.on_select's second argument must be a boolean literal (stop_propagation)");
+        if (fnName === undefined) this.fail("GG104", "rt.on_select's third argument must be a bare function reference");
+        handlerDescs.push({ kind: "onSelect", config: { nodeIndex: Math.trunc(nodeIndex), stopPropagation }, funcName: fnName });
+      } else if (attrName === "on_hover_in" || attrName === "on_hover_out") {
+        const nodeIndex = numLit(args[0]);
+        const fnName = identName(args[1]);
+        if (nodeIndex === undefined) this.fail("GG104", "rt.on_hover_in/rt.on_hover_out's first argument must be a numeric node-index literal");
+        if (fnName === undefined) this.fail("GG104", "rt.on_hover_in/rt.on_hover_out's second argument must be a bare function reference");
+        handlerDescs.push({ kind: attrName === "on_hover_in" ? "onHoverIn" : "onHoverOut", config: { nodeIndex: Math.trunc(nodeIndex) }, funcName: fnName });
       } else {
         this.fail("GG104", `unrecognized handler-registration call "rt.${attrName}"`);
       }
@@ -1298,7 +1350,7 @@ class ModuleParser {
     if (expr.t === "index") {
       const base = expr.base;
       if (base.t === "call" && base.callee.t === "attr" && identName(base.callee.base) === "rt" && base.callee.name === "ptr_get" && expr.index.t === "str") {
-        return this.lowerPtrGet(base.args, expr.index.value === "isValid");
+        return this.lowerPtrGet(base.args, expr.index.value === "isValid", ctx);
       }
       if (base.t === "call" && base.callee.t === "attr" && identName(base.callee.base) === "rt" && base.callee.name === "event_payload" && expr.index.t === "num") {
         const eventIndex = this.readEventIndex(base.args[0]) ?? 0;
@@ -1315,6 +1367,22 @@ class ModuleParser {
         const field = PAYLOAD_FIELDS[Math.trunc(expr.index.value)] ?? "boolParameter";
         const type: IRType = field === "boolParameter" ? "bool" : field === "intParameter" ? "int" : "float";
         return { k: "param", name: field, type };
+      }
+      // `params["<key>"]` — no destructuring step in this backend (see
+      // emit-gd's header note): the handler's own `params: Dictionary`
+      // parameter is read via a string-keyed subscript directly, mirroring
+      // `payload[<N>]` above.
+      if (base.t === "ident" && base.name === "params" && ctx.kind === "handler" && ctx.handlerKind === "onSelect" && expr.index.t === "str") {
+        const p = ONSELECT_PARAM_KEY[expr.index.value];
+        if (p) {
+          return { k: "param", name: p.name, type: p.type };
+        }
+      }
+      if (base.t === "ident" && base.name === "params" && ctx.kind === "handler" && (ctx.handlerKind === "onHoverIn" || ctx.handlerKind === "onHoverOut") && expr.index.t === "str") {
+        const p = HOVER_PARAM_KEY[expr.index.value];
+        if (p) {
+          return { k: "param", name: p.name, type: p.type };
+        }
       }
       if (base.t === "ident" && expr.index.t === "str") {
         const slotIdx = this.stateSlotIndexByName.get(base.name);
@@ -1376,7 +1444,7 @@ class ModuleParser {
     this.fail("GG140", `unrecognized state-slot field read "${field}" on slot kind "${kind}"`);
   }
 
-  private lowerPtrGet(argNodes: GExpr[], wantIsValid: boolean): IRExpr {
+  private lowerPtrGet(argNodes: GExpr[], wantIsValid: boolean, ctx: Ctx): IRExpr {
     const hasArgsObj = argNodes.length >= 2 && argNodes[1].t === "dict";
     const pointerExpr = argNodes[0];
     const argsObjExpr = hasArgsObj ? argNodes[1] : undefined;
@@ -1384,7 +1452,7 @@ class ModuleParser {
     const pointerLit = strLit(pointerExpr) ?? this.fail("GG141", "pointer must be a string literal");
     const template = parsePointerTemplate(pointerLit);
     const valueType = (strLit(typeExpr) as IRType | undefined) ?? this.fail("GG141", "pointer type must be a string literal");
-    const args = this.lowerPointerArgs(argsObjExpr, template, { kind: "proc" });
+    const args = this.lowerPointerArgs(argsObjExpr, template, ctx);
     return { k: "ptrGet", template, args, type: wantIsValid ? "bool" : valueType, valueType, wantIsValid };
   }
 

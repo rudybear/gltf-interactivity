@@ -6,13 +6,18 @@
 --
 --   return function(rt) ... rt.vars(...); rt.onStart(function() ... end); ... end
 --
--- Scope note: KHR_node_selectability/hoverability (onSelect/onHoverIn/
--- onHoverOut + fireSelect/fireHoverIn/fireHoverOut) is intentionally NOT
--- ported here — the official conformance corpus this Lua backend targets
--- (test-index.json/mathtests-index.json, driven via run-compiled-lua.ts)
--- never exercises it (same fact noted in engine.ts's own header: it's a
--- viewer-parity extra beyond the corpus, added there for apps/viewer, which
--- has no Lua counterpart). `rt.onStart`/`rt.onTick`/`rt.onReceive` and every
+-- Scope note: KHR_node_selectability/hoverability EXECUTION (actually
+-- firing onSelect/onHoverIn/onHoverOut + fireSelect/fireHoverIn/
+-- fireHoverOut) is intentionally NOT ported here — the official
+-- conformance corpus this Lua backend targets (test-index.json/
+-- mathtests-index.json, driven via run-compiled-lua.ts) never exercises it
+-- (same fact noted in engine.ts's own header: it's a viewer-parity extra
+-- beyond the corpus, added there for apps/viewer, which has no Lua
+-- counterpart), and this runtime has no DOM/pointer-input concept to drive
+-- it from. @gltfi/emit-lua DOES emit rt.onSelect/onHoverIn/onHoverOut
+-- REGISTRATION calls (R4 #20-4 — authoring parity with emit-ts), so
+-- no-op-tolerant stubs exist below purely so emitted modules load; they
+-- never fire. `rt.onStart`/`rt.onTick`/`rt.onReceive` and every
 -- stateful/async op and the full math/type/ref op set — the corpus's
 -- actual surface — are implemented in full below.
 
@@ -286,6 +291,20 @@ function CreateEngine(setup)
       end
       list[#list + 1] = fn
     end
+    -- KHR_node_selectability/hoverability registration stubs — this
+    -- backend never FIRES select/hover (see this file's own "Scope note"
+    -- header: no DOM/pointer-input concept exists here, and the
+    -- conformance corpus this Lua backend targets never exercises
+    -- UserInteractions), but @gltfi/emit-lua now emits rt.onSelect/
+    -- onHoverIn/onHoverOut registrations (R4 #20-4 — Lua backend authoring
+    -- parity with emit-ts), so these must exist purely so an emitted
+    -- module LOADS without an "attempt to call a nil value" error. The
+    -- handler function is intentionally discarded (not stored anywhere) —
+    -- registering it would have no observable effect since nothing ever
+    -- calls it.
+    function rt.onSelect(_nodeIndex, _stopPropagation, _fn) end
+    function rt.onHoverIn(_nodeIndex, _fn) end
+    function rt.onHoverOut(_nodeIndex, _fn) end
     -- Combined signature covering three call shapes (mirrors engine.ts's
     -- send exactly): the OLD `(eventIndex, externalId, payload)` (externalId
     -- is IGNORED — it's looked up from this engine's own eventDecls table

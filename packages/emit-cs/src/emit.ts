@@ -69,6 +69,20 @@
 // uniformly, matching the Python/Lua backends' identical choice — no
 // correctness reason, just consistency). See the task report's full
 // per-language native-operator table.
+//
+// KHR_node_selectability/hoverability (onSelect/onHoverIn/onHoverOut) IS
+// emitted here (R4 #20-4 — authoring parity with emit-ts's onSelect/
+// onHoverIn/onHoverOut cases, which this mirrors, same as emit-lua/emit-py),
+// even though the official conformance corpus this backend targets never
+// exercises it and runtime-cs's rt.OnSelect/OnHoverIn/OnHoverOut are no-op-
+// tolerant registration stubs that never fire (see Engine.cs's header note)
+// — EXECUTION of select/hover stays out of scope, only round-tripping
+// authored code that registers these handlers. Unlike the receive handler's
+// `EventPayload payload` parameter (whose fields are read directly, no
+// destructure), onSelect/onHoverIn/onHoverOut's own `SelectParams
+// selectParams`/`HoverParams hoverParams` parameters are likewise read
+// directly via paramAccess (`selectParams.SelectedNode`, etc.) — no
+// destructuring step needed at all in C#, so parse-cs has nothing to strip.
 import {
   computeStateSlotDisplayNames,
   computeVariableDisplayNames,
@@ -391,7 +405,13 @@ function csDirectCastForType(type: IRType): string {
 // emit-lua/@gltfi/emit-py — see that file's own doc comment.
 // ---------------------------------------------------------------------------
 
-type HandlerEventCtx = { kind: "onStart" } | { kind: "onTick" } | { kind: "receive"; eventRef: number };
+type HandlerEventCtx =
+  | { kind: "onStart" }
+  | { kind: "onTick" }
+  | { kind: "receive"; eventRef: number }
+  | { kind: "onSelect" }
+  | { kind: "onHoverIn" }
+  | { kind: "onHoverOut" };
 
 class Emitter {
   private readonly module: IRModule;
@@ -762,11 +782,40 @@ class Emitter {
       this.push(`rt.OnReceive(${this.eventArgCode(handler.eventRef)}, ${name});`);
       return;
     }
-    throw new EmitError(
-      `handler kind "${handler.kind}" is not supported by the C# backend (KHR_node_selectability/hoverability is viewer-only)`,
-      handler.kind,
-      this.originNodeId
-    );
+    // KHR_node_selectability/hoverability — not exercised by the official
+    // conformance corpus this backend targets, but emitted for authoring
+    // parity with emit-ts (see this file's header note); runtime-cs's
+    // rt.OnSelect/OnHoverIn/OnHoverOut are no-op-tolerant registration stubs
+    // (see Engine.cs) — the registration round-trips, it just never fires.
+    if (handler.kind === "onSelect") {
+      const nodeIndex = Math.trunc(Number((handler.config as { nodeIndex?: number } | undefined)?.nodeIndex ?? -1));
+      const stopPropagation = Boolean((handler.config as { stopPropagation?: boolean } | undefined)?.stopPropagation);
+      this.handlerEventCtx = { kind: "onSelect" };
+      this.resetBodyCounters();
+      const name = `OnSelect${index}`;
+      this.push(`void ${name}(SelectParams selectParams)`);
+      this.push("{");
+      this.indent += 1;
+      this.emitHandlerBody(handler.body);
+      this.indent -= 1;
+      this.push("}");
+      this.push(`rt.OnSelect(${nodeIndex}, ${stopPropagation ? "true" : "false"}, ${name});`);
+      return;
+    }
+    if (handler.kind === "onHoverIn" || handler.kind === "onHoverOut") {
+      const nodeIndex = Math.trunc(Number((handler.config as { nodeIndex?: number } | undefined)?.nodeIndex ?? -1));
+      this.handlerEventCtx = { kind: handler.kind };
+      this.resetBodyCounters();
+      const name = `${handler.kind === "onHoverIn" ? "OnHoverIn" : "OnHoverOut"}${index}`;
+      this.push(`void ${name}(HoverParams hoverParams)`);
+      this.push("{");
+      this.indent += 1;
+      this.emitHandlerBody(handler.body);
+      this.indent -= 1;
+      this.push("}");
+      this.push(`rt.${handler.kind === "onHoverIn" ? "OnHoverIn" : "OnHoverOut"}(${nodeIndex}, ${name});`);
+      return;
+    }
   }
 
   private emitHandlerBody(body: IRStmt) {
@@ -1349,11 +1398,28 @@ class Emitter {
     if (name === "event") {
       if (ctx.kind === "onStart") return csStringLiteral("event:onStart");
       if (ctx.kind === "onTick") return csStringLiteral("event:onTick");
+      if (ctx.kind === "onSelect") return csStringLiteral("event:onSelect");
+      if (ctx.kind === "onHoverIn") return csStringLiteral("event:onHoverIn");
+      if (ctx.kind === "onHoverOut") return csStringLiteral("event:onHoverOut");
       return csStringLiteral(`event:custom:${ctx.eventRef}`);
     }
     if (ctx.kind === "onTick") {
       if (name === "timeSinceStart") return "timeSinceStart";
       if (name === "timeSinceLastTick") return "timeSinceLastTick";
+    }
+    // No destructuring step — the handler's own `SelectParams
+    // selectParams`/`HoverParams hoverParams` parameter's fields are read
+    // directly, exactly like `receive`'s `payload.<Field>` above.
+    if (ctx.kind === "onSelect") {
+      if (name === "selectedNode") return "selectParams.SelectedNode";
+      if (name === "selectedNodeIndex") return "selectParams.SelectedNodeIndex";
+      if (name === "controllerIndex") return "selectParams.ControllerIndex";
+      if (name === "selectionPoint") return "selectParams.SelectionPoint";
+      if (name === "selectionRayOrigin") return "selectParams.SelectionRayOrigin";
+    }
+    if (ctx.kind === "onHoverIn" || ctx.kind === "onHoverOut") {
+      if (name === "hoveredNode") return "hoverParams.HoveredNode";
+      if (name === "controllerIndex") return "hoverParams.ControllerIndex";
     }
     if (ctx.kind === "receive") {
       if (name === "boolParameter") return "payload.BoolParameter";

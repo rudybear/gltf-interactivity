@@ -269,6 +269,9 @@ importers:
       '@gltfi/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@gltfi/verify':
+        specifier: workspace:*
+        version: link:../verify
 
   packages/parse-gd:
     dependencies:
@@ -303,6 +306,9 @@ importers:
       '@gltfi/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@gltfi/verify':
+        specifier: workspace:*
+        version: link:../verify
 
   packages/parse-lua:
     dependencies:
@@ -328,6 +334,9 @@ importers:
       '@gltfi/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@gltfi/verify':
+        specifier: workspace:*
+        version: link:../verify
       '@types/luaparse':
         specifier: ^0.2.13
         version: 0.2.13
@@ -362,6 +371,9 @@ importers:
       '@gltfi/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@gltfi/verify':
+        specifier: workspace:*
+        version: link:../verify
 
   packages/parse-ts:
     dependencies:

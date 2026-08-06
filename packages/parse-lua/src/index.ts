@@ -320,16 +320,13 @@ const HANDLER_PARAMS: Record<HandlerKind, IRHandlerParam[]> = {
     { name: "expectedDuration", type: "float" },
     { name: "event", type: "ref" }
   ],
-  // KHR_node_selectability/hoverability: unlike parse-ts, @gltfi/emit-lua
-  // deliberately does NOT emit rt.onSelect/onHoverIn/onHoverOut (see that
-  // file's header "Scope note" and runtime-lua's engine.lua header note —
-  // it's a viewer-only extra beyond the corpus this Lua backend targets,
-  // and runtime-lua has no rt.onSelect/onHoverIn/onHoverOut implementation
-  // at all). These entries are filled in anyway purely for type-shape
-  // parity with parse-ts's identical table (see this block's own doc
-  // comment above) — the handler-registration loop below still does NOT
-  // accept rt.onSelect/onHoverIn/onHoverOut syntax (GL104), so these three
-  // are dead data unless/until a real emitted Lua shape exists to parse.
+  // KHR_node_selectability/hoverability (R4 #20-4): @gltfi/emit-lua now
+  // emits rt.onSelect/onHoverIn/onHoverOut REGISTRATIONS (authoring parity
+  // with emit-ts — see that file's header note); runtime-lua's own
+  // rt.onSelect/onHoverIn/onHoverOut are still no-op-tolerant stubs that
+  // never fire (execution stays out of scope, see engine.lua's header
+  // note), but that's a runtime concern, not a parse one — this parser
+  // accepts the registration syntax below just like parse-ts does.
   onSelect: [
     { name: "selectedNode", type: "ref" },
     { name: "selectedNodeIndex", type: "int" },
@@ -351,6 +348,27 @@ const HANDLER_PARAMS: Record<HandlerKind, IRHandlerParam[]> = {
 };
 
 const PAYLOAD_FIELDS = ["boolParameter", "intParameter", "floatParameter", "expectedDuration"] as const;
+
+// Bare-identifier param types for onSelect/onHoverIn/onHoverOut bodies — the
+// names bound by the emitted `local a, b, ... = params.a, params.b, ...`
+// multiple-assignment (see stripParamsDestructure) that lowerExpr's
+// Identifier case resolves to `{k:"param", ...}` reads, mirroring onTick's
+// timeSinceStart/timeSinceLastTick literal-name mechanism and parse-ts's
+// identically-named tables. Deliberately excludes "event" (never bound as a
+// bare identifier — emit-lua routes it through paramAccess("event") as a
+// string-literal arg to rt.stopPropagation, which this parser's
+// rt.stopPropagation handling discards positionally).
+const ONSELECT_LOCAL_PARAMS: Record<string, IRType> = {
+  selectedNode: "ref",
+  selectedNodeIndex: "int",
+  controllerIndex: "int",
+  selectionPoint: "float3",
+  selectionRayOrigin: "float3"
+};
+const HOVER_LOCAL_PARAMS: Record<string, IRType> = {
+  hoveredNode: "ref",
+  controllerIndex: "int"
+};
 
 // ---------------------------------------------------------------------------
 // Parser
@@ -433,14 +451,18 @@ class ModuleParser {
       }
     }
 
-    // Handlers: a run of rt.onStart / rt.onTick / rt.onReceive registrations.
-    type HandlerDesc = { kind: HandlerKind; eventRef?: number; bodyStmts: Statement[] };
+    // Handlers: a run of rt.onStart / rt.onTick / rt.onReceive / rt.onSelect /
+    // rt.onHoverIn / rt.onHoverOut registrations.
+    type HandlerDesc = { kind: HandlerKind; eventRef?: number; config?: Record<string, unknown>; bodyStmts: Statement[] };
     const handlerDescs: HandlerDesc[] = [];
     while (i < stmts.length) {
       const expr = this.exprOf(stmts[i]);
       const onStart = asCall(expr, "rt", "onStart");
       const onTick = asCall(expr, "rt", "onTick");
       const onReceive = asCall(expr, "rt", "onReceive");
+      const onSelect = asCall(expr, "rt", "onSelect");
+      const onHoverIn = asCall(expr, "rt", "onHoverIn");
+      const onHoverOut = asCall(expr, "rt", "onHoverOut");
       if (onStart) {
         handlerDescs.push({ kind: "onStart", bodyStmts: this.handlerFnBody(onStart.arguments[0]) });
       } else if (onTick) {
@@ -451,8 +473,39 @@ class ModuleParser {
           fail("GL104", onReceive.arguments[0], "rt.onReceive's first argument must be a numeric event index literal or `E.<name>`");
         }
         handlerDescs.push({ kind: "receive", eventRef: idx, bodyStmts: this.handlerFnBody(onReceive.arguments[1]) });
+      } else if (onSelect) {
+        const args = onSelect.arguments;
+        const nodeIndex = readNumberLiteral(args[0]);
+        if (nodeIndex === undefined) {
+          fail("GL104", args[0], "rt.onSelect's first argument must be a numeric node-index literal");
+        }
+        const stopPropagation = readBoolLiteral(args[1]);
+        if (stopPropagation === undefined) {
+          fail("GL104", args[1], "rt.onSelect's second argument must be a boolean literal (stopPropagation)");
+        }
+        handlerDescs.push({
+          kind: "onSelect",
+          config: { nodeIndex: Math.trunc(nodeIndex), stopPropagation },
+          bodyStmts: this.stripParamsDestructure(this.handlerFnBody(args[2]), Object.keys(ONSELECT_LOCAL_PARAMS))
+        });
+      } else if (onHoverIn || onHoverOut) {
+        const call = (onHoverIn ?? onHoverOut)!;
+        const args = call.arguments;
+        const nodeIndex = readNumberLiteral(args[0]);
+        if (nodeIndex === undefined) {
+          fail("GL104", args[0], "rt.onHoverIn/rt.onHoverOut's first argument must be a numeric node-index literal");
+        }
+        handlerDescs.push({
+          kind: onHoverIn ? "onHoverIn" : "onHoverOut",
+          config: { nodeIndex: Math.trunc(nodeIndex) },
+          bodyStmts: this.stripParamsDestructure(this.handlerFnBody(args[1]), Object.keys(HOVER_LOCAL_PARAMS))
+        });
       } else {
-        fail("GL104", stmts[i], "expected a handler registration (rt.onStart/rt.onTick/rt.onReceive) or unrecognized top-level statement");
+        fail(
+          "GL104",
+          stmts[i],
+          "expected a handler registration (rt.onStart/rt.onTick/rt.onReceive/rt.onSelect/rt.onHoverIn/rt.onHoverOut) or unrecognized top-level statement"
+        );
       }
       i += 1;
     }
@@ -466,7 +519,7 @@ class ModuleParser {
     handlerDescs.forEach((desc) => {
       const params = HANDLER_PARAMS[desc.kind];
       const body = this.lowerBlock(desc.bodyStmts, { kind: "handler", handlerKind: desc.kind });
-      this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, params, body });
+      this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, config: desc.config, params, body });
     });
 
     return {
@@ -499,6 +552,40 @@ class ModuleParser {
       fail("GL104", fn, "expected an anonymous function handler body");
     }
     return fn.body;
+  }
+
+  // Strips a leading `local <n1>, <n2>, ... = params.<n1>, params.<n2>, ...`
+  // multiple-assignment (emit-lua's onSelect/onHoverIn/onHoverOut shape —
+  // see that file's emitHandler cases; Lua has no object-destructuring
+  // syntax, so this is the multiple-assignment idiom equivalent of
+  // parse-ts's stripParamsDestructure) so the bound names resolve as
+  // handler params in the rest of the body via lowerExpr's onSelect/
+  // onHoverIn/onHoverOut Identifier special-case below (mirroring onTick's
+  // timeSinceStart/timeSinceLastTick mechanism — same idea, different
+  // handler kinds). Requires an EXACT match (names, order, and source) of
+  // `expectedNames` since that's the only shape this backend's own emitter
+  // ever produces; anything else is left alone (the names then fail to
+  // resolve downstream as ordinary unrecognized identifiers, same lenience
+  // as parse-ts).
+  private stripParamsDestructure(stmts: Statement[], expectedNames: string[]): Statement[] {
+    const first = stmts[0];
+    if (!first || first.type !== "LocalStatement") {
+      return stmts;
+    }
+    if (first.variables.length !== expectedNames.length || first.init.length !== expectedNames.length) {
+      return stmts;
+    }
+    for (let k = 0; k < expectedNames.length; k += 1) {
+      const name = expectedNames[k];
+      if (first.variables[k].name !== name) {
+        return stmts;
+      }
+      const init = first.init[k];
+      if (init.type !== "MemberExpression" || init.indexer !== "." || init.base.type !== "Identifier" || init.base.name !== "params" || init.identifier.name !== name) {
+        return stmts;
+      }
+    }
+    return stmts.slice(1);
   }
 
   private findFactoryBody(topStmts: Statement[]): Statement[] {
@@ -1901,6 +1988,12 @@ class ModuleParser {
       const text = expr.name;
       if (ctx.kind === "handler" && ctx.handlerKind === "onTick" && (text === "timeSinceStart" || text === "timeSinceLastTick")) {
         return { k: "param", name: text, type: "float" };
+      }
+      if (ctx.kind === "handler" && ctx.handlerKind === "onSelect" && text in ONSELECT_LOCAL_PARAMS) {
+        return { k: "param", name: text, type: ONSELECT_LOCAL_PARAMS[text] };
+      }
+      if (ctx.kind === "handler" && (ctx.handlerKind === "onHoverIn" || ctx.handlerKind === "onHoverOut") && text in HOVER_LOCAL_PARAMS) {
+        return { k: "param", name: text, type: HOVER_LOCAL_PARAMS[text] };
       }
       const slotIdx = this.stateSlotIndexByName.get(text);
       if (slotIdx !== undefined && this.stateSlots[slotIdx].kind === "for") {

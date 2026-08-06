@@ -18,6 +18,7 @@
     "@gltfi/parse-lua": "workspace:*",
     "@gltfi/parse-py": "workspace:*",
     "@gltfi/parse-ts": "workspace:*",
-    "@gltfi/runtime": "workspace:*"
+    "@gltfi/runtime": "workspace:*",
+    "@gltfi/verify": "workspace:*"
   }
 }

@@ -16,6 +16,7 @@
     "@gltfi/emit-ts": "workspace:*",
     "@gltfi/parse-lua": "workspace:*",
     "@gltfi/parse-ts": "workspace:*",
-    "@gltfi/runtime": "workspace:*"
+    "@gltfi/runtime": "workspace:*",
+    "@gltfi/verify": "workspace:*"
   }
 }
