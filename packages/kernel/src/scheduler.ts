@@ -124,7 +124,10 @@ export type Scheduler<Cont> = {
   findDelayByRef(ref: string): DelayEntry<Cont> | undefined;
   isDelayActive(ref: string): boolean;
 
-  // Variable-interpolation table (variable/interpolate).
+  // Variable-interpolation table (variable/interpolate). Adding an entry
+  // always first kills any existing entry for the same variableIndex — same-
+  // target replacement silently drops the old entry's done flow (spec
+  // variable/interpolate step 5).
   addVariableInterp(params: AddVariableInterpParams<Cont>): void;
   killVariableInterp(variableIndex: number): void;
 
@@ -205,6 +208,7 @@ export function createScheduler<Cont>(effects: SchedulerEffects<Cont>): Schedule
   }
 
   function addVariableInterp(params: AddVariableInterpParams<Cont>): void {
+    killVariableInterp(params.variableIndex);
     variableInterps.push({ ...params, startTime: time });
   }
 

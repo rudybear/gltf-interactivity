@@ -157,8 +157,14 @@ public sealed class Scheduler
 
     public void AddVariableInterp(VariableInterpEntry entry)
     {
+        KillVariableInterp(entry.VariableIndex);
         entry.StartTime = Time;
         _variableInterps.Add(entry);
+    }
+
+    public void KillVariableInterp(int variableIndex)
+    {
+        _variableInterps.RemoveAll(v => v.VariableIndex == variableIndex);
     }
 
     public void AddPointerInterp(PointerInterpEntry entry)

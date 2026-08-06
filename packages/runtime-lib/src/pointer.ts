@@ -29,6 +29,14 @@ export interface PointerHost {
   // the raw value that was written. Not called by ptrGet (read-only) or on
   // a failed/rejected ptrSet.
   onPointerSet?: (pointer: string, value: unknown) => void;
+  // Spec pointer/set step 5: called by ptrSet (below) after a successful
+  // write, with the same fully-resolved pointer string ptrInterpPrepare
+  // keys its scheduler table entries on — so this actually hits a matching
+  // in-flight pointer/interpolate and silently drops its done flow. Wired
+  // by engine.ts to `scheduler.killPointerInterp`. Not called by ptrGet
+  // (read-only), on a failed/rejected ptrSet, or by writePointerRaw (the
+  // scheduler's OWN interpolation-tick writes, which must never self-kill).
+  killPointerInterp?: (pointer: string) => void;
 }
 
 function decodeToken(token: string): string {
@@ -651,6 +659,7 @@ export function ptrSet(host: PointerHost, pointer: string, args: Record<string, 
   }
   const ok = setPointerValue(host.gltf, resolved, value);
   if (ok) {
+    host.killPointerInterp?.(resolved);
     host.onPointerSet?.(resolved, value);
   }
   return ok;

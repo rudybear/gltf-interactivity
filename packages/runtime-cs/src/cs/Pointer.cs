@@ -25,6 +25,14 @@ public sealed class PointerHost
     public double[]? ActiveCameraPosition;
     public double[]? ActiveCameraRotation;
     public Action<string, object>? OnPointerSet;
+    // Spec pointer/set step 5: called by PtrSet (below) after a successful
+    // write, with the same fully-resolved pointer string PtrInterpPrepare
+    // keys its scheduler table entries on — so this actually hits a matching
+    // in-flight pointer/interpolate and silently drops its done flow. Wired
+    // by Engine.cs to `_scheduler.KillPointerInterp`. Not called by PtrGet
+    // (read-only), on a failed/rejected PtrSet, or by WritePointerRaw (the
+    // scheduler's OWN interpolation-tick writes, which must never self-kill).
+    public Action<string>? KillPointerInterp;
 }
 
 public readonly struct PtrResult
@@ -1081,6 +1089,7 @@ public static class Pointer
         var ok = SetPointerValue(host.Gltf, resolved, value);
         if (ok)
         {
+            host.KillPointerInterp?.Invoke(resolved);
             host.OnPointerSet?.Invoke(resolved, value);
         }
         return ok;

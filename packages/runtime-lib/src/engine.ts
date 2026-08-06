@@ -463,7 +463,13 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
       // interpreter's equivalent camera-pose setter either).
       activeCameraPosition: null,
       activeCameraRotation: null,
-      onPointerSet: options.onPointerSet as ((pointer: string, value: unknown) => void) | undefined
+      onPointerSet: options.onPointerSet as ((pointer: string, value: unknown) => void) | undefined,
+      // Spec pointer/set step 5 (see pointer.ts's PointerHost doc comment):
+      // ptrSet (compiled pointer/set) kills any in-flight pointer/interpolate
+      // targeting the same effective pointer. ptrInterp's own scheduled tick
+      // writes go through writePointerRaw instead (the scheduler's
+      // `setPointer` effect below), never through here.
+      killPointerInterp: (pointer) => scheduler.killPointerInterp(pointer)
     };
 
     const effects: SchedulerEffects<FlowCont> = {
@@ -515,7 +521,17 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
           Object.defineProperty(V, name, {
             enumerable: true,
             get: () => varRaw[idx],
-            set: (value: RawValue) => { varRaw[idx] = value; }
+            // Spec variable/set step 2a: every compiled variable/set lowers
+            // to `V.<name> = value` (see emit-ts's "setVar" case) and must
+            // kill any in-flight variable/interpolate targeting this index —
+            // its done flow never fires. The scheduler's OWN interpolation-
+            // tick writes go through `effects.setVariable` below instead
+            // (straight to varRaw, never through this setter), so they can
+            // never self-kill.
+            set: (value: RawValue) => {
+              varRaw[idx] = value;
+              scheduler.killVariableInterp(idx);
+            }
           });
         }
         return V;
@@ -525,6 +541,9 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
       },
       setVar(index, value) {
         varRaw[index] = value;
+        // See the `V.<name>` setter above: same spec variable/set step 2a
+        // kill, for the index-based (`rt.setVar`) entry point.
+        scheduler.killVariableInterp(index);
       },
       events(decls) {
         if (Array.isArray(decls)) {

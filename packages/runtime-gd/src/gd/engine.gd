@@ -86,6 +86,12 @@ func _init(gltf = null, glb_bin = null, seed: float = _DEFAULT_SEED, on_pointer_
 		"activeCameraPosition": null,
 		"activeCameraRotation": null,
 		"onPointerSet": (_on_pointer_set if _on_pointer_set.is_valid() else null),
+		# Spec pointer/set step 5 (see pointer.gd's ptr_set): killing any
+		# in-flight pointer/interpolate targeting the same effective
+		# pointer. ptr_interp_prepare's own scheduled tick writes go through
+		# write_pointer_raw instead (the scheduler's setPointer effect
+		# below), never through here.
+		"killPointerInterp": _kill_pointer_interp,
 	}
 	_accessor_host = {"gltf": _gltf, "glbBin": _glb_bin}
 
@@ -150,6 +156,10 @@ func is_animation_playing(index: int) -> bool:
 
 func get_animation_playhead(index) -> Dictionary:
 	return _animation_playheads.get(index, {"playhead": 0.0, "virtualPlayhead": 0.0})
+
+
+func _kill_pointer_interp(pointer: String) -> void:
+	_scheduler.kill_pointer_interp(pointer)
 
 
 # -- raw<->kernel-value conversions --------------------------------------
@@ -238,6 +248,9 @@ func get_var(index: int):
 
 func set_var(index: int, value) -> void:
 	var_raw[index] = value
+	# See varstore.gd's `_set` override: same spec variable/set step 2a kill,
+	# for the index-based (`set_var`) entry point.
+	_scheduler.kill_variable_interp(index)
 
 
 # `rt.events([["Explode", {...}], ...])` — same Array-of-pairs, insertion-

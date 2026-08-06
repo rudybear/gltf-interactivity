@@ -88,6 +88,7 @@ function scheduler_create(effects)
   end
 
   function sched.addVariableInterp(params)
+    sched.killVariableInterp(params.variableIndex)
     params.startTime = sched.time
     variableInterps[#variableInterps + 1] = params
   end

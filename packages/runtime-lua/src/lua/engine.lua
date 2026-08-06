@@ -122,7 +122,13 @@ function CreateEngine(setup)
       end,
       activeCameraPosition = nil,
       activeCameraRotation = nil,
-      onPointerSet = options.onPointerSet
+      onPointerSet = options.onPointerSet,
+      -- Spec pointer/set step 5 (see pointer.lua's ptr_ptrSet): killing any
+      -- in-flight pointer/interpolate targeting the same effective pointer.
+      -- ptr_ptrInterpPrepare's own scheduled tick writes go through
+      -- ptr_writePointerRaw instead (the scheduler's `setPointer` effect
+      -- above), never through here.
+      killPointerInterp = function(pointer) scheduler.killPointerInterp(pointer) end
     }
     local accessorHost = { gltf = gltf, glbBin = glbBin }
 
@@ -196,6 +202,14 @@ function CreateEngine(setup)
               error("rt.vars: unknown variable \"" .. tostring(name) .. "\"")
             end
             varRaw[idx + 1] = value
+            -- Spec variable/set step 2a: every compiled variable/set lowers
+            -- to `V.<name> = value` and must kill any in-flight
+            -- variable/interpolate targeting this index — its done flow
+            -- never fires. The scheduler's OWN interpolation-tick writes go
+            -- through `effects.setVariable` above instead (straight to
+            -- varRaw, never through this metamethod), so they can never
+            -- self-kill.
+            scheduler.killVariableInterp(idx)
           end
         })
         return V
@@ -207,7 +221,12 @@ function CreateEngine(setup)
       return nil
     end
     function rt.getVar(index) return varRaw[index + 1] end
-    function rt.setVar(index, value) varRaw[index + 1] = value end
+    function rt.setVar(index, value)
+      varRaw[index + 1] = value
+      -- See the `V.<name>` __newindex above: same spec variable/set step 2a
+      -- kill, for the index-based (`rt.setVar`) entry point.
+      scheduler.killVariableInterp(index)
+    end
     -- Additive object-shaped `rt.events(...)` form — same array-of-named-
     -- entries shape/rationale as rt.vars above. Returns a plain name->index
     -- map (a bare number, exactly what rt.send/rt.onReceive's first

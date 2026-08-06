@@ -686,8 +686,17 @@ static func ptr_set(host: Dictionary, pointer: String, args: Dictionary, t: Stri
 	if resolved == null:
 		return false
 	var ok = _set_pointer_value(host["gltf"], resolved, value)
-	if ok and host.get("onPointerSet"):
-		host["onPointerSet"].call(resolved, value)
+	if ok:
+		# Spec pointer/set step 5: kill any in-flight pointer/interpolate
+		# targeting this same fully-resolved pointer string -- the same one
+		# ptr_interp_prepare keys its scheduler table entries on -- so its
+		# done flow never fires. Not called on a failed/rejected set, or by
+		# write_pointer_raw (the scheduler's OWN interpolation-tick writes,
+		# which must never self-kill).
+		if host.get("killPointerInterp"):
+			host["killPointerInterp"].call(resolved)
+		if host.get("onPointerSet"):
+			host["onPointerSet"].call(resolved, value)
 	return ok
 
 

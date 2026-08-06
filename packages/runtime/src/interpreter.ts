@@ -1919,6 +1919,16 @@ function handlePointerSet(runtime: RuntimeGraph, nodeId: number, stack: Set<stri
   const normalized = signature === "bool" ? Boolean(value) : value;
   const ok = setPointerValue(runtime.gltf, resolved, normalized);
   if (ok) {
+    // Spec pointer/set step 5: setting a pointer silently kills any
+    // in-flight pointer/interpolate targeting the same EFFECTIVE (resolved)
+    // JSON pointer — its done flow never fires. Keyed identically to
+    // handlePointerInterpolate's addPointerInterp above (both use the
+    // template-resolved `resolved` string), so a kill here actually hits
+    // the matching table entry. This only fires from this graph-level op,
+    // never from the scheduler's own interpolation tick writes (see
+    // makeSchedulerEffects.setPointer below, which writes the object model
+    // directly and bypasses this function entirely).
+    runtime.scheduler.killPointerInterp(resolved);
     runtime.onPointerSet?.(resolved, normalized as number[] | boolean[] | number | boolean);
     runtime.onDirty?.();
   }
@@ -2410,6 +2420,13 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
         const key = String(resolvedIndex);
         const value = getInput(runtime, nodeId, key, stack);
         runtime.variables[resolvedIndex] = cloneValue(value);
+        // Spec variable/set step 2a: setting a variable silently kills any
+        // in-flight variable/interpolate targeting it — its done flow never
+        // fires. This must only fire from THIS graph-level op, never from
+        // the scheduler's own interpolation tick writes (see
+        // makeSchedulerEffects.setVariable below, which writes
+        // runtime.variables directly and bypasses this case entirely).
+        runtime.scheduler.killVariableInterp(resolvedIndex);
       }
       runFlow(runtime, node, "out");
       break;
