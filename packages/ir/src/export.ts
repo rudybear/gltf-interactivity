@@ -140,7 +140,16 @@ class Exporter {
 
   private readonly procEntry = new Map<number, NodeRef>();
   private readonly procBuilding = new Set<number>();
+  // Set only for the duration of a proc build that has been legally
+  // re-entered via its own async `done` Cont (see getProcEntry's doc
+  // comment for #20-1/GI210) — maps procId -> the pass-through
+  // `flow/sequence` placeholder id allocated for that re-entrant call, so
+  // the outer build can wire it to the proc's real entry once known.
+  private readonly procPassthrough = new Map<number, number>();
   private readonly stateNodeId = new Map<number, number>();
+  // #20-2 (GI208): which `async` setDelay IRStmt OBJECT currently "owns"
+  // each delay state slot — see claimDelaySlot's doc comment.
+  private readonly delaySlotOwner = new Map<number, Extract<IRStmt, { k: "async" }>>();
 
   constructor(module: IRModule) {
     this.module = module;
@@ -290,7 +299,24 @@ class Exporter {
   // forever).
   // -------------------------------------------------------------------
 
-  private getProcEntry(procId: number): NodeRef {
+  // `viaAsyncDone`: true only when this call originates from buildCont's
+  // `cont.kind === "proc"` case, i.e. an async op's `done`/`err` Cont — the
+  // ONE edge kind check.ts's own cycle detector excludes from *synchronous*
+  // proc-call-graph acyclicity (see that file's header: "done fires after
+  // the calling stack has fully unwound... not runaway synchronous
+  // recursion"). A proc whose done-Cont calls back into itself (the classic
+  // self-rescheduling setDelay pattern: `function p(){ rt.setDelay(slot,
+  // 0.25, () => { p(); }); }`) therefore re-enters getProcEntry(p.id) WHILE
+  // p is still `procBuilding` — legally, since the recursive call is this
+  // proc's own eventual continuation, not a stack-blowing direct call.
+  // A plain (non-async) `callProc` self-reference re-entering here (the
+  // OTHER call site, in buildStmtHead's "callProc" case) still hits the
+  // GI210 branch below exactly as before — that shape WOULD blow the stack
+  // at runtime, and check.ts's GIC040 independently rejects it too (see
+  // that file's header) when checkModule runs ahead of exportGraph; this
+  // diagnostic is the export-time backstop for pipelines (e.g. `gltfi
+  // compile`) that call exportGraph directly without checkModule first.
+  private getProcEntry(procId: number, viaAsyncDone = false): NodeRef {
     const existing = this.procEntry.get(procId);
     if (existing) {
       return existing;
@@ -301,11 +327,29 @@ class Exporter {
       return { node: this.allocNode("flow/sequence", {}), socket: "in" };
     }
     if (this.procBuilding.has(procId)) {
-      // Should be unreachable: only a done-Cont edge may legally cycle back
-      // (see check.ts), and done-Conts don't call getProcEntry recursively
-      // before their own proc's entry is registered — defensive only.
-      this.error("GI210", `synchronous cycle building proc "${proc.name}"`);
-      return { node: this.allocNode("flow/sequence", {}), socket: "in" };
+      if (!viaAsyncDone) {
+        // A genuine synchronous cycle (direct callProc self/mutual
+        // recursion, no async boundary crossed) — see the doc comment
+        // above.
+        this.error("GI210", `synchronous cycle building proc "${proc.name}"`);
+        return { node: this.allocNode("flow/sequence", {}), socket: "in" };
+      }
+      // Legal re-entrancy: allocate (once) a pass-through `flow/sequence`
+      // node to stand in as this proc's entry for the re-entrant caller —
+      // the OUTER build (still in progress on the call stack below this
+      // one) wires its own real first-body-node ref into the pass-through's
+      // `out` flow once it finishes, and `procEntry` keeps pointing at the
+      // pass-through permanently (this ref, already handed to the
+      // re-entrant caller, must stay stable). Only allocated the FIRST time
+      // this proc is re-entered (a proc's done-Cont could in principle
+      // reference itself more than once in its own body).
+      let passthroughId = this.procPassthrough.get(procId);
+      if (passthroughId === undefined) {
+        passthroughId = this.allocNode("flow/sequence", {});
+        this.procPassthrough.set(procId, passthroughId);
+        this.procEntry.set(procId, { node: passthroughId, socket: "in" });
+      }
+      return { node: passthroughId, socket: "in" };
     }
     this.procBuilding.add(procId);
     const items = flattenStmts([proc.body]);
@@ -319,9 +363,23 @@ class Exporter {
       const built = this.buildStmtList(items, scope);
       entry = built ?? { node: this.allocNode("flow/sequence", {}), socket: "in" };
     }
-    this.procEntry.set(procId, entry);
     this.procBuilding.delete(procId);
-    return entry;
+    const passthroughId = this.procPassthrough.get(procId);
+    if (passthroughId !== undefined) {
+      // This build was legally re-entered above: wire the pass-through
+      // allocated at re-entrance time to the now-known real entry, and
+      // leave `procEntry` pointing at the pass-through (set at re-entrance,
+      // already handed out to that re-entrant caller) rather than
+      // overwriting it with `entry` — acyclic procs (the common case, where
+      // `procPassthrough` never gets an entry for this procId) are
+      // completely unaffected by this branch, keeping their export
+      // byte-identical to before this fix.
+      this.nodes.get(passthroughId)!.flows.out = entry;
+      this.procPassthrough.delete(procId);
+    } else {
+      this.procEntry.set(procId, entry);
+    }
+    return this.procEntry.get(procId)!;
   }
 
   // -------------------------------------------------------------------
@@ -343,6 +401,41 @@ class Exporter {
     const id = this.allocNode(op, config);
     this.stateNodeId.set(slotIdx, id);
     return id;
+  }
+
+  // #20-2: a delay state slot's graph node is keyed by SLOT (getOrCreateStateNode
+  // above), not by the setDelay call site that fills in its duration/done —
+  // exactly like cancelDelay's own "attach to the node" semantics require
+  // (docs/diagnostics.md's GI202), a slot needs exactly ONE owning setDelay
+  // site. Two DIFFERENT setDelay statements sharing a slot would otherwise
+  // hit getOrCreateStateNode's memoized branch and silently overwrite each
+  // other's `duration`/`done` wiring on the SAME node — nested (one inside
+  // the other's done-Cont) or sibling (two independent call sites), the
+  // symptom is the same silent clobber either way, so both are covered by
+  // the same identity check.
+  //
+  // Tracks the OWNING STATEMENT OBJECT (`===` identity), not a structural
+  // signature of its duration/continuation — deliberately, since two call
+  // sites could coincidentally share an identical duration expression and
+  // still be genuinely distinct sites. Identity is also exactly what keeps
+  // this from misfiring on #20-1 (GI210)'s legal self-rescheduling case: a
+  // proc's body (and therefore its one setDelay IRStmt object) is built AT
+  // MOST ONCE per export regardless of how many times its own done-Cont
+  // re-enters the proc (getProcEntry's re-entrancy fix returns a
+  // pass-through immediately rather than rebuilding the body) — so a
+  // self-rescheduling setDelay's OWN slot is always claimed by that same
+  // one stmt object, never a second, different one.
+  private claimDelaySlot(slotIdx: number, stmt: Extract<IRStmt, { k: "async" }>): void {
+    const owner = this.delaySlotOwner.get(slotIdx);
+    if (owner === undefined) {
+      this.delaySlotOwner.set(slotIdx, stmt);
+      return;
+    }
+    if (owner === stmt) {
+      return;
+    }
+    const name = this.module.stateSlots[slotIdx]?.name ?? `#${slotIdx}`;
+    this.error("GI208", `state slot "${name}" is used by more than one setDelay call site — each setDelay needs its own slot (cancel/isActive semantics are per-slot)`);
   }
 
   private stateSlotConfig(slot: IRStateSlot): Builder["config"] {
@@ -532,6 +625,7 @@ class Exporter {
     const op = ASYNC_OP[stmt.kind];
     let id: number;
     if (stmt.kind === "setDelay" && stmt.slot) {
+      this.claimDelaySlot(stmt.slot.slot, stmt);
       id = this.getOrCreateStateNode(stmt.slot.slot);
     } else {
       id = this.allocNode(op, {});
@@ -587,7 +681,13 @@ class Exporter {
 
   private buildCont(cont: Cont, _scope: SiteScope): NodeRef {
     if (cont.kind === "proc") {
-      return this.getProcEntry(cont.procId);
+      // Only call site of getProcEntry's `viaAsyncDone = true` — buildCont
+      // is exclusively used for an async op's `done` continuation (see the
+      // one call site above, `b.flows.done = this.buildCont(...)` in
+      // buildAsync; `out`/`err` are plain buildStmtList calls, not Conts),
+      // which is exactly the async boundary getProcEntry's re-entrancy
+      // support (#20-1) is scoped to.
+      return this.getProcEntry(cont.procId, true);
     }
     const fresh: SiteScope = { tempRef: new Map(), handlerRoot: _scope.handlerRoot };
     const items = flattenStmts([cont.body]);
@@ -871,23 +971,32 @@ class Exporter {
     const ids = [...this.nodes.keys()].sort((a, b) => a - b);
     const indeg = new Map<number, number>();
     const succ = new Map<number, number[]>();
+    // Per-node incoming-edge list WITH kind, so a stall (see below) can tell
+    // a legal flow back-edge (#20-1's self-continuation pass-through) apart
+    // from a genuine value-only cycle — value edges alone are never legally
+    // cyclic (a value can't depend on its own not-yet-computed result), but
+    // a flow edge simply means "this node runs after that one", which a
+    // real runtime loop (setDelay rescheduling itself) legitimately forms.
+    const incoming = new Map<number, Array<{ from: number; kind: "value" | "flow" }>>();
     for (const id of ids) {
       indeg.set(id, 0);
       succ.set(id, []);
+      incoming.set(id, []);
     }
-    const addEdge = (from: number, to: number) => {
+    const addEdge = (from: number, to: number, kind: "value" | "flow") => {
       succ.get(from)!.push(to);
       indeg.set(to, (indeg.get(to) ?? 0) + 1);
+      incoming.get(to)!.push({ from, kind });
     };
     for (const id of ids) {
       const b = this.nodes.get(id)!;
       for (const v of Object.values(b.values)) {
         if ("node" in v) {
-          addEdge(v.node, id);
+          addEdge(v.node, id, "value");
         }
       }
       for (const f of Object.values(b.flows)) {
-        addEdge(id, f.node);
+        addEdge(id, f.node, "flow");
       }
     }
     // Kahn's algorithm, ready-queue processed in ascending placeholder-id
@@ -896,20 +1005,46 @@ class Exporter {
     const ready = ids.filter((id) => (indeg.get(id) ?? 0) === 0).sort((a, b) => a - b);
     const orderedIds: number[] = [];
     const finalIndex = new Map<number, number>();
-    while (ready.length > 0) {
+    let valueOnlyStall = false;
+    while (orderedIds.length < ids.length) {
+      if (ready.length === 0) {
+        // Stalled with nodes remaining. Ordinary (acyclic) graphs NEVER
+        // reach this branch — their ready queue only empties once every
+        // node is placed — so this is unreached, and output byte-identical,
+        // for every graph this exporter handled before #20-1. Find the
+        // smallest-placeholder-id remaining node that has at least one
+        // still-unsatisfied FLOW predecessor and force it into the ready
+        // queue, breaking just enough of the cycle to keep going — this is
+        // safe specifically because flow-edge order here is a readability
+        // nicety (close to source order), not a spec requirement: nodes
+        // reference each other by absolute index in the final `nodes[]`
+        // array regardless of array position. Only when NO remaining node
+        // has a flow-edge escape (a cycle built entirely of value edges,
+        // which IS a genuine error — a value can't depend on its own
+        // not-yet-computed result) does this fall through to GI210 below.
+        const remaining = ids.filter((id) => !finalIndex.has(id));
+        const forced = remaining.find((id) => (incoming.get(id) ?? []).some((e) => e.kind === "flow" && !finalIndex.has(e.from)));
+        if (forced === undefined) {
+          valueOnlyStall = true;
+          break;
+        }
+        ready.push(forced);
+      }
       ready.sort((a, b) => a - b);
       const id = ready.shift()!;
       finalIndex.set(id, orderedIds.length);
       orderedIds.push(id);
       for (const next of succ.get(id) ?? []) {
         indeg.set(next, (indeg.get(next) ?? 0) - 1);
-        if (indeg.get(next) === 0) {
+        if (indeg.get(next) === 0 && !finalIndex.has(next)) {
           ready.push(next);
         }
       }
     }
     if (orderedIds.length !== ids.length) {
-      this.error("GI210", "cyclic constraint graph while assigning graph node indices (value/flow ordering conflict)");
+      if (valueOnlyStall) {
+        this.error("GI210", "cyclic constraint graph while assigning graph node indices (value/flow ordering conflict)");
+      }
       // Fall back to placeholder order for any remaining (cyclic) nodes so
       // export still terminates with a (structurally invalid, diagnosed)
       // graph rather than throwing.

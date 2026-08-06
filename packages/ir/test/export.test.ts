@@ -402,3 +402,285 @@ describe("exportGraph - unused declarations keep in-range type indices (GV010/GV
     expect(checkTypesInRange(graph)).toEqual([]);
   });
 });
+
+// Regression tests for #20-1: a proc whose async `done` continuation calls
+// back into ITSELF (the self-rescheduling setDelay pattern —
+// `function p(){ rt.setDelay(slot, 0.25, () => { p(); }); }`) is legal (see
+// import.ts's own header comment: "done fires after the calling stack has
+// fully unwound... not runaway synchronous recursion", and check.ts's
+// GIC040 rule explicitly excludes async.done edges from its cycle check),
+// but exportGraph used to reject it at TWO separate sites:
+//   (a) getProcEntry's re-entrancy guard: building p's body lowers the
+//       done-Cont, which calls getProcEntry(p.id) again while p is still
+//       `procBuilding` — reported as GI210 "synchronous cycle building
+//       proc" unconditionally, with no distinction from a genuine
+//       stack-blowing direct self-call.
+//   (b) topoSort: once (a) is fixed by wiring a real pass-through node, the
+//       exported graph legitimately contains a 2-node flow cycle (the
+//       pass-through's "out" -> the setDelay node, and the setDelay's
+//       "done" -> back to the pass-through) — Kahn's algorithm stalls on
+//       that back-edge and topoSort reported the SAME GI210 code for a
+//       completely different reason ("cyclic constraint graph").
+// Both are fixed; this suite pins the fix and checks the two error paths
+// this change deliberately does NOT touch: a genuinely synchronous (no
+// async boundary) proc self/mutual-call cycle must still error GI210 (that
+// shape really would blow the stack at runtime).
+describe("exportGraph - proc self-continuation via async done (#20-1 GI210 regression)", () => {
+  // Cycle detector over the FLOW graph only (mirrors this file's own
+  // checkValueBackward for why it's inlined rather than imported from
+  // @gltfi/verify: that package depends on @gltfi/ir, so the reverse import
+  // would be a package cycle). Used to confirm the self-continuation's
+  // characteristic flow back-edge actually survives both the original
+  // export AND a re-import/re-export round trip, without needing
+  // execution-level judging.
+  function hasFlowCycle(graph: ReturnType<typeof exportGraph>["graph"]): boolean {
+    const state = new Array<0 | 1 | 2>(graph.nodes.length).fill(0);
+    const visit = (i: number): boolean => {
+      if (state[i] === 1) return true;
+      if (state[i] === 2) return false;
+      state[i] = 1;
+      for (const f of Object.values(graph.nodes[i]?.flows ?? {})) {
+        if (visit(f.node)) return true;
+      }
+      state[i] = 2;
+      return false;
+    };
+    return graph.nodes.some((_, i) => state[i] === 0 && visit(i));
+  }
+
+  function selfReschedulingModule(): IRModule {
+    return {
+      variables: [],
+      events: [],
+      stateSlots: [{ name: "delaySlot", kind: "delay", config: {} }],
+      procs: [
+        {
+          id: 0,
+          name: "p",
+          body: {
+            k: "seq",
+            stmts: [
+              {
+                k: "async",
+                kind: "setDelay",
+                slot: { slot: 0 },
+                args: [{ k: "const", type: "float", data: [0.25] }],
+                done: { kind: "proc", procId: 0 }
+              }
+            ]
+          }
+        }
+      ],
+      handlers: [
+        {
+          kind: "onStart",
+          params: [{ name: "event", type: "ref" }],
+          body: { k: "callProc", procId: 0 }
+        }
+      ],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+  }
+
+  it("exports without GI210, produces a structurally valid graph, and round-trips through import->export", () => {
+    const module = selfReschedulingModule();
+    const { graph, diagnostics } = exportGraph(module);
+    expect(diagnostics, JSON.stringify(diagnostics)).toEqual([]);
+    expect(checkValueBackward(graph)).toEqual([]);
+    expect(declDedupErrors(graph)).toEqual([]);
+    // The whole point of the fix: the exported graph really does contain
+    // the self-continuation's flow back-edge (pass-through "out" -> setDelay,
+    // setDelay "done" -> pass-through) rather than a disconnected
+    // placeholder standing in for a rejected cycle.
+    expect(hasFlowCycle(graph)).toBe(true);
+
+    const { module: reimported, diagnostics: importDiags } = importGraph(graph as unknown as Graph);
+    expect(importDiags.filter((d) => d.severity === "error"), JSON.stringify(importDiags)).toEqual([]);
+
+    const { graph: reexported, diagnostics: reexportDiags } = exportGraph(reimported);
+    expect(reexportDiags, JSON.stringify(reexportDiags)).toEqual([]);
+    expect(checkValueBackward(reexported)).toEqual([]);
+    expect(declDedupErrors(reexported)).toEqual([]);
+    // Equivalence signal (see this describe block's own comment on why a
+    // full @gltfi/verify equivalentGraphs check isn't available here): the
+    // re-exported graph still contains a genuine self-continuation flow
+    // cycle, i.e. import->export preserved the legal loop rather than
+    // collapsing or rejecting it.
+    expect(hasFlowCycle(reexported)).toBe(true);
+  });
+
+  it("does NOT affect an acyclic proc's export (no pass-through node, same shape as before this fix)", () => {
+    const module: IRModule = {
+      variables: [{ name: "v0", type: "float", initial: { type: "float", data: [0] } }],
+      events: [],
+      stateSlots: [],
+      procs: [{ id: 0, name: "p", body: { k: "setVar", varId: 0, expr: { k: "const", type: "float", data: [1] } } }],
+      handlers: [
+        {
+          kind: "onStart",
+          params: [{ name: "event", type: "ref" }],
+          body: { k: "callProc", procId: 0 }
+        }
+      ],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+    const { graph, diagnostics } = exportGraph(module);
+    expect(diagnostics).toEqual([]);
+    expect(hasFlowCycle(graph)).toBe(false);
+    // Exactly two nodes: the handler root and the proc's single setVar node
+    // — no extra pass-through node synthesized for a proc that was never
+    // re-entered while building.
+    expect(graph.nodes.length).toBe(2);
+  });
+
+  it("still errors GI210 for a genuinely synchronous (non-async) proc self-call — no async boundary crossed", () => {
+    const module: IRModule = {
+      variables: [],
+      events: [],
+      stateSlots: [],
+      procs: [{ id: 0, name: "p", body: { k: "callProc", procId: 0 } }],
+      handlers: [
+        {
+          kind: "onStart",
+          params: [{ name: "event", type: "ref" }],
+          body: { k: "callProc", procId: 0 }
+        }
+      ],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+    const { diagnostics } = exportGraph(module);
+    const errors = diagnostics.filter((d) => d.severity === "error");
+    expect(errors.map((d) => d.code)).toEqual(["GI210"]);
+  });
+
+  it("still errors GI210 for a genuinely synchronous MUTUAL (non-async) proc cycle (A calls B calls A)", () => {
+    const module: IRModule = {
+      variables: [],
+      events: [],
+      stateSlots: [],
+      procs: [
+        { id: 0, name: "a", body: { k: "callProc", procId: 1 } },
+        { id: 1, name: "b", body: { k: "callProc", procId: 0 } }
+      ],
+      handlers: [
+        {
+          kind: "onStart",
+          params: [{ name: "event", type: "ref" }],
+          body: { k: "callProc", procId: 0 }
+        }
+      ],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+    const { diagnostics } = exportGraph(module);
+    const errors = diagnostics.filter((d) => d.severity === "error");
+    // Exactly one GI210 — the re-entrant getProcEntry call for whichever
+    // proc closes the cycle reports once; this is also the "don't
+    // double-report" check called out in the fix's task description (the
+    // topoSort fallback below does NOT additionally fire for this shape,
+    // since getProcEntry's error path returns a disconnected placeholder
+    // node rather than ever wiring a real cyclic flow edge into the graph).
+    expect(errors.map((d) => d.code)).toEqual(["GI210"]);
+  });
+});
+
+// Regression tests for #20-2 (GI208): setDelay's graph node is keyed by
+// STATE SLOT (getOrCreateStateNode's memoization), not by the setDelay
+// STATEMENT that fills in its duration/done — so two genuinely different
+// setDelay call sites sharing one slot used to silently clobber each
+// other's wiring on the same underlying node instead of erroring. Covers
+// both shapes the task calls out as producing the SAME underlying clobber:
+// "sibling" (two independent call sites) and "nested" (one inside the
+// other's own done-Cont) — plus the negative case (distinct slots: no
+// error) and confirms FIX 2 (#20-1)'s legal self-rescheduling pattern
+// (the SAME call site reusing its own slot) is still not flagged.
+describe("exportGraph - setDelay state-slot sharing (#20-2 GI208 regression)", () => {
+  function twoSetDelaysOnOneSlot(place: "sibling" | "nested"): IRModule {
+    const durationA: IRExpr = { k: "const", type: "float", data: [1] };
+    const durationB: IRExpr = { k: "const", type: "float", data: [2] };
+    const inner: IRStmt = { k: "async", kind: "setDelay", slot: { slot: 0 }, args: [durationB] };
+    const body: IRStmt =
+      place === "sibling"
+        ? {
+            k: "seq",
+            stmts: [{ k: "async", kind: "setDelay", slot: { slot: 0 }, args: [durationA] }, inner]
+          }
+        : { k: "async", kind: "setDelay", slot: { slot: 0 }, args: [durationA], done: { kind: "inline", body: inner } };
+    return {
+      variables: [],
+      events: [],
+      stateSlots: [{ name: "sharedSlot", kind: "delay", config: {} }],
+      procs: [],
+      handlers: [{ kind: "onStart", params: [{ name: "event", type: "ref" }], body }],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+  }
+
+  it.each(["sibling", "nested"] as const)("errors GI208 when two DIFFERENT setDelay call sites share one slot (%s)", (place) => {
+    const { diagnostics } = exportGraph(twoSetDelaysOnOneSlot(place));
+    const errors = diagnostics.filter((d) => d.severity === "error");
+    expect(errors.map((d) => d.code)).toEqual(["GI208"]);
+    expect(errors[0].message).toContain('state slot "sharedSlot"');
+    expect(errors[0].message).toContain("more than one setDelay call site");
+  });
+
+  it("does NOT error when two setDelay statements use DIFFERENT slots", () => {
+    const module: IRModule = {
+      variables: [],
+      events: [],
+      stateSlots: [
+        { name: "slotA", kind: "delay", config: {} },
+        { name: "slotB", kind: "delay", config: {} }
+      ],
+      procs: [],
+      handlers: [
+        {
+          kind: "onStart",
+          params: [{ name: "event", type: "ref" }],
+          body: {
+            k: "seq",
+            stmts: [
+              { k: "async", kind: "setDelay", slot: { slot: 0 }, args: [{ k: "const", type: "float", data: [1] }] },
+              { k: "async", kind: "setDelay", slot: { slot: 1 }, args: [{ k: "const", type: "float", data: [2] }] }
+            ]
+          }
+        }
+      ],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+    const { diagnostics } = exportGraph(module);
+    expect(diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+  });
+
+  it("does NOT error for FIX 2 (#20-1)'s self-rescheduling pattern — same call site reusing its own slot", () => {
+    // Same construction as the #20-1 describe block's selfReschedulingModule
+    // above: proc p's own setDelay done-Cont calls back into p, re-using
+    // p's own slot through the exact same (memoized) IRStmt object.
+    const module: IRModule = {
+      variables: [],
+      events: [],
+      stateSlots: [{ name: "delaySlot", kind: "delay", config: {} }],
+      procs: [
+        {
+          id: 0,
+          name: "p",
+          body: {
+            k: "seq",
+            stmts: [
+              {
+                k: "async",
+                kind: "setDelay",
+                slot: { slot: 0 },
+                args: [{ k: "const", type: "float", data: [0.25] }],
+                done: { kind: "proc", procId: 0 }
+              }
+            ]
+          }
+        }
+      ],
+      handlers: [{ kind: "onStart", params: [{ name: "event", type: "ref" }], body: { k: "callProc", procId: 0 } }],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+    const { diagnostics } = exportGraph(module);
+    expect(diagnostics.filter((d) => d.code === "GI208")).toEqual([]);
+  });
+});

@@ -478,6 +478,14 @@ class ModuleParser {
       this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, config: desc.config, params, body });
     });
 
+    // #20-3 (GI190): a WARNING-only lint over every now-fully-lowered
+    // proc/handler body, run last (each body is a complete IRStmt tree by
+    // this point, and temp ids are unique per body — see emit-ts's
+    // resetBodyCounters/allocTemp doc comment — so this needs no additional
+    // parser state beyond what's already built).
+    this.procs.forEach((p) => this.lintTempReuseAfterWrite(p.body));
+    this.handlers.forEach((h) => this.lintTempReuseAfterWrite(h.body));
+
     return {
       variables: this.variables,
       events: this.events,
@@ -494,6 +502,199 @@ class ModuleParser {
         sourceNodeIds: {}
       }
     };
+  }
+
+  // #20-3 / GI190 (warning): a `let` temp whose initializer reads variable
+  // V — directly (`let t = V.x + 1`) or transitively through an earlier
+  // temp that itself read V (`let t2 = V.x; let t = t2 + 1;`) — behaves
+  // very differently from the intuitive "captured snapshot" reading once
+  // the SAME body later WRITES V and then reads `t` again: in graph
+  // semantics a temp is nothing but a value edge with a per-activation
+  // cache keyed on its upstream inputs, so a later read of `t` after V.x
+  // changes RE-EVALUATES against the NEW variable state, not the value at
+  // declaration time. TS readers reasonably expect a `let` to freeze its
+  // right-hand side once, so this trap is easy to write by hand (though the
+  // corpus's own emit style — see emit-ts's header note on temps only ever
+  // being introduced for a value actually read MORE THAN ONCE — never
+  // triggers it, hence the "zero warnings across the corpus" gate for this
+  // fix). Assigning to a variable instead of a `let` is the fix when the
+  // OLD value is really what's wanted.
+  //
+  // Deliberately simple/conservative, per this fix's own scope:
+  //   - Straight-line only within ONE proc/handler body — no cross-proc
+  //     analysis at all (a `callProc` statement is opaque here; the callee
+  //     proc's OWN body is linted completely separately, by its own call to
+  //     this same method from `run()`).
+  //   - `if`/`switch`/the "outs" of async & stateful ops/setPointer's
+  //     out-err split are all treated the SAME way: fork the current
+  //     "which temps are tainted" state into each branch independently
+  //     (so a warning only fires for a read that's actually reachable after
+  //     an actual write, within ONE branch), then merge by UNION (a write
+  //     in ANY branch taints going forward, even though only one branch
+  //     runs at execution time) — see forkTaintedBranches below. This
+  //     over-approximates (a write in an untaken branch still taints) by
+  //     design: "when unsure, warn less" is the wrong default for a lint
+  //     whose whole point is catching a real semantic trap.
+  //   - Loop bodies (`while`/`for`) are walked ONCE, forward, not modeled
+  //     as a back-edge — a write-then-read trap that only manifests across
+  //     loop ITERATIONS (rather than within one straight-line pass) is a
+  //     known, accepted gap for this "simple" analysis, not a soundness
+  //     requirement of the task.
+  //   - Every occurrence of a temp reference counts as a "read" for this
+  //     analysis, including its use as ANOTHER temp's own initializer —
+  //     warns at most ONCE per temp (the first offending occurrence).
+  private lintTempReuseAfterWrite(root: IRStmt): void {
+    const tempReadsVars = new Map<string, Set<number>>();
+    const taintedTemps = new Set<string>();
+    const warnedTemps = new Set<string>();
+
+    const exprChildren = (expr: IRExpr): IRExpr[] => {
+      if (expr.k === "op" || expr.k === "intrinsic" || expr.k === "ptrGet") {
+        return expr.args;
+      }
+      return [];
+    };
+
+    const collectVarReads = (expr: IRExpr, out: Set<number>): void => {
+      if (expr.k === "varGet") {
+        out.add(expr.varId);
+        return;
+      }
+      if (expr.k === "temp") {
+        const deps = tempReadsVars.get(expr.id);
+        if (deps) deps.forEach((v) => out.add(v));
+        return;
+      }
+      exprChildren(expr).forEach((c) => collectVarReads(c, out));
+    };
+
+    const checkTaintedReads = (expr: IRExpr): void => {
+      if (expr.k === "temp") {
+        if (taintedTemps.has(expr.id) && !warnedTemps.has(expr.id)) {
+          warnedTemps.add(expr.id);
+          this.diagnostics.push({
+            severity: "warning",
+            code: "GI190",
+            message: `temp "${expr.id}" is read after a write to a variable its initializer depends on — a temp is re-evaluated against the variable's CURRENT state at each read, not frozen at declaration; assign to a variable instead of a \`let\` if you need the old value`
+          });
+        }
+        return;
+      }
+      exprChildren(expr).forEach(checkTaintedReads);
+    };
+
+    const markWritten = (varId: number): void => {
+      for (const [tempId, deps] of tempReadsVars) {
+        if (deps.has(varId)) {
+          taintedTemps.add(tempId);
+        }
+      }
+    };
+
+    // Runs each of `branches` independently against a COPY of the current
+    // taint state, then unions every branch's resulting taint back in (see
+    // this method's own doc comment on why union, not intersection).
+    const forkTaintedBranches = (branches: IRStmt[]): void => {
+      if (branches.length === 0) {
+        return;
+      }
+      const before = new Set(taintedTemps);
+      const results = branches.map((b) => {
+        taintedTemps.clear();
+        before.forEach((t) => taintedTemps.add(t));
+        walkStmt(b);
+        return new Set(taintedTemps);
+      });
+      taintedTemps.clear();
+      before.forEach((t) => taintedTemps.add(t));
+      results.forEach((r) => r.forEach((t) => taintedTemps.add(t)));
+    };
+
+    const contBody = (cont: Cont | undefined): IRStmt | undefined => (cont?.kind === "inline" ? cont.body : undefined);
+
+    const walkStmt = (stmt: IRStmt): void => {
+      switch (stmt.k) {
+        case "seq":
+          stmt.stmts.forEach(walkStmt);
+          return;
+        case "let": {
+          checkTaintedReads(stmt.expr);
+          const deps = new Set<number>();
+          collectVarReads(stmt.expr, deps);
+          tempReadsVars.set(stmt.temp, deps);
+          return;
+        }
+        case "if":
+          checkTaintedReads(stmt.cond);
+          forkTaintedBranches(stmt.else ? [stmt.then, stmt.else] : [stmt.then]);
+          return;
+        case "while":
+          checkTaintedReads(stmt.cond);
+          forkTaintedBranches([stmt.body]);
+          if (stmt.completed) walkStmt(stmt.completed);
+          return;
+        case "for":
+          checkTaintedReads(stmt.start);
+          checkTaintedReads(stmt.end);
+          forkTaintedBranches([stmt.body]);
+          if (stmt.completed) walkStmt(stmt.completed);
+          return;
+        case "switch": {
+          checkTaintedReads(stmt.selector);
+          const branches = stmt.cases.map(([, s]) => s);
+          if (stmt.default) branches.push(stmt.default);
+          forkTaintedBranches(branches);
+          return;
+        }
+        case "setVar":
+          checkTaintedReads(stmt.expr);
+          markWritten(stmt.varId);
+          return;
+        case "setPointer": {
+          stmt.args.forEach(checkTaintedReads);
+          checkTaintedReads(stmt.value);
+          const branches: IRStmt[] = [];
+          if (stmt.out) branches.push(stmt.out);
+          if (stmt.err) branches.push(stmt.err);
+          forkTaintedBranches(branches);
+          return;
+        }
+        case "emitEvent":
+          stmt.args.forEach(checkTaintedReads);
+          return;
+        case "stopPropagation":
+          checkTaintedReads(stmt.stopImmediate);
+          return;
+        case "log":
+          stmt.args.forEach(checkTaintedReads);
+          return;
+        case "callProc":
+          // Opaque here by design — see this method's own doc comment
+          // ("no cross-proc analysis"). The callee's own body is linted
+          // independently by run()'s own per-proc loop.
+          return;
+        case "async": {
+          stmt.args.forEach(checkTaintedReads);
+          const branches: IRStmt[] = [];
+          if (stmt.out) branches.push(stmt.out);
+          if (stmt.err) branches.push(stmt.err);
+          const done = contBody(stmt.done);
+          if (done) branches.push(done);
+          forkTaintedBranches(branches);
+          return;
+        }
+        case "stateful":
+          stmt.args.forEach(checkTaintedReads);
+          forkTaintedBranches(Object.values(stmt.outs));
+          return;
+        case "intrinsic":
+          stmt.args.forEach(checkTaintedReads);
+          forkTaintedBranches(Object.values(stmt.outs));
+          return;
+      }
+    };
+
+    walkStmt(root);
   }
 
   private exprOf(stmt: Statement): Expression | undefined {
@@ -2172,6 +2373,33 @@ class ModuleParser {
   // (lt/le/gt/ge, the bitwise ops) has fully FIXED (non-generic) rows, so a
   // discovered concrete type either matches a row's declared socket type
   // exactly or it doesn't.
+  //
+  // A second, separate ambiguity this must also resolve (bug #18):
+  // math/transform registers FOUR fixed rows under one fn name — (float4x4,
+  // float3), (float3,float4x4), (float4x4,float4), (float4,float4x4) — and
+  // ALL of its call sites in the conformance corpus pass two array LITERALS
+  // (no non-literal operand for the pass above to probe), so the loop above
+  // never fires and this used to fall straight through to candidates[0],
+  // silently mistyping both literals as (float4x4,float3) regardless of
+  // their actual lengths. Fix: before falling back to the expected-output
+  // pass, progressively narrow `candidates` using each literal-ish arg's own
+  // SHAPE (array length / scalar / boolean) against each row's declared
+  // socket type at that index, combining constraints across ALL args (not
+  // picking on the first one that narrows) — a single arg's length is often
+  // ambiguous on its own (length 4 fits both float4 and float2x2), but two
+  // literal args together pin it down for math/transform's rows. This can
+  // only ever narrow the candidate set (never re-widen it), so any call site
+  // that previously resolved via the non-literal-probe loop above is
+  // unaffected.
+  // (Checked whether this same literal-shape narrowing also helps the
+  // lt/le/gt/ge float-vs-int collision for an all-literal call like
+  // `m.lt(1, 2.5)`: it doesn't, and can't — both rows' sockets are scalar
+  // (component count 1), so shape alone never distinguishes float from int,
+  // and the narrowing pass is a no-op there (falls through to the same
+  // candidates[0] fallback as before this fix). Left as-is: no behavior
+  // change, and nothing to gain from a dedicated int/float literal heuristic
+  // here without also touching the expected-type/context threading that
+  // already handles the general case.)
   private disambiguateOverload(candidates: FnCandidate[], spec: import("@gltfi/kernel").OpSpec, argNodes: Node[], expected: IRType | undefined, ctx: Ctx): number {
     for (let idx = 0; idx < argNodes.length; idx += 1) {
       if (isLiteralish(argNodes[idx])) {
@@ -2183,13 +2411,31 @@ class ModuleParser {
         return matches[0].overloadIndex;
       }
     }
+    let narrowed = candidates;
+    for (let idx = 0; idx < argNodes.length; idx += 1) {
+      if (!isLiteralish(argNodes[idx])) {
+        continue;
+      }
+      const shapeMatches = narrowed.filter((c) => literalShapeCompatible(argNodes[idx], spec.overloads[c.overloadIndex].inputs[idx]?.type));
+      // Only accept a narrowing that leaves at least one candidate — an arg
+      // whose shape matches none of the current candidates carries no usable
+      // signal here (shouldn't happen for a well-typed call, but falling
+      // through rather than narrowing to empty keeps this a pure ADDITION to
+      // the existing fallbacks instead of a new way to error).
+      if (shapeMatches.length > 0) {
+        narrowed = shapeMatches;
+      }
+    }
+    if (narrowed.length === 1) {
+      return narrowed[0].overloadIndex;
+    }
     if (expected) {
-      const matches = candidates.filter((c) => spec.overloads[c.overloadIndex].outputs.find((o) => o.name === "value")?.type === expected);
+      const matches = narrowed.filter((c) => spec.overloads[c.overloadIndex].outputs.find((o) => o.name === "value")?.type === expected);
       if (matches.length === 1) {
         return matches[0].overloadIndex;
       }
     }
-    return candidates[0].overloadIndex;
+    return narrowed[0].overloadIndex;
   }
 
   // -------------------------------------------------------------------
@@ -2245,4 +2491,60 @@ function tryLiteralNumber(expr: Node): number | undefined {
 
 function isLiteralish(node: Node): boolean {
   return tryLiteralNumber(node as Expression) !== undefined || Node.isArrayLiteralExpression(node) || node.getKind() === SyntaxKind.TrueKeyword || node.getKind() === SyntaxKind.FalseKeyword || Node.isStringLiteral(node);
+}
+
+// Component count for each fixed (non-generic) TypeSig math/vector/matrix
+// shape — used by literalShapeCompatible below to filter overload
+// candidates by a literal argument's own length, independent of that arg's
+// (as yet unknown) socket type. "ref"/"custom" have no numeric shape and are
+// intentionally omitted (never a literal-array target).
+const TYPE_COMPONENT_COUNT: Partial<Record<TypeSig, number>> = {
+  float: 1,
+  int: 1,
+  float2: 2,
+  float3: 3,
+  float4: 4,
+  float2x2: 4,
+  float3x3: 9,
+  float4x4: 16
+};
+
+// A literal-ish argument's own shape: an array literal's element count, 1
+// for a bare numeric literal, "bool" for true/false, or undefined when the
+// literal carries no useful shape signal (e.g. a string literal — no math op
+// argument is ever shape-disambiguated by string content).
+function literalShape(node: Node): number | "bool" | undefined {
+  if (Node.isArrayLiteralExpression(node)) {
+    return node.getElements().length;
+  }
+  if (tryLiteralNumber(node as Expression) !== undefined) {
+    return 1;
+  }
+  if (node.getKind() === SyntaxKind.TrueKeyword || node.getKind() === SyntaxKind.FalseKeyword) {
+    return "bool";
+  }
+  return undefined;
+}
+
+// Is `node`'s literal shape consistent with a candidate row's declared
+// socket type `sigType` at the same argument index? Generic (F/V/M/T)
+// sockets and sockets with no usable shape signal are always considered
+// compatible (this is a FILTER, not a resolver — it should only ever narrow
+// candidates it has real evidence against, never invent a false rejection).
+// Note this is intentionally count-only: float4 and float2x2 are both count
+// 4 and stay indistinguishable by this check alone — see disambiguateOverload's
+// doc comment on why combining this across multiple args still resolves
+// math/transform's rows even though no single arg does.
+function literalShapeCompatible(node: Node, sigType: TypeSig | "F" | "V" | "M" | "T" | undefined): boolean {
+  if (!sigType || isGenericSig(sigType)) {
+    return true;
+  }
+  const shape = literalShape(node);
+  if (shape === undefined) {
+    return true;
+  }
+  if (shape === "bool" || sigType === "bool") {
+    return shape === "bool" && sigType === "bool";
+  }
+  return TYPE_COMPONENT_COUNT[sigType] === shape;
 }
