@@ -27,7 +27,7 @@
 // the regression this test exists to catch) or an unrelated toolchain issue
 // (missing godot/dotnet/python3/wasmoon in this sandbox) — see each engine's
 // block below for the exact failure mode to expect from either case.
-import { execFileSync, spawn, type ChildProcess } from "node:child_process";
+import { execFileSync, spawn, spawnSync, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -280,6 +280,16 @@ class PySession {
 // hang fails this ONE test with a clear timeout message instead of hanging
 // the whole vitest run.
 const GD_REQUEST_TIMEOUT_MS = 10_000;
+
+// Same probe as packages/runtime-gd/test/harness.test.ts's godotAvailable —
+// gates the gd leg of the parity test on the binary actually existing.
+function godotAvailable(bin: string): boolean {
+  try {
+    return spawnSync(bin, ["--version"], { stdio: "ignore" }).status === 0;
+  } catch {
+    return false;
+  }
+}
 const GD_POLL_INTERVAL_MS = 5;
 
 class GdSession {
@@ -401,7 +411,7 @@ describe("interpolation-kill (task #10): cross-engine parity across interpreter 
   });
 
   it(
-    "interpreter + ts + lua + py + cs + gd all freeze var0 at 999 from t=0.3 on, with identical tick-by-tick sequences and var1's done flow never firing",
+    "interpreter + ts + lua + py + cs (+ gd when godot is installed) all freeze var0 at 999 from t=0.3 on, with identical tick-by-tick sequences and var1's done flow never firing",
     async () => {
       // --- interpreter: fed exportGraph(module)'s OUTPUT, not the original
       // hand-built GRAPH object, so it and every compiled backend below are
@@ -511,22 +521,27 @@ describe("interpolation-kill (task #10): cross-engine parity across interpreter 
       }
 
       // --- gdscript compiled engine (persistent godot --headless subprocess) ---
-      const gdSession = new GdSession(process.env.GLTFI_GODOT ?? "godot");
-      let gdSamples: Sample[];
-      try {
-        const { code: gdCode } = emitModuleGd(module);
-        gdSession.request({ cmd: "load", source: gdCode, gltf: {}, bin_b64: null });
-        gdSamples = collect({
-          start: () => {
-            gdSession.request({ cmd: "start" });
-          },
-          advance: (dt) => {
-            gdSession.request({ cmd: "advance", dt });
-          },
-          readVar: (i) => Number((gdSession.request({ cmd: "get_var", i }).data as unknown[])[0])
-        });
-      } finally {
-        gdSession.dispose();
+      // Guarded like every other gd suite (see runtime-gd's HAS_GODOT):
+      // GitHub CI has no godot binary, so the gd leg only runs locally.
+      const godotBin = process.env.GLTFI_GODOT ?? "godot";
+      let gdSamples: Sample[] | null = null;
+      if (godotAvailable(godotBin)) {
+        const gdSession = new GdSession(godotBin);
+        try {
+          const { code: gdCode } = emitModuleGd(module);
+          gdSession.request({ cmd: "load", source: gdCode, gltf: {}, bin_b64: null });
+          gdSamples = collect({
+            start: () => {
+              gdSession.request({ cmd: "start" });
+            },
+            advance: (dt) => {
+              gdSession.request({ cmd: "advance", dt });
+            },
+            readVar: (i) => Number((gdSession.request({ cmd: "get_var", i }).data as unknown[])[0])
+          });
+        } finally {
+          gdSession.dispose();
+        }
       }
 
       const engines: Record<string, Sample[]> = {
@@ -534,7 +549,7 @@ describe("interpolation-kill (task #10): cross-engine parity across interpreter 
         lua: luaSamples,
         py: pySamples,
         cs: csSamples,
-        gd: gdSamples
+        ...(gdSamples ? { gd: gdSamples } : {})
       };
 
       for (const [name, samples] of Object.entries(engines)) {
