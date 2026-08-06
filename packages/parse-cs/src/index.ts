@@ -96,6 +96,7 @@ import {
   isType,
   listElements,
   literalPType,
+  literalShapeCompatible,
   memberAccessOf,
   nodeList,
   objectCreationOf,
@@ -1799,6 +1800,13 @@ class ModuleParser {
     return { k: "op", op, overload, args: argExprs, socket: resultSocket };
   }
 
+  // See parse-ts's own disambiguateOverload doc comment for the full
+  // math/transform rationale behind the literal-shape narrowing pass below
+  // (port of that file's bug #18 fix, task #21): an all-literal call like
+  // `m.transform([1,2,3,4],[...16 elems])` has no non-literal arg for the
+  // loop above to probe, so it used to fall straight through to
+  // candidates[0], mistyping both literals as (float4x4,float3) regardless
+  // of their actual lengths.
   private disambiguateOverload(candidates: FnCandidate[], spec: OpSpec, argNodes: CsNode[], expected: IRType | undefined, ctx: Ctx): number {
     for (let idx = 0; idx < argNodes.length; idx += 1) {
       if (isLiteralish(unwrap(argNodes[idx]))) {
@@ -1810,13 +1818,31 @@ class ModuleParser {
         return matches[0].overloadIndex;
       }
     }
+    let narrowed = candidates;
+    for (let idx = 0; idx < argNodes.length; idx += 1) {
+      if (!isLiteralish(unwrap(argNodes[idx]))) {
+        continue;
+      }
+      const shapeMatches = narrowed.filter((c) => literalShapeCompatible(argNodes[idx], spec.overloads[c.overloadIndex].inputs[idx]?.type));
+      // Only accept a narrowing that leaves at least one candidate — see
+      // parse-ts's identical guard: an arg whose shape matches none of the
+      // current candidates carries no usable signal here, so falling
+      // through (rather than narrowing to empty) keeps this a pure ADDITION
+      // to the existing fallbacks.
+      if (shapeMatches.length > 0) {
+        narrowed = shapeMatches;
+      }
+    }
+    if (narrowed.length === 1) {
+      return narrowed[0].overloadIndex;
+    }
     if (expected) {
-      const matches = candidates.filter((c) => spec.overloads[c.overloadIndex].outputs.find((o) => o.name === "value")?.type === expected);
+      const matches = narrowed.filter((c) => spec.overloads[c.overloadIndex].outputs.find((o) => o.name === "value")?.type === expected);
       if (matches.length === 1) {
         return matches[0].overloadIndex;
       }
     }
-    return candidates[0].overloadIndex;
+    return narrowed[0].overloadIndex;
   }
 
   // -------------------------------------------------------------------

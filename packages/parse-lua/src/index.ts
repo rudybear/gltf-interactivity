@@ -241,6 +241,62 @@ function isLiteralish(node: Expression): boolean {
   return readNumberLiteral(node) !== undefined || node.type === "TableConstructorExpression" || node.type === "BooleanLiteral" || node.type === "StringLiteral";
 }
 
+// Component count for each fixed (non-generic) TypeSig math/vector/matrix
+// shape — used by literalShapeCompatible below to filter overload
+// candidates by a literal argument's own length, independent of that arg's
+// (as yet unknown) socket type. Identical table to parse-ts's own (task
+// #21 port); "ref"/"custom" have no numeric shape and are intentionally
+// omitted (never a literal-array target).
+const TYPE_COMPONENT_COUNT: Partial<Record<TypeSig, number>> = {
+  float: 1,
+  int: 1,
+  float2: 2,
+  float3: 3,
+  float4: 4,
+  float2x2: 4,
+  float3x3: 9,
+  float4x4: 16
+};
+
+// A literal-ish argument's own shape: a table constructor's (plain-array)
+// element count, 1 for a bare numeric literal, "bool" for true/false, or
+// undefined when the literal carries no useful shape signal (e.g. a string
+// literal, or a table with named/mixed keys — no math op argument is ever
+// shape-disambiguated by those).
+function literalShape(node: Expression): number | "bool" | undefined {
+  if (node.type === "TableConstructorExpression") {
+    return tableArrayValues(node)?.length;
+  }
+  if (readNumberLiteral(node) !== undefined) {
+    return 1;
+  }
+  if (node.type === "BooleanLiteral") {
+    return "bool";
+  }
+  return undefined;
+}
+
+// Is `node`'s literal shape consistent with a candidate row's declared
+// socket type `sigType` at the same argument index? Generic (F/V/M/T)
+// sockets and sockets with no usable shape signal are always considered
+// compatible (this is a FILTER, not a resolver — see parse-ts's identical
+// helper's doc comment for why this is intentionally count-only, and why
+// combining it across multiple args still resolves math/transform's rows
+// even though no single arg does).
+function literalShapeCompatible(node: Expression, sigType: TypeSig | "F" | "V" | "M" | "T" | undefined): boolean {
+  if (!sigType || isGenericSig(sigType)) {
+    return true;
+  }
+  const shape = literalShape(node);
+  if (shape === undefined) {
+    return true;
+  }
+  if (shape === "bool" || sigType === "bool") {
+    return shape === "bool" && sigType === "bool";
+  }
+  return TYPE_COMPONENT_COUNT[sigType] === shape;
+}
+
 // Bare-identifier-keyed table field lookup (`{ type = ..., initial = ... }`,
 // pointer-arg objects `{ nodeIndex = ... }`) — the ONLY table-key shape this
 // emitter ever produces for named fields (see emit.ts: every named table
@@ -2183,7 +2239,14 @@ class ModuleParser {
 
   // Picks which of several same-named candidate rows (see @gltfi/kernel's
   // fn-naming's lookupMFunctions doc comment) matches the actual call site —
-  // identical strategy to parse-ts's own disambiguateOverload.
+  // identical strategy to parse-ts's own disambiguateOverload, including the
+  // literal-shape narrowing pass below (port of parse-ts's bug #18 fix, task
+  // #21 — see parse-ts/src/index.ts's own disambiguateOverload doc comment
+  // for the full math/transform rationale: an all-literal call like
+  // `m.transform([1,2,3,4],[...16 elems])` has no non-literal arg for the
+  // loop above to probe, so it used to fall straight through to
+  // candidates[0], mistyping both literals as (float4x4,float3) regardless
+  // of their actual lengths).
   private disambiguateOverload(candidates: FnCandidate[], spec: OpSpec, argNodes: Expression[], expected: IRType | undefined, ctx: Ctx): number {
     for (let idx = 0; idx < argNodes.length; idx += 1) {
       if (isLiteralish(argNodes[idx])) {
@@ -2195,13 +2258,31 @@ class ModuleParser {
         return matches[0].overloadIndex;
       }
     }
+    let narrowed = candidates;
+    for (let idx = 0; idx < argNodes.length; idx += 1) {
+      if (!isLiteralish(argNodes[idx])) {
+        continue;
+      }
+      const shapeMatches = narrowed.filter((c) => literalShapeCompatible(argNodes[idx], spec.overloads[c.overloadIndex].inputs[idx]?.type));
+      // Only accept a narrowing that leaves at least one candidate — see
+      // parse-ts's identical guard: an arg whose shape matches none of the
+      // current candidates carries no usable signal here, so falling
+      // through (rather than narrowing to empty) keeps this a pure ADDITION
+      // to the existing fallbacks.
+      if (shapeMatches.length > 0) {
+        narrowed = shapeMatches;
+      }
+    }
+    if (narrowed.length === 1) {
+      return narrowed[0].overloadIndex;
+    }
     if (expected) {
-      const matches = candidates.filter((c) => spec.overloads[c.overloadIndex].outputs.find((o) => o.name === "value")?.type === expected);
+      const matches = narrowed.filter((c) => spec.overloads[c.overloadIndex].outputs.find((o) => o.name === "value")?.type === expected);
       if (matches.length === 1) {
         return matches[0].overloadIndex;
       }
     }
-    return candidates[0].overloadIndex;
+    return narrowed[0].overloadIndex;
   }
 
   // -------------------------------------------------------------------

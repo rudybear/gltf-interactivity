@@ -7,6 +7,8 @@
 // grammar already guarantees well-formedness, so this file only declares the
 // handful of fields each helper actually reads, exactly like the untyped
 // object literals in the same spirit as `getTableKeyString` etc.
+import { isGenericSig, type TypeSig } from "@gltfi/kernel";
+
 export type PyNode = { _type: string; lineno?: number; col_offset?: number; [field: string]: unknown };
 
 export function isType(node: PyNode | undefined, type: string): boolean {
@@ -102,6 +104,62 @@ export function readNumberLiteral(node: PyNode | undefined): number | undefined 
 
 export function isLiteralish(node: PyNode): boolean {
   return readNumberLiteral(node) !== undefined || node._type === "List" || node._type === "Dict" || node._type === "Constant";
+}
+
+// Component count for each fixed (non-generic) TypeSig math/vector/matrix
+// shape — used by literalShapeCompatible below to filter overload
+// candidates by a literal argument's own length, independent of that arg's
+// (as yet unknown) socket type. Identical table to parse-ts's own (task
+// #21 port of that file's bug #18 fix); "ref"/"custom" have no numeric
+// shape and are intentionally omitted (never a literal-array target).
+const TYPE_COMPONENT_COUNT: Partial<Record<TypeSig, number>> = {
+  float: 1,
+  int: 1,
+  float2: 2,
+  float3: 3,
+  float4: 4,
+  float2x2: 4,
+  float3x3: 9,
+  float4x4: 16
+};
+
+// A literal-ish argument's own shape: a `List` literal's element count, 1
+// for a bare numeric literal, "bool" for true/false, or undefined when the
+// literal carries no useful shape signal (e.g. a string Constant or a
+// Dict — no math op argument is ever shape-disambiguated by those).
+export function literalShape(node: PyNode): number | "bool" | undefined {
+  const elements = listElements(node);
+  if (elements) {
+    return elements.length;
+  }
+  if (readNumberLiteral(node) !== undefined) {
+    return 1;
+  }
+  if (readBoolLiteral(node) !== undefined) {
+    return "bool";
+  }
+  return undefined;
+}
+
+// Is `node`'s literal shape consistent with a candidate row's declared
+// socket type `sigType` at the same argument index? Generic (F/V/M/T)
+// sockets and sockets with no usable shape signal are always considered
+// compatible (this is a FILTER, not a resolver — see parse-ts's identical
+// helper's doc comment for why this is intentionally count-only, and why
+// combining it across multiple args still resolves math/transform's rows
+// even though no single arg does).
+export function literalShapeCompatible(node: PyNode, sigType: TypeSig | "F" | "V" | "M" | "T" | undefined): boolean {
+  if (!sigType || isGenericSig(sigType)) {
+    return true;
+  }
+  const shape = literalShape(node);
+  if (shape === undefined) {
+    return true;
+  }
+  if (shape === "bool" || sigType === "bool") {
+    return shape === "bool" && sigType === "bool";
+  }
+  return TYPE_COMPONENT_COUNT[sigType] === shape;
 }
 
 // Plain-array `[a, b, c]` literal (vector/matrix consts, `rt.send`'s payload,
