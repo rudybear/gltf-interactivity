@@ -65,19 +65,41 @@ import {
 } from "@gltfi/ir";
 import { RUNTIME_LIB_DTS } from "./runtime-lib-dts.js";
 
+// Re-exported from the public entry (and available as its own subpath, see
+// package.json's "exports" — "@gltfi/parse-ts/runtime-lib-dts") so
+// downstream consumers (e.g. gltf-studio's Monaco autocomplete) can reach
+// this ambient .d.ts string without importing parse-ts's internal
+// dist/runtime-lib-dts.js directly.
+export { RUNTIME_LIB_DTS };
+
 export type ParseResult = { module: IRModule; diagnostics: Diagnostic[] };
+
+type SourcePos = { line: number; column: number; span: { start: number; end: number } };
 
 class ParseError extends Error {
   readonly code: string;
-  constructor(code: string, message: string) {
+  readonly pos?: SourcePos;
+  constructor(code: string, message: string, pos?: SourcePos) {
     super(message);
     this.code = code;
+    this.pos = pos;
   }
+}
+
+// Structured position for a ts-morph Node — same location the `fail()`
+// message text below already renders as "file:line", just also broken out
+// into line/column/span fields for downstream consumers (e.g. gltf-studio's
+// script-panel gutter markers) instead of making them regex the message.
+function posOf(node: Node): SourcePos {
+  const sf = node.getSourceFile();
+  const start = node.getStart();
+  const { line, column } = sf.getLineAndColumnAtPos(start);
+  return { line, column, span: { start, end: node.getEnd() } };
 }
 
 function fail(code: string, node: Node | undefined, message: string): never {
   const where = node ? ` at ${node.getSourceFile().getFilePath()}:${node.getStartLineNumber()}: \`${node.getText().slice(0, 120)}\`` : "";
-  throw new ParseError(code, `${message}${where}`);
+  throw new ParseError(code, `${message}${where}`, node ? posOf(node) : undefined);
 }
 
 function emptyModule(): IRModule {
@@ -112,8 +134,17 @@ export function parseModule(code: string): ParseResult {
     const msg = d.getMessageText();
     const text = typeof msg === "string" ? msg : msg.getMessageText();
     const start = d.getStart();
-    const line = start !== undefined ? sf.getLineAndColumnAtPos(start).line : undefined;
-    diagnostics.push({ severity: "error", code: "GI001", message: `TypeScript diagnostic${line ? ` (line ${line})` : ""}: ${text}` });
+    const pos = start !== undefined ? sf.getLineAndColumnAtPos(start) : undefined;
+    const length = d.getLength();
+    const span = start !== undefined && length !== undefined ? { start, end: start + length } : undefined;
+    diagnostics.push({
+      severity: "error",
+      code: "GI001",
+      message: `TypeScript diagnostic${pos ? ` (line ${pos.line})` : ""}: ${text}`,
+      line: pos?.line,
+      column: pos?.column,
+      span
+    });
   }
   if (diagnostics.some((d) => d.severity === "error")) {
     return { module: emptyModule(), diagnostics };
@@ -125,7 +156,14 @@ export function parseModule(code: string): ParseResult {
     return { module, diagnostics: [...diagnostics, ...parser.diagnostics] };
   } catch (err) {
     if (err instanceof ParseError) {
-      diagnostics.push({ severity: "error", code: err.code, message: err.message });
+      diagnostics.push({
+        severity: "error",
+        code: err.code,
+        message: err.message,
+        line: err.pos?.line,
+        column: err.pos?.column,
+        span: err.pos?.span
+      });
       return { module: emptyModule(), diagnostics };
     }
     throw err;
@@ -1974,7 +2012,12 @@ class ModuleParser {
       const [nodeExpr, socketExpr] = eventOutRead.getArguments();
       const sourceNode = readNumber(nodeExpr) ?? 0;
       const socket = stringLiteralValue(socketExpr) ?? "";
-      this.diagnostics.push({ severity: "info", code: "GI180", message: `best-effort reconstruction of cross-handler read rt.eventOutRead(${sourceNode}, "${socket}")` });
+      this.diagnostics.push({
+        severity: "info",
+        code: "GI180",
+        message: `best-effort reconstruction of cross-handler read rt.eventOutRead(${sourceNode}, "${socket}")`,
+        ...posOf(eventOutRead)
+      });
       return { k: "intrinsic", op: "event/unknown", config: { crossContext: true, socket, sourceNode }, args: [], type: expected ?? "ref" };
     }
 

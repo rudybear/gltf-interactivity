@@ -108,7 +108,7 @@ class Checker {
         this.walkExpr(stmt.start, scope, ctx);
         this.walkExpr(stmt.end, scope, ctx);
         if (stmt.slot) {
-          this.checkStateSlotKind(stmt.slot.slot, ["for"]);
+          this.checkStateSlotKind(stmt.slot.slot, ["for"], ctx);
         }
         this.walkStmt(stmt.body, new Map(scope), ctx);
         if (stmt.completed) {
@@ -125,7 +125,7 @@ class Checker {
         }
         return;
       case "setVar":
-        this.checkSetVar(stmt.varId, stmt.expr, scope);
+        this.checkSetVar(stmt.varId, stmt.expr, scope, ctx);
         this.walkExpr(stmt.expr, scope, ctx);
         return;
       case "setPointer":
@@ -142,7 +142,7 @@ class Checker {
         return;
       case "emitEvent":
         if (stmt.eventId < 0 || stmt.eventId >= this.module.events.length) {
-          this.error("GIC031", `emitEvent references out-of-range eventId ${stmt.eventId}`);
+          this.error("GIC031", `emitEvent references out-of-range eventId ${stmt.eventId}`, this.ownerNodeIndex(ctx));
         }
         for (const a of stmt.args) {
           this.walkExpr(a, scope, ctx);
@@ -164,7 +164,7 @@ class Checker {
           this.walkExpr(a, scope, ctx);
         }
         if (stmt.slot) {
-          this.checkStateSlotKind(stmt.slot.slot, ["delay"]);
+          this.checkStateSlotKind(stmt.slot.slot, ["delay"], ctx);
         }
         if (stmt.out) {
           this.walkStmt(stmt.out, new Map(scope), ctx);
@@ -184,7 +184,7 @@ class Checker {
         for (const a of stmt.args) {
           this.walkExpr(a, scope, ctx);
         }
-        this.checkStateSlotKind(stmt.slot.slot, [stmt.kind]);
+        this.checkStateSlotKind(stmt.slot.slot, [stmt.kind], ctx);
         for (const key of Object.keys(stmt.outs)) {
           this.walkStmt(stmt.outs[key], new Map(scope), ctx);
         }
@@ -220,7 +220,7 @@ class Checker {
         return;
       case "varGet":
         if (expr.varId < 0 || expr.varId >= this.module.variables.length) {
-          this.error("GIC022", `varGet references out-of-range varId ${expr.varId}`);
+          this.error("GIC022", `varGet references out-of-range varId ${expr.varId}`, this.ownerNodeIndex(ctx));
         }
         return;
       case "ptrGet":
@@ -232,22 +232,28 @@ class Checker {
         this.checkParam(expr.name, expr.type, ctx);
         return;
       case "op":
-        this.checkOp(expr, scope);
+        this.checkOp(expr, scope, ctx);
         for (const a of expr.args) {
           this.walkExpr(a, scope, ctx);
         }
         return;
       case "temp":
         if (!scope.has(expr.id)) {
-          this.error("GIC001", `temp "${expr.id}" referenced before its let (or from a continuation defined outside its site)`);
+          // A temp's own originating node (if the IR still has one recorded)
+          // is a more precise location than the owning handler/proc's root.
+          this.error(
+            "GIC001",
+            `temp "${expr.id}" referenced before its let (or from a continuation defined outside its site)`,
+            this.module.meta.sourceNodeIds[`temp:${expr.id}`] ?? this.ownerNodeIndex(ctx)
+          );
         }
         return;
       case "stateRead":
-        this.checkStateSlotKind(expr.slot.slot, undefined);
+        this.checkStateSlotKind(expr.slot.slot, undefined, ctx);
         return;
       case "intrinsic":
         if (expr.op === "math/switch") {
-          this.checkMathSwitch(expr, scope);
+          this.checkMathSwitch(expr, scope, ctx);
         }
         for (const a of expr.args) {
           this.walkExpr(a, scope, ctx);
@@ -256,20 +262,21 @@ class Checker {
     }
   }
 
-  private checkOp(expr: Extract<IRExpr, { k: "op" }>, scope: Map<TempId, IRType>) {
+  private checkOp(expr: Extract<IRExpr, { k: "op" }>, scope: Map<TempId, IRType>, ctx: WalkCtx) {
+    const nodeIndex = this.ownerNodeIndex(ctx);
     const spec = getOpSpec(expr.op);
     if (!spec) {
-      this.error("GIC010", `unknown op "${expr.op}"`);
+      this.error("GIC010", `unknown op "${expr.op}"`, nodeIndex);
       return;
     }
     const resolved = resolveOverload(expr.op, expr.overload.inputs);
     if (!resolved || resolved.overloadIndex !== expr.overload.overloadIndex) {
-      this.error("GIC011", `op "${expr.op}" does not resolve consistently via resolveOverload`);
+      this.error("GIC011", `op "${expr.op}" does not resolve consistently via resolveOverload`, nodeIndex);
       return;
     }
     const row = spec.overloads[expr.overload.overloadIndex];
     if (expr.args.length !== row.inputs.length) {
-      this.error("GIC012", `op "${expr.op}" arg count ${expr.args.length} != declared ${row.inputs.length}`);
+      this.error("GIC012", `op "${expr.op}" arg count ${expr.args.length} != declared ${row.inputs.length}`, nodeIndex);
       return;
     }
     row.inputs.forEach((inputSocket, i) => {
@@ -287,76 +294,84 @@ class Checker {
       // same-valued vector broadcast into "c" instead of a true scalar.
       // Flag it, but don't fail the corpus-totality check over it.
       if (expectedType === "float" && FLOAT_FAMILY.has(argType)) {
-        this.warn("GIC015", `op "${expr.op}" arg "${inputSocket.name}" expects float, got ${argType} (tolerated: interpreter reads component 0 only)`);
+        this.warn(
+          "GIC015",
+          `op "${expr.op}" arg "${inputSocket.name}" expects float, got ${argType} (tolerated: interpreter reads component 0 only)`,
+          nodeIndex
+        );
         return;
       }
-      this.error("GIC013", `op "${expr.op}" arg "${inputSocket.name}" expects ${expectedType}, got ${argType}`);
+      this.error("GIC013", `op "${expr.op}" arg "${inputSocket.name}" expects ${expectedType}, got ${argType}`, nodeIndex);
     });
     const socket = expr.socket ?? "value";
     if (!(socket in resolved.outputs)) {
-      this.error("GIC014", `op "${expr.op}" has no output socket "${socket}"`);
+      this.error("GIC014", `op "${expr.op}" has no output socket "${socket}"`, nodeIndex);
     }
   }
 
-  private checkMathSwitch(expr: Extract<IRExpr, { k: "intrinsic" }>, scope: Map<TempId, IRType>) {
+  private checkMathSwitch(expr: Extract<IRExpr, { k: "intrinsic" }>, scope: Map<TempId, IRType>, ctx: WalkCtx) {
+    const nodeIndex = this.ownerNodeIndex(ctx);
     if (expr.args.length < 2) {
-      this.error("GIC050", "math/switch requires at least selection+default args");
+      this.error("GIC050", "math/switch requires at least selection+default args", nodeIndex);
       return;
     }
     const selType = this.inferExprType(expr.args[0], scope);
     if (selType && selType !== "int") {
-      this.error("GIC051", `math/switch selection must be int, got ${selType}`);
+      this.error("GIC051", `math/switch selection must be int, got ${selType}`, nodeIndex);
     }
     for (let i = 1; i < expr.args.length; i += 1) {
       const t = this.inferExprType(expr.args[i], scope);
       if (t && t !== expr.type) {
-        this.error("GIC052", `math/switch arg ${i} expects ${expr.type}, got ${t}`);
+        this.error("GIC052", `math/switch arg ${i} expects ${expr.type}, got ${t}`, nodeIndex);
       }
     }
   }
 
-  private checkSetVar(varId: number, expr: IRExpr, scope: Map<TempId, IRType>) {
+  private checkSetVar(varId: number, expr: IRExpr, scope: Map<TempId, IRType>, ctx: WalkCtx) {
+    const nodeIndex = this.ownerNodeIndex(ctx);
     const variable = this.module.variables[varId];
     if (!variable) {
-      this.error("GIC020", `setVar references out-of-range varId ${varId}`);
+      this.error("GIC020", `setVar references out-of-range varId ${varId}`, nodeIndex);
       return;
     }
     const exprType = this.inferExprType(expr, scope);
     if (exprType && exprType !== variable.type) {
-      this.error("GIC021", `setVar ${variable.name} expects ${variable.type}, got ${exprType}`);
+      this.error("GIC021", `setVar ${variable.name} expects ${variable.type}, got ${exprType}`, nodeIndex);
     }
   }
 
   private checkParam(name: string, type: IRType, ctx: WalkCtx) {
+    const nodeIndex = this.ownerNodeIndex(ctx);
     if (ctx.paramTypes === null) {
       // Inside a proc body: see the file header note — soft-checked only.
-      this.warn("GIC060", `proc references handler-local param "${name}"; only valid if every caller shares this param`);
+      this.warn("GIC060", `proc references handler-local param "${name}"; only valid if every caller shares this param`, nodeIndex);
       return;
     }
     const declared = ctx.paramTypes.get(name);
     if (declared === undefined) {
-      this.error("GIC061", `param "${name}" is not declared by this handler`);
+      this.error("GIC061", `param "${name}" is not declared by this handler`, nodeIndex);
       return;
     }
     if (declared !== type) {
-      this.warn("GIC062", `param "${name}" used at type ${type} but handler declares ${declared}`);
+      this.warn("GIC062", `param "${name}" used at type ${type} but handler declares ${declared}`, nodeIndex);
     }
   }
 
-  private checkStateSlotKind(slotIndex: number, allowedKinds: string[] | undefined) {
+  private checkStateSlotKind(slotIndex: number, allowedKinds: string[] | undefined, ctx: WalkCtx) {
+    const nodeIndex = this.module.meta.sourceNodeIds[`stateSlot:${slotIndex}`] ?? this.ownerNodeIndex(ctx);
     const slot = this.module.stateSlots[slotIndex];
     if (!slot) {
-      this.error("GIC070", `state slot index ${slotIndex} out of range`);
+      this.error("GIC070", `state slot index ${slotIndex} out of range`, nodeIndex);
       return;
     }
     if (allowedKinds && !allowedKinds.includes(slot.kind)) {
-      this.error("GIC071", `state slot "${slot.name}" has kind ${slot.kind}, expected one of ${allowedKinds.join("/")}`);
+      this.error("GIC071", `state slot "${slot.name}" has kind ${slot.kind}, expected one of ${allowedKinds.join("/")}`, nodeIndex);
     }
   }
 
   private registerProcCall(ctx: WalkCtx, procId: number) {
     if (procId < 0 || procId >= this.module.procs.length) {
-      this.error("GIC030", `callProc references out-of-range procId ${procId}`);
+      this.error("GIC030", `callProc references out-of-range procId ${procId}`, this.ownerNodeIndex(ctx));
       return;
     }
     if (ctx.ownerKind === "proc" && !ctx.inDoneCont) {
@@ -412,7 +427,11 @@ class Checker {
           if (!reported.has(key)) {
             reported.add(key);
             const names = cycle.map((pid) => this.module.procs[pid]?.name ?? `proc${pid}`).join(" -> ");
-            this.error("GIC040", `synchronous proc call cycle: ${names}`);
+            // Anchor the diagnostic on the first proc in the reported cycle
+            // (its own originating graph node) — the cycle as a whole spans
+            // multiple procs, so there's no single "most correct" node, but
+            // this is a genuinely useful jumping-off point.
+            this.error("GIC040", `synchronous proc call cycle: ${names}`, this.module.meta.sourceNodeIds[`proc:${cycle[0]}`]);
           }
         } else if (c === 0) {
           dfs(next);
@@ -428,11 +447,23 @@ class Checker {
     }
   }
 
-  private error(code: string, message: string) {
-    this.diagnostics.push({ severity: "error", code, message });
+  // Best-effort structured position for a diagnostic anchored on a
+  // handler/proc body: IRModule.meta.sourceNodeIds records the originating
+  // graph node index for each handler/proc/stateSlot/temp import.ts raised
+  // IR from (see model.ts's doc comment on that field) — not exact (a
+  // deeply-nested op inside a big handler body reports the *handler's*
+  // root node, not the specific op's own node, since ops don't get their
+  // own sourceNodeIds entry), but far better than nothing for a downstream
+  // gutter marker.
+  private ownerNodeIndex(ctx: WalkCtx): number | undefined {
+    return this.module.meta.sourceNodeIds[`${ctx.ownerKind}:${ctx.ownerId}`];
   }
 
-  private warn(code: string, message: string) {
-    this.diagnostics.push({ severity: "warning", code, message });
+  private error(code: string, message: string, nodeIndex?: number) {
+    this.diagnostics.push({ severity: "error", code, message, nodeIndex });
+  }
+
+  private warn(code: string, message: string, nodeIndex?: number) {
+    this.diagnostics.push({ severity: "warning", code, message, nodeIndex });
   }
 }
