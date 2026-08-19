@@ -5,6 +5,17 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./runtime-lib-dts": {
+      "types": "./dist/runtime-lib-dts.d.ts",
+      "default": "./dist/runtime-lib-dts.js"
+    },
+    "./package.json": "./package.json"
+  },
   "dependencies": {
     "@gltfi/ir": "workspace:*",
     "@gltfi/kernel": "workspace:*",

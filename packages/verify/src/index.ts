@@ -9,6 +9,12 @@
 import { getOpSpec } from "@gltfi/kernel";
 import { formatPointerTemplate, parsePointerTemplate, type Diagnostic } from "@gltfi/ir";
 
+// Re-exported so downstream consumers of validateGraph's diagnostics (e.g.
+// gltf-studio's script panel) can import the Diagnostic type — including its
+// structured `nodeIndex`/`line`/`column`/`span` source-position fields —
+// straight from @gltfi/verify instead of reaching into @gltfi/ir directly.
+export type { Diagnostic } from "@gltfi/ir";
+
 // Structurally compatible with @gltfi/ir's Graph/GraphNode/GraphJson types
 // (and hence with @gltfi/runtime's Graph) — kept as a local, minimal shape
 // so this package doesn't need to pick one specific producer's type.

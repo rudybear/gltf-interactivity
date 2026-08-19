@@ -224,7 +224,23 @@ export type Diagnostic = {
   severity: "error" | "warning" | "info";
   code: string;
   message: string;
+  // Structured source position, additive to `message` (which always still
+  // carries a human-readable rendering of the same location for back-compat
+  // — downstream consumers that only read `message` see no change). Populated
+  // wherever the producing stage actually knows a location:
+  //   - `nodeIndex`: the originating KHR_interactivity graph node index —
+  //     populated by @gltfi/verify's validateGraph (graph-level checks) and
+  //     @gltfi/ir's checkModule (via IRModule.meta.sourceNodeIds, best-effort:
+  //     only as precise as the nearest handler/proc/stateSlot/temp the check
+  //     is walking).
+  //   - `line`/`column`/`span`: real source-text position, only available
+  //     from a text-based front end with an AST in hand — currently
+  //     @gltfi/parse-ts, which has a ts-morph Node (and hence exact
+  //     line/column/character-offset span) for every GI0xx/GI1xx diagnostic.
   nodeIndex?: number;
+  line?: number;
+  column?: number;
+  span?: { start: number; end: number };
 };
 
 // Shared TypeSig -> IRType coercion: identical unions except TypeSig also has
