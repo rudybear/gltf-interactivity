@@ -312,9 +312,8 @@ Alternatively, route `stop`/`stopAt` on a non-playing clip to `err`.
 
 **Problem.** A conforming implementation may advertise 1. Content cannot
 target a floor; the Khronos showcase asset *WhackAMole* alone runs 21 clips
-concurrently. Core glTF establishes minimums elsewhere (e.g. the texture
-coordinate set count in KHR_texture_transform discussions), and this
-extension already defines the property, so a floor is cheap to add.
+concurrently. The extension already defines the property, so a floor is
+cheap to add.
 
 **Proposed resolution.** Require `maxActiveAnimations` ≥ the number of
 animations in the asset, or a fixed minimum (e.g. 32).
