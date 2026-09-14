@@ -328,3 +328,113 @@ loop forward           e = +Infinity        loop reverse   e = −Infinity
 play backward          s > e (speed stays positive)
 host rule              graph present ⇒ never autoplay, never run your own mixer on these clips
 ```
+
+---
+
+## 10. Gaps in the specification itself
+
+Independent of this runtime. Each item is something the spec text leaves
+undefined, defines inconsistently, or defines in a way that hurts portable
+content. Section names refer to the Khronos `Specification.adoc`.
+
+**Clock and timing**
+
+1. **"Asset animation update" is never placed in time.** The advance
+   procedure runs "on each asset animation update", but nothing says where
+   that falls relative to `event/onTick`, `pointer/interpolate` updates,
+   delay expiry, or rendering. A `pointer/set` in a tick handler and the
+   animation write for the same property in the same frame have no defined
+   winner. The example text ("a `pointer/set` … would make it well-defined
+   until the next animation update") assumes a distinct update point without
+   defining it. Runtimes pick an order; graphs cannot rely on one. (This
+   repo: animations first, then pointer/variable interpolations, delays,
+   tick.)
+2. **Playback runs on "system time", not graph time.** Elapsed time is the
+   difference between an entry's creation timestamp and "the current system
+   time". `event/onTick` exposes `timeSinceStart`/`timeSinceLastTick`, a
+   separate clock. Nothing ties the two together, so a host that pauses,
+   throttles, or time-scales the graph has no spec-sanctioned way to pause
+   clips: on wall-clock semantics a resumed clip jumps ahead. The spec also
+   says the procedure "assumes that the current system time is not behind"
+   the creation timestamp, and leaves clock regression undefined.
+3. **Done flows are activated inline while iterating the state array.** The
+   procedure removes the entry and activates `done` inside the "for each
+   entry" loop. A `done` handler may start or stop other clips, mutating the
+   array mid-iteration. Iteration order is also unspecified. Both the order
+   in which several `done` flows fire in one update and whether a newly
+   started clip is advanced in the same update are therefore undefined.
+   (This repo collects and fires after the pass.)
+
+**Conflicts and blending**
+
+4. **Two clips on one property make it "undefined".** No priority, no
+   last-started-wins, no blending. Crossfades and additive layers, the bread
+   and butter of character animation, are impossible to express portably.
+   The only safe content is clips with disjoint channel sets.
+5. **Animation versus `pointer/interpolate` is not addressed at all.** The
+   spec defines that `pointer/set` kills an in-flight interpolation on the
+   same property, but says nothing about an animation channel and a
+   `pointer/interpolate` targeting the same property, in either direction.
+6. **No interface to the host's animation system.** "Apply the glTF
+   animation state at timestamp *t* to the asset" is the whole definition.
+   Combined with the no-autoplay rule, the practical consequence is that a
+   runtime has to sample clips itself and every host must disable its own
+   player for these clips. Nothing in the spec says this; every integrator
+   discovers it (§1 of this document).
+7. **`KHR_animation_pointer` channels are never mentioned.** Whether a clip
+   animating, say, a material factor through that extension participates in
+   the state table, the playheads, or the "undefined when overlapping" rule
+   is unstated.
+
+**Definitional inconsistencies**
+
+8. **`T` and `maxTime` are defined differently.** The timeline mapping
+   defines `T` as "the maximum value of all animation sampler input
+   accessors of the animation". The `maxTime` property "MUST be derived from
+   … the used sampler input accessors. Unused animation samplers … MUST be
+   ignored." For a clip carrying an unreferenced sampler that is longer than
+   the used ones, the wrap period and `maxTime` disagree, and the authoring
+   tip "set `endTime` to `maxTime` to play to completion" is wrong.
+9. **The timeline starts at 0, not at `minTime`.** The effective range is
+   `[0, T]`, so a clip whose first keyframe sits at 0.4 s carries a 0.4 s
+   hold at the start of *every* loop iteration when `endTime = +Infinity`.
+   The spec acknowledges the lead-in with a tip about `minTime`, but offers
+   no way to loop `[minTime, maxTime]` with a single `start`.
+10. **"Invalid as determined by the implementation" gates `err`.** Step 5 of
+    `animation/start` lets each runtime decide what an invalid clip is. The
+    same asset can succeed on one runtime and route to `err` on another.
+11. **`maxActiveAnimations` has no required minimum.** A runtime advertising
+    1 is conformant. Content with many simultaneous clips (the WhackAMole
+    showcase model uses 21) has no guarantee and no fallback beyond `err`.
+
+**Control surface holes**
+
+12. **No pause, resume, seek, or speed change.** The only mutation of a
+    running clip is `stopAt`. Changing speed means restart, which resets the
+    creation timestamp and silently drops the pending `done`. Resuming
+    "from where it was" requires reading `virtualPlayhead` (the *last
+    update's* position, not the current one) and restarting from it, losing
+    up to a frame.
+13. **`stopAt` edge cases are legal but surprising.** A `stopTime` equal to
+    `endTime` never satisfies the strict `stopTime < endTime` check, so the
+    *start* node's `done` fires, not the `stopAt` node's. A `stopTime`
+    already passed satisfies `current ≥ stopTime` on the next update and
+    rewinds the pose backward to `stopTime` before firing. A `stopTime` before
+    `startTime` is silently ignored, with `out` still firing. None of these
+    routes to `err`.
+14. **Silent no-ops everywhere.** `stop` and `stopAt` on a clip that is not
+    playing fire `out`; a restart drops the old `done` flows with no
+    notification. There is no "cancelled" signal for any of them; the only
+    way to know is to poll `isPlaying`.
+
+**Portability**
+
+15. **The no-autoplay rule is keyed on the presence of a graph, not on
+    animation usage.** An asset with an empty graph, or a graph that never
+    touches animations, still forbids autoplay. And an asset that lists the
+    extension in `extensionsUsed` but not `extensionsRequired` autoplays in a
+    viewer that ignores the extension and stays still in one that honors it.
+    The same file shows different content depending on viewer support.
+16. **The initial pose is not stated.** "MUST NOT play automatically" does
+    not say whether the displayed rest pose is the nodes' static TRS or frame
+    0 of some clip; viewers commonly differ on exactly this.
