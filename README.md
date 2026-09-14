@@ -134,6 +134,7 @@ node packages/conformance/dist/fuzz.js --seed 42 --count 500
 - [docs/design/op-registry.md](docs/design/op-registry.md) — the kernel op registry's shape and conventions.
 - [docs/design/asset-editing.md](docs/design/asset-editing.md) — `gltfi extract`/`gltfi apply`'s byte-preserving splice writer, the id round-trip contract, and the `compile --merge-into` deprecation note.
 - [docs/design/animation-playback.md](docs/design/animation-playback.md) — `animation/start|stop|stopAt` semantics per spec (infinite virtual timeline, state table, done-flow rules), the no-autoplay host rule, and this runtime's sampling gaps.
+- [docs/spec-feedback/khr-interactivity-animation.md](docs/spec-feedback/khr-interactivity-animation.md) — filing-ready issues for Khronos on the spec's animation control section (text defects, underspecification, design gaps).
 
 ## License
 
