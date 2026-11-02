@@ -1,6 +1,6 @@
 {
   "name": "gltf-interactivity",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "KHR_interactivity glTF graph <-> code transpiler: decompile graphs to TypeScript/Lua/Python/C#/GDScript, compile them back, verify, and run them.",
   "keywords": ["gltf", "khr_interactivity", "interactivity", "transpiler", "decompiler", "behavior-graph", "3d", "cli"],
   "license": "MIT",
