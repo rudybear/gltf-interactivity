@@ -24,12 +24,14 @@
     "conf:roundtrip-cs": "node packages/conformance/dist/run-roundtrip-cs.js",
     "conf:roundtrip-gd": "node packages/conformance/dist/run-roundtrip-gd.js",
     "fuzz": "node packages/conformance/dist/fuzz.js",
+    "pack:npm": "pnpm build && node scripts/pack-npm.mjs",
     "test": "vitest run --passWithNoTests",
     "dev": "pnpm --filter @gltfi/viewer dev",
     "smoke": "node scripts/render-verify.mjs"
   },
   "devDependencies": {
     "@types/node": "^22",
+    "esbuild": "0.23.1",
     "puppeteer-core": "^25.4.0",
     "typescript": "^5.5.4",
     "vitest": "^2.0.0"

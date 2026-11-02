@@ -1,0 +1,46 @@
+{
+  "name": "gltf-interactivity",
+  "version": "0.1.0",
+  "description": "KHR_interactivity glTF graph <-> code transpiler: decompile graphs to TypeScript/Lua/Python/C#/GDScript, compile them back, verify, and run them.",
+  "keywords": ["gltf", "khr_interactivity", "interactivity", "transpiler", "decompiler", "behavior-graph", "3d", "cli"],
+  "license": "MIT",
+  "author": "rudybear",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rudybear/gltf-interactivity.git",
+    "directory": "npm/gltf-interactivity"
+  },
+  "homepage": "https://github.com/rudybear/gltf-interactivity#readme",
+  "bugs": {
+    "url": "https://github.com/rudybear/gltf-interactivity/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "bin": {
+    "gltfi": "dist/cli.js"
+  },
+  "files": ["dist", "src", "types", "README.md", "LICENSE"],
+  "exports": {
+    ".": { "types": "./types/index.d.ts", "default": "./dist/index.js" },
+    "./ir": { "types": "./types/ir/index.d.ts", "default": "./dist/ir.js" },
+    "./gltf": { "types": "./types/gltf/index.d.ts", "default": "./dist/gltf.js" },
+    "./verify": { "types": "./types/verify/index.d.ts", "default": "./dist/verify.js" },
+    "./runtime": { "types": "./types/runtime/index.d.ts", "default": "./dist/runtime.js" },
+    "./runtime/node": { "types": "./types/runtime/node.d.ts", "default": "./dist/runtime-node.js" },
+    "./emit/ts": { "types": "./types/emit-ts/index.d.ts", "default": "./dist/emit-ts.js" },
+    "./emit/lua": { "types": "./types/emit-lua/index.d.ts", "default": "./dist/emit-lua.js" },
+    "./emit/py": { "types": "./types/emit-py/index.d.ts", "default": "./dist/emit-py.js" },
+    "./emit/cs": { "types": "./types/emit-cs/index.d.ts", "default": "./dist/emit-cs.js" },
+    "./emit/gd": { "types": "./types/emit-gd/index.d.ts", "default": "./dist/emit-gd.js" },
+    "./parse/ts": { "types": "./types/parse-ts/index.d.ts", "default": "./dist/parse-ts.js" },
+    "./parse/lua": { "types": "./types/parse-lua/index.d.ts", "default": "./dist/parse-lua.js" },
+    "./parse/py": { "types": "./types/parse-py/index.d.ts", "default": "./dist/parse-py.js" },
+    "./parse/cs": { "types": "./types/parse-cs/index.d.ts", "default": "./dist/parse-cs.js" },
+    "./parse/gd": { "types": "./types/parse-gd/index.d.ts", "default": "./dist/parse-gd.js" },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {}
+}

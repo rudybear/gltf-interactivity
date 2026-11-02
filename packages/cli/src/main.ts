@@ -505,7 +505,14 @@ function cmdConform(argv: string[]): void {
   if (!runnerFile) {
     fail(`conform: unknown target "${target}" (expected one of: ${Object.keys(CONFORM_RUNNERS).join(", ")})`);
   }
-  const pkgJsonPath = createRequire(import.meta.url).resolve("@gltfi/conformance/package.json");
+  let pkgJsonPath: string;
+  try {
+    pkgJsonPath = createRequire(import.meta.url).resolve("@gltfi/conformance/package.json");
+  } catch {
+    // The npm-published bundle does not ship the conformance runners (they
+    // need the Khronos test assets fetched into a repo checkout's external/).
+    fail("conform: only available from a gltf-interactivity repo checkout (needs the Khronos test assets); see https://github.com/rudybear/gltf-interactivity");
+  }
   const runnerPath = path.join(path.dirname(pkgJsonPath), "dist", runnerFile);
   const result = spawnSync(process.execPath, [runnerPath, ...rest], { stdio: "inherit" });
   process.exitCode = result.status ?? 1;

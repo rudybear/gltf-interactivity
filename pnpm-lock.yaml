@@ -11,6 +11,9 @@ importers:
       '@types/node':
         specifier: ^22
         version: 22.20.1
+      esbuild:
+        specifier: 0.23.1
+        version: 0.23.1
       puppeteer-core:
         specifier: ^25.4.0
         version: 25.4.0
