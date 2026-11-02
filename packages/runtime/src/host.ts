@@ -2,7 +2,7 @@
 // bubbling and dirty tracking for a scene renderer. Ported from the browser
 // fork's runtime/index.ts; adjusted to import the core's own Graph type
 // instead of a host-app-specific KHR_interactivity parser type.
-import { advanceTime, createRuntime, executeFlow, type Graph, type RuntimeGraph, type Value } from "./interpreter.js";
+import { advanceTime, createRuntime, executeFlow, normalizeGraph, type Graph, type RuntimeGraph, type Value } from "./interpreter.js";
 
 export type InteractivityEvent =
   | { type: "pointermove"; x: number; y: number }
@@ -70,11 +70,11 @@ export class InteractivityRuntime {
   private eventNodes: Map<string, number[]> = new Map();
   private dirty = false;
 
-  constructor(graph: Graph, gltf: unknown, binary?: Uint8Array | ArrayBuffer | null) {
+  constructor(graph: Partial<Graph>, gltf: unknown, binary?: Uint8Array | ArrayBuffer | null) {
     if (!graph) {
       throw new Error("Missing KHR_interactivity graph.");
     }
-    this.graph = graph;
+    this.graph = normalizeGraph(graph);
     this.runtime = createRuntime(this.graph, gltf, {
       onPointerSet: (pointer, value) => {
         this.adapter?.applyPointer(pointer, value);

@@ -10,3 +10,5 @@ packages/runtime-cs/src/cs/bin/
 packages/runtime-cs/src/cs/obj/
 __pycache__/
 build/
+
+npm/runtime/LICENSE

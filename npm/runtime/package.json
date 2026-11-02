@@ -1,0 +1,50 @@
+{
+  "name": "@gltfi/runtime",
+  "version": "0.1.0",
+  "description": "Reference interpreter for glTF KHR_interactivity behavior graphs (browser-safe, zero dependencies).",
+  "keywords": [
+    "gltf",
+    "khr_interactivity",
+    "interactivity",
+    "interpreter",
+    "behavior-graph",
+    "3d"
+  ],
+  "license": "MIT",
+  "author": "rudybear",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rudybear/gltf-interactivity.git",
+    "directory": "npm/runtime"
+  },
+  "homepage": "https://github.com/rudybear/gltf-interactivity/tree/main/npm/runtime#readme",
+  "bugs": {
+    "url": "https://github.com/rudybear/gltf-interactivity/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js",
+      "default": "./dist/node.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node ../../scripts/build-npm-runtime.mjs",
+    "test:dist": "vitest run --config vitest.dist.config.ts"
+  }
+}

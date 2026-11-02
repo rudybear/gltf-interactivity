@@ -27,7 +27,8 @@
     "pack:npm": "pnpm build && node scripts/pack-npm.mjs",
     "test": "vitest run --passWithNoTests",
     "dev": "pnpm --filter @gltfi/viewer dev",
-    "smoke": "node scripts/render-verify.mjs"
+    "smoke": "node scripts/render-verify.mjs",
+    "test:dist": "pnpm -C npm/runtime build && vitest run --config npm/runtime/vitest.dist.config.ts"
   },
   "devDependencies": {
     "@types/node": "^22",

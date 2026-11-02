@@ -1,4 +1,4 @@
-// Stages and packs the two npm tarballs this repo publishes (never publishes —
+// Stages and packs the three npm tarballs this repo publishes (never publishes —
 // run `npm publish` by hand from build/npm/<pkg> or on the .tgz).
 //
 //   gltf-interactivity   the `gltfi` CLI + tooling libraries (ir, gltf, verify,
@@ -6,6 +6,9 @@
 //                        splitting. Only ts-morph / luaparse stay external.
 //   @gltfi/runtime-lib   the dependency-free runtime compiled engines import
 //                        (kernel inlined).
+//   @gltfi/runtime       the reference interpreter + host for browser viewers
+//                        (kernel inlined, one unminified ES2020 file; built
+//                        by scripts/build-npm-runtime.mjs).
 //
 // The workspace packages are NOT restructured: checked-in templates live in
 // npm/<pkg>/{package.json,README.md}; this script copies them into
@@ -19,36 +22,11 @@ import { builtinModules } from "node:module";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { repo, pk, read, readJson, die as die_, resetDir, copyTree } from "./npm-shared.mjs";
+import { buildRuntimeDist } from "./build-npm-runtime.mjs";
 
-const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.join(repo, "build/npm");
-const pk = (name) => path.join(repo, "packages", name);
-const read = (p) => fs.readFileSync(p, "utf8");
-const readJson = (p) => JSON.parse(read(p));
-
-function die(msg) {
-  console.error(`pack-npm: ${msg}`);
-  process.exit(1);
-}
-
-function resetDir(dir) {
-  fs.rmSync(dir, { recursive: true, force: true });
-  fs.mkdirSync(dir, { recursive: true });
-}
-
-// Recursive copy with a per-entry filter (relative path, isDirectory) -> bool.
-function copyTree(src, dst, keep = () => true, rel = "") {
-  fs.mkdirSync(dst, { recursive: true });
-  for (const ent of fs.readdirSync(src, { withFileTypes: true })) {
-    const r = rel ? `${rel}/${ent.name}` : ent.name;
-    if (!keep(r, ent.isDirectory())) continue;
-    const s = path.join(src, ent.name);
-    const d = path.join(dst, ent.name);
-    if (ent.isDirectory()) copyTree(s, d, keep, r);
-    else fs.copyFileSync(s, d);
-  }
-}
+const die = (msg) => die_(msg, "pack-npm");
 
 const isBuiltin = (spec) => spec.startsWith("node:") || builtinModules.includes(spec);
 const pkgNameOf = (spec) => (spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0]);
@@ -250,7 +228,17 @@ async function packRuntimeLib() {
   return pack(stage, "@gltfi/runtime-lib");
 }
 
+// ------------------------------------------------------------ runtime
+// Staging copy of npm/runtime (the package also builds in place there, via
+// its own `npm run build`); both use the same buildRuntimeDist.
+async function packRuntime() {
+  const stage = stageCommon("runtime");
+  await buildRuntimeDist(path.join(stage, "dist"));
+  return pack(stage, "@gltfi/runtime");
+}
+
 fs.mkdirSync(out, { recursive: true });
 for (const f of fs.readdirSync(out)) if (f.endsWith(".tgz")) fs.rmSync(path.join(out, f));
 await packTooling();
 await packRuntimeLib();
+await packRuntime();

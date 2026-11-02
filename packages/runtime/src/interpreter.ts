@@ -171,16 +171,47 @@ export type ExecuteOptions = {
   tickStep?: number;
 };
 
+// Picks the graph the extension designates as the default: the spec's
+// `extensions.KHR_interactivity.graph` index ("implicitly zero" when absent;
+// the extension object is invalid if it is not a non-negative integer below
+// graphs.length). Returns the element of the input JSON as-is (never mutates
+// or copies it); createRuntime / InteractivityRuntime normalize it themselves.
 export function resolveGraph(gltf: any): Graph {
   const inter = gltf.extensions?.KHR_interactivity;
   if (!inter) {
     throw new Error("Missing KHR_interactivity.");
   }
-  const graph = inter.graphs?.[0] as Graph;
+  const graphs = inter.graphs;
+  if (!Array.isArray(graphs) || graphs.length === 0) {
+    throw new Error("Missing graph.");
+  }
+  const index = inter.graph === undefined ? 0 : inter.graph; // explicit null is invalid, not "absent"
+  if (!Number.isInteger(index) || index < 0 || index >= graphs.length) {
+    throw new Error(
+      `Invalid KHR_interactivity.graph ${JSON.stringify(index)}: must be a non-negative integer less than graphs.length (${graphs.length}).`
+    );
+  }
+  const graph = graphs[index] as Graph;
   if (!graph) {
     throw new Error("Missing graph.");
   }
   return graph;
+}
+
+// Khronos' graph.schema.json has no required properties and every array has
+// minItems: 1, so a legal graph omits an empty types/variables/events/
+// declarations/nodes array. Everything downstream indexes these unchecked, so
+// the entry points (createRuntime, InteractivityRuntime) call this once and
+// work on the result. Returns a NEW shallow copy; the input is never mutated.
+export function normalizeGraph(graph: Partial<Graph>): Graph {
+  return {
+    ...graph,
+    types: graph.types ?? [],
+    variables: graph.variables ?? [],
+    events: graph.events ?? [],
+    declarations: graph.declarations ?? [],
+    nodes: graph.nodes ?? []
+  };
 }
 
 // Thin wrappers over @gltfi/kernel's animation.ts (see that module's header
@@ -2511,7 +2542,7 @@ export function compareValues(expected: Array<number | boolean>, actual: Value, 
 }
 
 export function createRuntime(
-  graph: Graph,
+  inputGraph: Partial<Graph>,
   gltf: any,
   options: {
     onPointerSet?: RuntimeGraph["onPointerSet"];
@@ -2522,6 +2553,7 @@ export function createRuntime(
     binary?: Uint8Array | ArrayBuffer | null;
   } = {}
 ): RuntimeGraph {
+  const graph = normalizeGraph(inputGraph);
   const variables = graph.variables.map((variable) => {
     const signature = graph.types[variable.type]?.signature ?? "float";
     if (!Array.isArray(variable.value)) {
