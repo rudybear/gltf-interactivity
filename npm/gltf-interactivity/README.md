@@ -4,6 +4,18 @@ Transpiler between [`KHR_interactivity`](https://github.com/KhronosGroup/glTF/tr
 
 Requires Node >= 22.
 
+## Install
+
+```
+npm i gltf-interactivity                  # runtime, ir, gltf, verify, emit/*, parse/{py,cs,gd}
+npm i gltf-interactivity ts-morph         # + TypeScript parsing (parse/ts; CLI compile/apply/roundtrip with ts)
+npm i gltf-interactivity luaparse         # + Lua parsing (parse/lua; CLI --lang lua apply/roundtrip)
+```
+
+`ts-morph` (^23) and `luaparse` (^0.3.1) are *optional peer dependencies*: they are only needed to parse TypeScript / Lua, so installing the package for the runtime, IR or verifier does not pull in a TypeScript compiler. `gltfi decompile` / `extract` need neither. If a parser peer is missing, the CLI prints `this command needs the optional peer dependency ts-morph` and exits 1. When importing `gltf-interactivity/parse/ts` or `gltf-interactivity/parse/lua` as a library without the peer installed, the import itself fails with `ERR_MODULE_NOT_FOUND` for that package; no other entry point loads them.
+
+The `./runtime` entries re-export [`@gltfi/runtime`](https://www.npmjs.com/package/@gltfi/runtime), which is a regular dependency (the CLI uses it too, so there is a single interpreter implementation).
+
 ## CLI
 
 ```
@@ -25,7 +37,7 @@ The `gltfi conform` subcommand (Khronos conformance runners) is only available f
 
 | Language | Emit | Parse (`apply`, `roundtrip`) |
 |---|---|---|
-| ts, lua, gd | none | none (pure JS; no extra tools) |
+| ts, lua, gd | none | none beyond the optional peers `ts-morph` (ts) / `luaparse` (lua); gd is pure JS |
 | py | none | `python3` on PATH |
 | cs | none | .NET 8 SDK (`dotnet` on PATH); the C# AST harness is built into the package's `src/cs/bin` on first use, so that directory must be writable |
 
@@ -46,11 +58,11 @@ import { createRuntime } from "gltf-interactivity/runtime";
 |---|---|
 | `.` | re-exports `ir`, `gltf` and `verify` |
 | `./ir`, `./gltf`, `./verify` | graph IR + import/export, glTF/GLB container + splice, graph validation |
-| `./runtime`, `./runtime/node` | reference interpreter (the `node` entry adds GLB file loading) |
+| `./runtime`, `./runtime/node` | re-exports of `@gltfi/runtime` / `@gltfi/runtime/node` (reference interpreter; `node` adds GLB file loading) |
 | `./emit/{ts,lua,py,cs,gd}` | IR to source |
-| `./parse/{ts,lua,py,cs,gd}` | source to IR |
+| `./parse/{ts,lua,py,cs,gd}` | source to IR (`ts` needs the `ts-morph` peer, `lua` the `luaparse` peer) |
 
-Runtime dependencies: `ts-morph` (TypeScript parsing) and `luaparse` (Lua parsing).
+Dependency: `@gltfi/runtime`. Optional peers: `ts-morph`, `luaparse`.
 
 Compiled engines (the output of `decompile`) import their runtime from [`@gltfi/runtime-lib`](https://www.npmjs.com/package/@gltfi/runtime-lib).
 

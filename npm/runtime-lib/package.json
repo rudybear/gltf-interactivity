@@ -1,6 +1,6 @@
 {
   "name": "@gltfi/runtime-lib",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Dependency-free runtime that compiled KHR_interactivity engines import (createEngine, m).",
   "keywords": [
     "gltf",
@@ -29,6 +29,7 @@
     "dist",
     "types",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "exports": {
