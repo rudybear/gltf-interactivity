@@ -44,6 +44,24 @@ const runtime = createInteractivityRuntimeFromGlbFile("scene.glb");
 
 Re-exports everything from the main entry (the same single copy, so `instanceof` works across both) and adds `node:fs`-based GLB loading (`createRuntimeFromGlbFile`, `createInteractivityRuntimeFromGlbFile`, `evaluateTest`, `debugRun`). Browser code should import only the package root, which never touches `node:fs`.
 
+## Several assets in one session (inter-GLB events)
+
+Custom events whose `id` does not start with `_` are public. Join several runtimes to one `EventBus` and they are forwarded between assets:
+
+```js
+import { EventBus, InteractivityRuntime } from "@gltfi/runtime";
+
+const bus = new EventBus();
+const a = new InteractivityRuntime(graphA, gltfA);
+const b = new InteractivityRuntime(graphB, gltfB);
+a.joinEventBus(bus, "A");
+b.joinEventBus(bus, "B"); // join everything before calling start()
+a.start();
+b.start();
+```
+
+An `event/send` in one runtime also triggers the `event/receive` nodes of every other joined runtime that declares the same event `id` with compatible value sockets (the receiver's sockets must exist in the sender with the same types). Delivery is synchronous in the same tick, after the sender's own receivers, in join order; events sent from inside a delivery are queued and delivered after it returns. `ref` values are forwarded verbatim, so a ref echoed back compares equal under `ref/eq`; a ref is not re-targeted to the receiving asset. `_`-prefixed and id-less events never leave their graph. The KHR_interactivity spec leaves all of this application-specific; these rules follow the corpus's `InterGlb/README.md`. `joinEventBus` returns a function that leaves the bus; without a bus nothing changes.
+
 ## License
 
 MIT

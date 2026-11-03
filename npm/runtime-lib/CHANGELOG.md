@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `createEngine` options `eventBus` / `eventBusName` and `engine.leaveEventBus()`: compiled engines can join an `EventBus` (from `@gltfi/kernel` / `@gltfi/runtime`) and exchange public custom events (ids not starting with `_`) with other engines, compiled or interpreted. No effect without `eventBus`.
+
 ## 0.1.1
 
 - Animation sampling: full accessor decoding (normalized / byteStride / sparse), CUBICSPLINE Hermite interpolation, per-accessor decode cache and binary-search keyframe lookup.

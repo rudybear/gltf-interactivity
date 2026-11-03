@@ -55,7 +55,7 @@ async function buildJs(dist) {
   const toMainEntry = {
     name: "to-main-entry",
     setup(b) {
-      b.onResolve({ filter: /^\.\/(interpreter|host)\.js$/ }, () => ({ path: "./index.js", external: true }));
+      b.onResolve({ filter: /^\.\/(interpreter|host|event-bus)\.js$/ }, () => ({ path: "./index.js", external: true }));
     }
   };
   const node = await build({

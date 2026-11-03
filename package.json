@@ -14,6 +14,7 @@
     "check:registry": "node packages/kernel/scripts/check-registry.mjs",
     "conf:interp": "node packages/conformance/dist/run-interp.js",
     "conf:compiled": "node packages/conformance/dist/run-compiled.js",
+    "conf:interglb": "node packages/conformance/dist/run-interglb.js",
     "conf:lua": "node packages/conformance/dist/run-compiled-lua.js",
     "conf:py": "node packages/conformance/dist/run-compiled-py.js",
     "conf:cs": "node packages/conformance/dist/run-compiled-cs.js",

@@ -26,6 +26,9 @@ import {
   type ActiveCamera,
   applyAnimationAt,
   createScheduler,
+  EventBus,
+  isPublicEventId,
+  type EventBusMember,
   doNAdvance,
   isValidInterpolation,
   multiGateAdvance,
@@ -99,6 +102,13 @@ export type EngineOptions = {
   // packages/conformance (judgeTest reads variables directly, never the
   // gltf clone).
   onPointerSet?: (pointer: string, value: number[] | boolean[] | number | boolean) => void;
+  // Cross-asset event bus (see @gltfi/kernel's event-bus.ts for the
+  // forwarding rules): when set, the engine joins it on construction so its
+  // public (non-"_") custom events reach the other joined graphs and vice
+  // versa. Absent => behavior is unchanged. `leaveEventBus()` on the returned
+  // engine leaves it again.
+  eventBus?: EventBus;
+  eventBusName?: string;
 };
 // KHR_node_selectability / KHR_node_hoverability entry points, additive
 // beyond the conformance-oriented EngineLike surface (the official corpus's
@@ -110,6 +120,8 @@ export type EngineOptions = {
 // function return), so EngineFactory below widening to this doesn't disturb
 // any existing EngineLike-typed caller (run-compiled.ts, protocol.ts).
 export interface EngineInteractive extends EngineLike {
+  // Leave the EngineOptions.eventBus this engine joined (no-op without one).
+  leaveEventBus(): void;
   // Ancestor-chain bubbling from `nodeIndex` (the actual hit node) up to the
   // scene root, deepest first — mirrors host.ts's triggerNodeEvent exactly,
   // including the same (new, symmetric) stopPropagation short-circuit: once
@@ -420,6 +432,7 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
     // Mirrors host.ts's InteractivityRuntime.lastHoverIndex.
     let hoverIndex = -1;
     const sentEvents: SentEvent[] = [];
+    let busPublish: ((eventIndex: number, payload: EventPayload) => void) | undefined;
     const eventOutRegisters = new Map<string, unknown>();
     // Last-sent payload per event index — mirrors interpreter.ts's
     // `runtime.eventPayloads` (a persistent Map, distinct from the
@@ -644,6 +657,7 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
           handler(payload);
         }
         stoppedEvents.delete(eventRef);
+        busPublish?.(eventIndex, payload);
       },
       log() {
         // debug/log has no effect on pass/fail (the interpreter's own
@@ -872,7 +886,76 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
 
     setup(rt);
 
+    // --- optional cross-asset event bus membership (see EngineOptions) ---
+    let leaveBus: (() => void) | undefined;
+    if (options.eventBus) {
+      const bus = options.eventBus;
+      const indexById = (id: string): number => eventDecls.findIndex((d) => d.externalId === id);
+      // Declared value sockets of an event, in payload-tuple order: the four
+      // standard ones iff declared, then the extras.
+      const sockets = (decl: EventDecl): Array<{ key: string; slot: number; type: ValueType }> => {
+        const out: Array<{ key: string; slot: number; type: ValueType }> = [];
+        if (decl.defaultBool !== undefined) out.push({ key: "boolParameter", slot: 0, type: "bool" });
+        if (decl.defaultInt !== undefined) out.push({ key: "intParameter", slot: 1, type: "int" });
+        if (decl.defaultFloat !== undefined) out.push({ key: "floatParameter", slot: 2, type: "float" });
+        if (decl.expectedDuration !== undefined) out.push({ key: "expectedDuration", slot: 3, type: "float" });
+        Object.keys(decl.extras ?? {}).forEach((key, i) => out.push({ key, slot: 4 + i, type: (decl.extras as Record<string, VarDecl>)[key].type }));
+        return out;
+      };
+      const member: EventBusMember = {
+        name: options.eventBusName,
+        listeningSockets(id) {
+          const index = indexById(id);
+          if (index < 0 || (onReceiveHandlers.get(index)?.length ?? 0) === 0) {
+            return undefined;
+          }
+          const result: Record<string, string> = {};
+          for (const socket of sockets(eventDecls[index])) result[socket.key] = socket.type;
+          return result;
+        },
+        receive(id, values) {
+          const index = indexById(id);
+          if (index < 0) {
+            return;
+          }
+          const payload = defaultEventPayload(eventDecls[index]);
+          for (const socket of sockets(eventDecls[index])) {
+            const value = values[socket.key];
+            if (value) {
+              payload[socket.slot] = kernelValueToRaw(socket.type, value);
+            }
+          }
+          lastPayloadByIndex.set(index, payload);
+          const eventRef = `event:custom:${index}`;
+          stoppedEvents.delete(eventRef);
+          for (const handler of onReceiveHandlers.get(index) ?? []) {
+            if (stoppedEvents.has(eventRef)) {
+              break;
+            }
+            handler(payload);
+          }
+          stoppedEvents.delete(eventRef);
+        }
+      };
+      leaveBus = bus.join(member);
+      busPublish = (eventIndex, payload) => {
+        const decl = eventDecls[eventIndex];
+        if (!decl || !isPublicEventId(decl.externalId)) {
+          return;
+        }
+        const values: Record<string, Value> = {};
+        for (const socket of sockets(decl)) {
+          values[socket.key] = rawToKernelValue(socket.type, payload[socket.slot] as RawValue);
+        }
+        bus.publish(member, decl.externalId, values);
+      };
+    }
+
     return {
+      leaveEventBus() {
+        leaveBus?.();
+        busPublish = undefined;
+      },
       start() {
         for (const handler of onStartHandlers) {
           handler();

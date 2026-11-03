@@ -135,6 +135,9 @@ export type RuntimeGraph = {
   trace?: number[];
   onPointerSet?: (pointer: string, value: number[] | boolean[] | number | boolean) => void;
   onDirty?: () => void;
+  // Cross-asset event bus hook (see event-bus.ts in this package): called
+  // after a graph's own receivers ran for an event/send. Unset => no effect.
+  onEventSent?: (eventIndex: number, payload: EventPayload) => void;
 };
 
 export type NodeState = {
@@ -2145,6 +2148,7 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
           executeFlow(runtime, receiverId, "in");
         }
         runtime.stoppedEvents.delete(eventRef);
+        runtime.onEventSent?.(eventIndex, payload);
       }
       runFlow(runtime, node, "out");
       break;

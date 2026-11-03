@@ -16,3 +16,4 @@
 export * from "./protocol.js";
 export * from "./interp-adapter.js";
 export * from "./assets.js";
+export * from "./protocol-group.js";

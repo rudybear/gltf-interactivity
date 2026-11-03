@@ -4,6 +4,7 @@
 // instead of a host-app-specific KHR_interactivity parser type.
 import { advanceTime, createRuntime, executeFlow, normalizeGraph, type Graph, type RuntimeGraph, type Value } from "./interpreter.js";
 import type { ActiveCameraProjection } from "@gltfi/kernel";
+import { joinEventBus, type EventBus } from "./event-bus.js";
 
 export type InteractivityEvent =
   | { type: "pointermove"; x: number; y: number }
@@ -87,6 +88,13 @@ export class InteractivityRuntime {
       binary
     });
     this.buildEventIndex();
+  }
+
+  // Join a cross-asset event bus (see event-bus.ts): public custom events
+  // sent by this graph reach the other joined graphs and vice versa. Returns
+  // a function that leaves the bus. Without a bus nothing changes.
+  joinEventBus(bus: EventBus, name?: string): () => void {
+    return joinEventBus(this.runtime, bus, name);
   }
 
   bindAdapter(adapter: SceneAdapter) {

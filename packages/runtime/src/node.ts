@@ -81,3 +81,4 @@ export function debugRun(glbPath: string, nodeId: number) {
   executeFlow(runtime, nodeId);
   return { variables: runtime.variables, trace: runtime.trace, gltf: runtime.gltf };
 }
+export * from "./event-bus.js";

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `gltf-interactivity/runtime` re-exports the new inter-asset `EventBus` / `joinEventBus` from `@gltfi/runtime`; `pnpm conf:interglb` covers the corpus `InterGlb/` tests.
+
 ## 0.3.0
 
 Packaging changes (the 0.2.0 install footprint was dominated by `ts-morph`/`typescript`, even for consumers that only use the runtime, IR or verifier).
