@@ -148,7 +148,8 @@ class Exporter {
   // comment for #20-1/GI210) — maps procId -> the pass-through
   // `flow/sequence` placeholder id allocated for that re-entrant call, so
   // the outer build can wire it to the proc's real entry once known.
-  private readonly procPassthrough = new Map<number, number>();
+  // procId -> synthetic custom-event index used to re-enter that proc (see getProcEntry).
+  private readonly procLoopEvent = new Map<number, number>();
   private readonly stateNodeId = new Map<number, number>();
   // #20-2 (GI208): which `async` setDelay IRStmt OBJECT currently "owns"
   // each delay state slot — see claimDelaySlot's doc comment.
@@ -198,6 +199,9 @@ class Exporter {
       // reaches JSON.stringify (see that function's own doc comment).
       value: formatValueArray(v.initial.data as Array<number | boolean | string>)
     }));
+    const loopEvents = [...this.procLoopEvent.entries()]
+      .sort((x, y) => x[1] - y[1])
+      .map(([procId]) => ({ id: `_gltfi_loop_${this.module.procs[procId]?.name ?? "proc"}_${procId}`, values: undefined }));
     const events = this.module.events.map((e) => ({
       id: e.id,
       values:
@@ -212,7 +216,7 @@ class Exporter {
     const graph: GraphJson = {
       types: nonEmpty(this.typeOrder.map((t) => ({ signature: t }))),
       variables: nonEmpty(variables),
-      events: nonEmpty(events),
+      events: nonEmpty([...events, ...loopEvents]),
       declarations: nonEmpty(this.declOrder.map((op) => ({ op }))),
       nodes: nonEmpty(nodes)
     };
@@ -345,22 +349,20 @@ class Exporter {
         this.error("GI210", `synchronous cycle building proc "${proc.name}"`);
         return { node: this.allocNode("flow/sequence", {}), socket: "in" };
       }
-      // Legal re-entrancy: allocate (once) a pass-through `flow/sequence`
-      // node to stand in as this proc's entry for the re-entrant caller —
-      // the OUTER build (still in progress on the call stack below this
-      // one) wires its own real first-body-node ref into the pass-through's
-      // `out` flow once it finishes, and `procEntry` keeps pointing at the
-      // pass-through permanently (this ref, already handed to the
-      // re-entrant caller, must stay stable). Only allocated the FIRST time
-      // this proc is re-entered (a proc's done-Cont could in principle
-      // reference itself more than once in its own body).
-      let passthroughId = this.procPassthrough.get(procId);
-      if (passthroughId === undefined) {
-        passthroughId = this.allocNode("flow/sequence", {});
-        this.procPassthrough.set(procId, passthroughId);
-        this.procEntry.set(procId, { node: passthroughId, socket: "in" });
+      // Legal re-entrancy through an async `done` continuation. The spec
+      // forbids flow cycles (nodes must form a DAG; flows point forward), so
+      // the re-entry is lowered to a private custom event: an `event/send`
+      // here and an `event/receive` rooted at the proc's real entry (wired
+      // once the outer build finishes). Custom events are the spec's own
+      // mechanism for "creating asynchronous loops"; the send happens at the
+      // exact point the back-edge would have jumped, and the `_`-prefixed id
+      // keeps the event private to this graph.
+      let loopEvent = this.procLoopEvent.get(procId);
+      if (loopEvent === undefined) {
+        loopEvent = this.module.events.length + this.procLoopEvent.size;
+        this.procLoopEvent.set(procId, loopEvent);
       }
-      return { node: passthroughId, socket: "in" };
+      return { node: this.allocNode("event/send", { event: this.cfgInt(loopEvent) }), socket: "in" };
     }
     this.procBuilding.add(procId);
     const items = flattenStmts([proc.body]);
@@ -375,20 +377,12 @@ class Exporter {
       entry = built ?? { node: this.allocNode("flow/sequence", {}), socket: "in" };
     }
     this.procBuilding.delete(procId);
-    const passthroughId = this.procPassthrough.get(procId);
-    if (passthroughId !== undefined) {
-      // This build was legally re-entered above: wire the pass-through
-      // allocated at re-entrance time to the now-known real entry, and
-      // leave `procEntry` pointing at the pass-through (set at re-entrance,
-      // already handed out to that re-entrant caller) rather than
-      // overwriting it with `entry` — acyclic procs (the common case, where
-      // `procPassthrough` never gets an entry for this procId) are
-      // completely unaffected by this branch, keeping their export
-      // byte-identical to before this fix.
-      this.nodes.get(passthroughId)!.flows.out = entry;
-      this.procPassthrough.delete(procId);
-    } else {
-      this.procEntry.set(procId, entry);
+    this.procEntry.set(procId, entry);
+    const loopEvent = this.procLoopEvent.get(procId);
+    if (loopEvent !== undefined) {
+      // This build was re-entered above: root the private loop event's receiver at the real entry.
+      const recv = this.allocNode("event/receive", { event: this.cfgInt(loopEvent) });
+      this.nodes.get(recv)!.flows.out = entry;
     }
     return this.procEntry.get(procId)!;
   }
@@ -985,22 +979,13 @@ class Exporter {
     const ids = [...this.nodes.keys()].sort((a, b) => a - b);
     const indeg = new Map<number, number>();
     const succ = new Map<number, number[]>();
-    // Per-node incoming-edge list WITH kind, so a stall (see below) can tell
-    // a legal flow back-edge (#20-1's self-continuation pass-through) apart
-    // from a genuine value-only cycle — value edges alone are never legally
-    // cyclic (a value can't depend on its own not-yet-computed result), but
-    // a flow edge simply means "this node runs after that one", which a
-    // real runtime loop (setDelay rescheduling itself) legitimately forms.
-    const incoming = new Map<number, Array<{ from: number; kind: "value" | "flow" }>>();
     for (const id of ids) {
       indeg.set(id, 0);
       succ.set(id, []);
-      incoming.set(id, []);
     }
     const addEdge = (from: number, to: number, kind: "value" | "flow") => {
       succ.get(from)!.push(to);
       indeg.set(to, (indeg.get(to) ?? 0) + 1);
-      incoming.get(to)!.push({ from, kind });
     };
     for (const id of ids) {
       const b = this.nodes.get(id)!;
@@ -1022,27 +1007,12 @@ class Exporter {
     let valueOnlyStall = false;
     while (orderedIds.length < ids.length) {
       if (ready.length === 0) {
-        // Stalled with nodes remaining. Ordinary (acyclic) graphs NEVER
-        // reach this branch — their ready queue only empties once every
-        // node is placed — so this is unreached, and output byte-identical,
-        // for every graph this exporter handled before #20-1. Find the
-        // smallest-placeholder-id remaining node that has at least one
-        // still-unsatisfied FLOW predecessor and force it into the ready
-        // queue, breaking just enough of the cycle to keep going — this is
-        // safe specifically because flow-edge order here is a readability
-        // nicety (close to source order), not a spec requirement: nodes
-        // reference each other by absolute index in the final `nodes[]`
-        // array regardless of array position. Only when NO remaining node
-        // has a flow-edge escape (a cycle built entirely of value edges,
-        // which IS a genuine error — a value can't depend on its own
-        // not-yet-computed result) does this fall through to GI210 below.
-        const remaining = ids.filter((id) => !finalIndex.has(id));
-        const forced = remaining.find((id) => (incoming.get(id) ?? []).some((e) => e.kind === "flow" && !finalIndex.has(e.from)));
-        if (forced === undefined) {
-          valueOnlyStall = true;
-          break;
-        }
-        ready.push(forced);
+        // Stalled with nodes remaining: the constraint graph has a cycle.
+        // Re-entrant async procs are lowered to private events (see
+        // getProcEntry), so any remaining cycle (value or flow) is a genuine
+        // error: the spec requires a DAG with forward-only flows.
+        valueOnlyStall = true;
+        break;
       }
       ready.sort((a, b) => a - b);
       const id = ready.shift()!;
@@ -1056,7 +1026,7 @@ class Exporter {
       }
     }
     if (orderedIds.length !== ids.length) {
-      if (valueOnlyStall) {
+      if (valueOnlyStall && !this.diagnostics.some((d) => d.severity === "error")) {
         this.error("GI210", "cyclic constraint graph while assigning graph node indices (value/flow ordering conflict)");
       }
       // Fall back to placeholder order for any remaining (cyclic) nodes so

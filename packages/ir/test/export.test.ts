@@ -10,6 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createRuntimeFromGlbFile } from "@gltfi/runtime/node";
+import { validateGraphObject } from "@gltfi/kernel";
 import { exportGraph } from "../src/export.js";
 import { importGraph, type Graph, type IRModule } from "../src/index.js";
 import type { Diagnostic, IRExpr } from "../src/model.js";
@@ -115,6 +116,11 @@ describe("exportGraph - full corpus (full corpus)", () => {
           failures.push(`${entry.name}: node ${i} has out-of-range declaration ${node.declaration}`);
         }
       });
+
+      const kv = validateGraphObject(graph);
+      if (!kv.ok) {
+        failures.push(`${entry.name}: kernel validation rejected the exported graph: ${JSON.stringify(kv).slice(0, 400)}`);
+      }
 
       const backward = checkValueBackward(graph);
       if (backward.length > 0) {
@@ -488,27 +494,50 @@ describe("exportGraph - proc self-continuation via async done (#20-1 GI210 regre
     expect(diagnostics, JSON.stringify(diagnostics)).toEqual([]);
     expect(checkValueBackward(graph)).toEqual([]);
     expect(declDedupErrors(graph)).toEqual([]);
-    // The whole point of the fix: the exported graph really does contain
-    // the self-continuation's flow back-edge (pass-through "out" -> setDelay,
-    // setDelay "done" -> pass-through) rather than a disconnected
-    // placeholder standing in for a rejected cycle.
-    expect(hasFlowCycle(graph)).toBe(true);
+    // The spec forbids flow cycles, so the self-continuation is lowered to a private
+    // custom event (event/send -> event/receive) instead of a flow back-edge.
+    expect(hasFlowCycle(graph)).toBe(false);
+    expect(validateGraphObject(graph).ok).toBe(true);
+    expect(graph.nodes!.some((n) => n.declaration !== undefined && graph.declarations![n.declaration].op === "event/send")).toBe(true);
+    expect(graph.events!.some((e) => e.id!.startsWith("_"))).toBe(true);
 
-    // The exported graph deliberately contains a flow back-edge (the IR can express a self-rescheduling proc); the spec forbids flow
-    // cycles (Node Object Validation 11), so strict load-time validation rejects it. Re-import it unvalidated to test the round trip.
-    const { module: reimported, diagnostics: importDiags } = importGraph(graph as unknown as Graph, { validate: false });
+    const { module: reimported, diagnostics: importDiags } = importGraph(graph as unknown as Graph);
     expect(importDiags.filter((d) => d.severity === "error"), JSON.stringify(importDiags)).toEqual([]);
 
     const { graph: reexported, diagnostics: reexportDiags } = exportGraph(reimported);
     expect(reexportDiags, JSON.stringify(reexportDiags)).toEqual([]);
     expect(checkValueBackward(reexported)).toEqual([]);
     expect(declDedupErrors(reexported)).toEqual([]);
-    // Equivalence signal (see this describe block's own comment on why a
-    // full @gltfi/verify equivalentGraphs check isn't available here): the
-    // re-exported graph still contains a genuine self-continuation flow
-    // cycle, i.e. import->export preserved the legal loop rather than
-    // collapsing or rejecting it.
-    expect(hasFlowCycle(reexported)).toBe(true);
+    expect(hasFlowCycle(reexported)).toBe(false);
+  });
+
+  it("lowers mutual async re-entry (p -> q -> p) to private events and the graph passes kernel validation", () => {
+    const delay = (slot: number, done: number) => ({
+      k: "async" as const,
+      kind: "setDelay" as const,
+      slot: { slot },
+      args: [{ k: "const" as const, type: "float" as const, data: [0.25] }],
+      done: { kind: "proc" as const, procId: done }
+    });
+    const module: IRModule = {
+      variables: [],
+      events: [],
+      stateSlots: [
+        { name: "d0", kind: "delay", config: {} },
+        { name: "d1", kind: "delay", config: {} }
+      ],
+      procs: [
+        { id: 0, name: "p", body: { k: "seq", stmts: [delay(0, 1)] } },
+        { id: 1, name: "q", body: { k: "seq", stmts: [delay(1, 0)] } }
+      ],
+      handlers: [{ kind: "onStart", params: [{ name: "event", type: "ref" }], body: { k: "callProc", procId: 0 } }],
+      meta: { nameMaps: { variables: [], events: [], stateSlots: [], procs: [] }, sourceNodeIds: {} }
+    };
+    const { graph, diagnostics } = exportGraph(module);
+    expect(diagnostics, JSON.stringify(diagnostics)).toEqual([]);
+    expect(hasFlowCycle(graph)).toBe(false);
+    const v = validateGraphObject(graph);
+    expect(v.ok, JSON.stringify(v).slice(0, 500)).toBe(true);
   });
 
   it("does NOT affect an acyclic proc's export (no pass-through node, same shape as before this fix)", () => {
