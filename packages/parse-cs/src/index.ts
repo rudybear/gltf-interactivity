@@ -342,23 +342,24 @@ class ModuleParser {
     const varsClass = members.find((m) => isType(m, "ClassDeclaration") && m.Identifier === "Vars");
     const eventsClass = members.find((m) => isType(m, "ClassDeclaration") && m.Identifier === "Events");
     const buildMethod = members.find((m) => isType(m, "MethodDeclaration") && m.Identifier === "Build");
-    if (!varsClass) fail("GC101", moduleClass, "expected a nested `public sealed class Vars { ... }`");
-    if (!eventsClass) fail("GC102", moduleClass, "expected a nested `public static class Events { ... }`");
+    // The `Vars` / `Events` classes (and the `var V = new Vars(rt);` local)
+    // are each optional: absent means "none declared".
     if (!buildMethod) fail("GC100", moduleClass, "expected a `public static void Build(Engine rt) { ... }` method");
     this.checkBuildSignature(buildMethod);
 
-    const varNames = this.parseVarsClass(varsClass);
-    const eventNames = this.parseEventsClass(eventsClass);
+    const varNames = varsClass ? this.parseVarsClass(varsClass) : [];
+    const eventNames = eventsClass ? this.parseEventsClass(eventsClass) : [];
 
     const stmts = nodeList((buildMethod.Body as CsNode).Statements);
     let i = 0;
     i = this.parseVarDecls(stmts, i, varNames);
     i = this.parseEventDecls(stmts, i, eventNames);
 
-    if (!this.isVarsCtorStmt(stmts[i])) {
+    if (this.isVarsCtorStmt(stmts[i])) {
+      i += 1;
+    } else if (varsClass) {
       fail("GC105", stmts[i], "expected `var V = new Vars(rt);`");
     }
-    i += 1;
 
     while (i < stmts.length && this.tryRegisterStateSlot(stmts[i])) {
       i += 1;

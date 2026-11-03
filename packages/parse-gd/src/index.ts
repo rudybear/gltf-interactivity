@@ -469,8 +469,11 @@ class ModuleParser {
     };
     expectClassVar("m");
     expectClassVar("rt");
-    expectClassVar("V");
-    expectClassVar("E");
+    // `var V` / `var E` are optional (absent = no variables / no events declared).
+    for (const name of ["V", "E"]) {
+      const s = topStmts[i];
+      if (s && s.t === "classVar" && s.name === name) i += 1;
+    }
 
     const stateSlotNames: string[] = [];
     while (topStmts[i] && topStmts[i].t === "classVar") {
@@ -572,21 +575,21 @@ class ModuleParser {
 
     const s1 = bodyStmts[j];
     this.currentLine = s1?.line ?? this.currentLine;
+    // `V = rt.vars(...)` / `E = rt.events(...)` are each optional (absent =
+    // none declared).
     const varsCall = s1 && s1.t === "assign" && identName(s1.target) === "V" ? matchAttrCall(s1.value, "rt", "vars") : undefined;
-    if (!varsCall) {
-      this.fail("GG101", "expected `V = rt.vars([...])` as build()'s second statement");
+    if (varsCall) {
+      this.parseVars(varsCall.args[0]);
+      j += 1;
     }
-    this.parseVars(varsCall.args[0]);
-    j += 1;
 
     const s2 = bodyStmts[j];
     this.currentLine = s2?.line ?? this.currentLine;
     const eventsCall = s2 && s2.t === "assign" && identName(s2.target) === "E" ? matchAttrCall(s2.value, "rt", "events") : undefined;
-    if (!eventsCall) {
-      this.fail("GG102", "expected `E = rt.events([...])` as build()'s third statement");
+    if (eventsCall) {
+      this.parseEvents(eventsCall.args[0]);
+      j += 1;
     }
-    this.parseEvents(eventsCall.args[0]);
-    j += 1;
 
     for (const slotName of stateSlotNames) {
       const s = bodyStmts[j];

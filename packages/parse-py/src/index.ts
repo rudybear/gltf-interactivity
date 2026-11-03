@@ -377,19 +377,18 @@ class ModuleParser {
     const stmts = this.findFactoryBody(topStmts);
     let i = 0;
 
+    // Both preamble statements are optional (absent = none declared).
     const varsMatch = matchNamedCall(stmts[i], "vars");
-    if (!varsMatch) {
-      fail("GP101", stmts[i], "expected rt.vars([...]) as the first statement");
+    if (varsMatch) {
+      this.parseVars(varsMatch);
+      i += 1;
     }
-    this.parseVars(varsMatch);
-    i += 1;
 
     const eventsMatch = matchNamedCall(stmts[i], "events");
-    if (!eventsMatch) {
-      fail("GP102", stmts[i], "expected rt.events([...]) as the second statement");
+    if (eventsMatch) {
+      this.parseEvents(eventsMatch);
+      i += 1;
     }
-    this.parseEvents(eventsMatch);
-    i += 1;
 
     // State slots: `S = SimpleNamespace()` (only if the emitter had any to
     // emit — see emit.ts's emitStateSlots) followed by a run of
