@@ -325,3 +325,54 @@ describe("createEngine interpolation-kill semantics (task #10)", () => {
     expect(engine.getVariableByIndex(0)).toEqual({ type: "float", data: [1] });
   });
 });
+
+describe("createEngine setActiveCamera", () => {
+  const A = "/extensions/KHR_interactivity/activeCamera/";
+  function setup() {
+    const reads: Array<{ pos: number[]; q: number[]; yfov: number; ymag: number }> = [];
+    const factory = createEngine((rt) => {
+      rt.onTick(() => {
+        reads.push({
+          pos: rt.ptrGet(`${A}position`, "float3").value as number[],
+          q: rt.ptrGet(`${A}rotation`, "float4").value as number[],
+          yfov: rt.ptrGet(`${A}perspective/yfov`, "float").value as number,
+          ymag: rt.ptrGet(`${A}orthographic/ymag`, "float").value as number
+        });
+      });
+    });
+    return { reads, engine: factory({ gltf: {} }) };
+  }
+
+  it("reads NaN before any camera is set", () => {
+    const { reads, engine } = setup();
+    engine.start();
+    engine.advance(0.1);
+    const r = reads[reads.length - 1];
+    expect(r.pos.every(Number.isNaN)).toBe(true);
+    expect(r.yfov).toBeNaN();
+  });
+
+  it("updates between ticks, copies inputs, and NaNs absent projection parts", () => {
+    const { reads, engine } = setup();
+    engine.start();
+    const pos: [number, number, number] = [1, 2, 3];
+    const proj = { type: "perspective" as const, aspectRatio: 2, yfov: 0.5, znear: 0.1, zfar: 10 };
+    engine.setActiveCamera(pos, [0, 0, 0, 1], proj);
+    pos[0] = 99;
+    proj.yfov = 9;
+    engine.advance(0.1);
+    let r = reads[reads.length - 1];
+    expect(r.pos).toEqual([1, 2, 3]);
+    expect(r.q).toEqual([0, 0, 0, 1]);
+    expect(r.yfov).toBe(0.5);
+    expect(r.ymag).toBeNaN();
+    engine.setActiveCamera([4, 5, 6], [0, 1, 0, 0]);
+    engine.advance(0.1);
+    r = reads[reads.length - 1];
+    expect(r.pos).toEqual([4, 5, 6]);
+    expect(r.yfov).toBeNaN();
+    engine.setActiveCamera([4, 5, 6], [0, 1, 0, 0], { type: "orthographic", xmag: 1, ymag: 3, znear: 0, zfar: 1 });
+    engine.advance(0.1);
+    expect(reads[reads.length - 1].ymag).toBe(3);
+  });
+});

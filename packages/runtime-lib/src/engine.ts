@@ -24,6 +24,7 @@
 // doc comment below for the interpreter case it ports).
 import {
   type ActiveCamera,
+  type ActiveCameraProjection,
   applyAnimationAt,
   assertValidExtension,
   createScheduler,
@@ -148,6 +149,17 @@ export interface EngineInteractive extends EngineLike {
   // whatever this engine's own internal state already tracked); it does not
   // affect which handlers fire.
   fireHoverOut(nodeIndex?: number): void;
+  // Per-tick host feed for the `activeCamera/*` pointers — same signature and
+  // semantics as host.ts's InteractivityRuntime.setActiveCamera. Inputs are
+  // copied. `projection` is optional: when omitted (or null) the
+  // `activeCamera/perspective/*` and `activeCamera/orthographic/*` pointers
+  // read NaN. Before the first call, the EngineOptions.activeCamera value
+  // (or NaN when absent) is what pointers read.
+  setActiveCamera(
+    position: [number, number, number],
+    rotation: [number, number, number, number],
+    projection?: ActiveCameraProjection | null
+  ): void;
 }
 
 export type EngineFactory = (options?: EngineOptions) => EngineInteractive;
@@ -503,7 +515,7 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
       // interpreter's equivalent camera-pose setter either).
       activeCameraPosition: options.activeCamera ? [...options.activeCamera.position] : null,
       activeCameraRotation: options.activeCamera ? [...options.activeCamera.rotation] : null,
-      activeCameraProjection: options.activeCamera?.projection ?? null,
+      activeCameraProjection: options.activeCamera?.projection ? { ...options.activeCamera.projection } : null,
       onPointerSet: options.onPointerSet as ((pointer: string, value: unknown) => void) | undefined,
       // Spec pointer/set step 5 (see pointer.ts's PointerHost doc comment):
       // ptrSet (compiled pointer/set) kills any in-flight pointer/interpolate
@@ -989,6 +1001,11 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
       },
       get eventDefaults() {
         return eventDecls.map((d) => d.expectedDuration);
+      },
+      setActiveCamera(position, rotation, projection = null) {
+        pointerHost.activeCameraPosition = [...position];
+        pointerHost.activeCameraRotation = [...rotation];
+        pointerHost.activeCameraProjection = projection ? { ...projection } : null;
       },
       fireSelect(nodeIndex, point, rayOrigin, controllerIndex = 0) {
         if (nodeIndex < 0) {
