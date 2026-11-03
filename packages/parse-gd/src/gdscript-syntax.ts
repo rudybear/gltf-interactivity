@@ -637,6 +637,26 @@ class Parser {
           }
         }
         this.expect("punct", ")");
+        // `m.f64FromBits(<int64 literal>)`: emit-gd's exact spelling of a float
+        // Godot's literal parser can't round-trip (-0.0, subnormals, long
+        // mantissas). Folded back here into the float literal it denotes.
+        const a0 = args[0];
+        if (
+          base.t === "attr" &&
+          base.name === "f64FromBits" &&
+          base.base.t === "ident" &&
+          base.base.name === "m" &&
+          args.length === 1 &&
+          a0 !== undefined &&
+          a0.t === "num" &&
+          !a0.isFloat &&
+          /^-?[0-9]+$/.test(a0.raw)
+        ) {
+          const dv = new DataView(new ArrayBuffer(8));
+          dv.setBigInt64(0, BigInt.asIntN(64, BigInt(a0.raw)));
+          base = { t: "num", raw: `m.f64FromBits(${a0.raw})`, isFloat: true, value: dv.getFloat64(0) };
+          continue;
+        }
         base = { t: "call", callee: base, args };
       } else {
         break;
