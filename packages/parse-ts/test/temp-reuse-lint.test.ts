@@ -135,4 +135,52 @@ export default createEngine((rt) => {
     expect(w).toHaveLength(1);
     expect(w[0].message).toContain('temp "t1"');
   });
+
+  // Temps are scoped by declaration (block), not by name.
+  function loops(secondBody: string): string {
+    return `
+import { createEngine, m } from "@gltfi/runtime-lib";
+export default createEngine((rt) => {
+  const V = rt.vars({ i: rt.int(0), j: rt.int(0), result: rt.float(0) });
+  const E = rt.events({});
+  rt.onStart(() => {
+    while (V.i < 3) {
+      const t = m.intToFloat(V.i) * 2;
+      V.result = t;
+      V.i = (V.i + 1) | 0;
+    }
+    while (V.j < 3) {
+      ${secondBody}
+    }
+  });
+});
+`;
+  }
+
+  it("does NOT warn for same-named temps declared in two different blocks (second block re-declares its own temp)", () => {
+    const code = loops(`
+      const t = m.intToFloat(V.j) * 2;
+      V.result = t;
+      V.j = (V.j + 1) | 0;
+    `);
+    expect(warnings(code)).toEqual([]);
+    const { module } = parseModule(code);
+    // The two `t` declarations are distinct IR temps.
+    const ids: string[] = [];
+    JSON.stringify(module.handlers[0].body, (_k, v) => {
+      if (v && v.k === "let") ids.push(v.temp);
+      return v;
+    });
+    expect(new Set(ids).size).toBe(2);
+  });
+
+  it("still warns for a genuine reuse-after-write inside the second same-named block", () => {
+    const code = loops(`
+      const t = m.intToFloat(V.j) * 2;
+      V.j = (V.j + 1) | 0;
+      V.result = t;
+    `);
+    const w = warnings(code);
+    expect(w).toHaveLength(1);
+  });
 });

@@ -393,6 +393,19 @@ class ModuleParser {
   private stateSlotIndexByName = new Map<string, number>();
   private procIndexByName = new Map<string, number>();
   private tempTypeByDecl = new Map<Node, IRType>();
+  // First-parameter declarations of onSelect/onHoverIn/onHoverOut callbacks
+  // written as `(params) => ...` (see arrowBody).
+  private paramsObjDecls = new Set<Node>();
+  // Per-declaration IR temp id (see the plain-`let` case in parseOne) and the
+  // per-body name -> use-count used to mint unique ids; reset for each
+  // proc/handler body.
+  private tempIdByDecl = new Map<Node, string>();
+  private tempIdCount = new Map<string, number>();
+  private freshTempId(name: string): string {
+    const n = (this.tempIdCount.get(name) ?? 0) + 1;
+    this.tempIdCount.set(name, n);
+    return n === 1 ? name : `${name}_${n}`;
+  }
   // Object-form `rt.vars({name: rt.int(0), ...})`/`rt.events({name: {...}})`
   // accessor lookup: `"<boundName>.<propName>"` -> variable/event index (see
   // matchVarsStatement/matchEventsStatement, lowerExpr's bare `V.<name>` read
@@ -409,19 +422,20 @@ class ModuleParser {
     const stmts = engineBody.getStatements();
     let i = 0;
 
+    // Both preamble statements are optional (an absent one means "none
+    // declared"); when present, `rt.vars(...)` comes first, `rt.events(...)`
+    // second.
     const varsMatch = this.matchNamedCall(stmts[i], "vars");
-    if (!varsMatch) {
-      fail("GI101", stmts[i], "expected rt.vars([...]) or `const V = rt.vars({...})` as the first statement");
+    if (varsMatch) {
+      this.parseVars(varsMatch);
+      i += 1;
     }
-    this.parseVars(varsMatch);
-    i += 1;
 
     const eventsMatch = this.matchNamedCall(stmts[i], "events");
-    if (!eventsMatch) {
-      fail("GI101", stmts[i], "expected rt.events([...]) or `const E = rt.events({...})` as the second statement");
+    if (eventsMatch) {
+      this.parseEvents(eventsMatch);
+      i += 1;
     }
-    this.parseEvents(eventsMatch);
-    i += 1;
 
     // State slots: a run of `let X = N;` / `const X = {...};` declarations
     // matching one of the six known shapes.
@@ -480,7 +494,7 @@ class ModuleParser {
         handlerDescs.push({
           kind: "onSelect",
           config: { nodeIndex: Math.trunc(nodeIndex), stopPropagation },
-          bodyStmts: this.stripParamsDestructure(this.arrowBody(args[2]))
+          bodyStmts: this.stripParamsDestructure(this.arrowBody(args[2], true))
         });
       } else if (onHoverIn || onHoverOut) {
         const call = (onHoverIn ?? onHoverOut)!;
@@ -492,7 +506,7 @@ class ModuleParser {
         handlerDescs.push({
           kind: onHoverIn ? "onHoverIn" : "onHoverOut",
           config: { nodeIndex: Math.trunc(nodeIndex) },
-          bodyStmts: this.stripParamsDestructure(this.arrowBody(args[1]))
+          bodyStmts: this.stripParamsDestructure(this.arrowBody(args[1], true))
         });
       } else {
         fail(
@@ -508,9 +522,11 @@ class ModuleParser {
     // correctness since names are pre-registered; mirrors emit.ts's own
     // proc-then-handler ordering).
     procBodies.forEach((body, idx) => {
+      this.tempIdCount.clear();
       this.procs[idx] = { ...this.procs[idx], body: this.lowerBlock(body, { kind: "proc" }) };
     });
     handlerDescs.forEach((desc) => {
+      this.tempIdCount.clear();
       const params = HANDLER_PARAMS[desc.kind];
       const body = this.lowerBlock(desc.bodyStmts, { kind: "handler", handlerKind: desc.kind });
       this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, config: desc.config, params, body });
@@ -739,9 +755,20 @@ class ModuleParser {
     return Node.isExpressionStatement(stmt) ? stmt.getExpression() : undefined;
   }
 
-  private arrowBody(fn: Node | undefined): Statement[] {
+  // `registerParamsIdent`: for the handlers whose callback receives a params
+  // OBJECT (onSelect/onHoverIn/onHoverOut), a plain-identifier first parameter
+  // (`(params) => ...`) is remembered so `params.<field>` lowers exactly like
+  // the destructured `({ <field> }) => ...` / `const { <field> } = params;`
+  // forms (see lowerParamsFieldAccess).
+  private arrowBody(fn: Node | undefined, registerParamsIdent = false): Statement[] {
     if (!fn || !Node.isArrowFunction(fn)) {
       fail("GI104", fn, "expected an arrow function handler body");
+    }
+    if (registerParamsIdent) {
+      const p0 = fn.getParameters()[0];
+      if (p0 && Node.isIdentifier(p0.getNameNode())) {
+        this.paramsObjDecls.add(p0);
+      }
     }
     const body = fn.getBody();
     return Node.isBlock(body) ? body.getStatements() : [];
@@ -1164,9 +1191,15 @@ class ModuleParser {
       // plain `let` temp.
       const expr = this.lowerExpr(init, undefined, ctx);
       const type = this.typeOfExpr(expr);
+      // Temps are scoped by declaration (block), not by name: a second `const
+      // t` in a sibling/nested block is a DIFFERENT temp, so it gets a fresh
+      // IR id (`t`, `t_2`, ...) unique within the body. Otherwise the IR (and
+      // the GI190 lint, which keys on the id) would conflate the two.
+      const id = this.freshTempId(decl.getName());
       this.tempTypeByDecl.set(decl, type);
-      this.tempTypeById.set(decl.getName(), type);
-      return { stmt: { k: "let", temp: decl.getName(), type, expr }, consumed: 1 };
+      this.tempIdByDecl.set(decl, id);
+      this.tempTypeById.set(id, type);
+      return { stmt: { k: "let", temp: id, type, expr }, consumed: 1 };
     }
 
     if (Node.isExpressionStatement(stmt)) {
@@ -1445,6 +1478,21 @@ class ModuleParser {
   // (args-less form — see emit-ts's pointerCall) and, defensively, whenever
   // there's genuinely nothing left to look up; only fail on a MISSING
   // object literal when the template actually still has params to resolve.
+  // `[name]` template params take an int; `{name}` params take a REF (a
+  // node/material/... reference such as `rt.ptrGet(.., "ref")`'s result, not
+  // an integer index). Feeding the wrong kind used to lower silently and the
+  // pointer then never resolved at runtime (the write was dropped with no
+  // diagnostic), so reject it here.
+  private checkPointerArgType(arg: IRExpr, p: { name: string; kind: "int" | "ref" }, at: Node | undefined): void {
+    const t = this.typeOfExpr(arg);
+    if (p.kind === "ref" && (t !== "ref" || (arg.k === "const" && typeof arg.data[0] !== "string"))) {
+      fail("GI131", at, `pointer template param "{${p.name}}" is a reference (ref) slot but was given a ${t} expression; use "[${p.name}]" for integer indices (e.g. "/nodes/[${p.name}]/...")`);
+    }
+    if (p.kind === "int" && t === "ref") {
+      fail("GI131", at, `pointer template param "[${p.name}]" is an integer index but was given a ref expression; use "{${p.name}}" for references`);
+    }
+  }
+
   private lowerPointerArgs(objExpr: Node | undefined, template: PtrTemplate, ctx: Ctx): IRExpr[] {
     const params = pointerTemplateParams(template);
     if (params.length === 0) {
@@ -1458,7 +1506,9 @@ class ModuleParser {
       if (!init) {
         fail("GI125", objExpr, `pointer args object missing param "${p.name}"`);
       }
-      return this.lowerExpr(init, p.kind === "int" ? "int" : "ref", ctx);
+      const lowered = this.lowerExpr(init, p.kind === "int" ? "int" : "ref", ctx);
+      this.checkPointerArgType(lowered, p, init);
+      return lowered;
     });
   }
 
@@ -1933,6 +1983,14 @@ class ModuleParser {
       return { k: "const", type, data: nums };
     }
 
+    // `params.<field>` on an onSelect/onHoverIn/onHoverOut params object.
+    if (Node.isPropertyAccessExpression(expr) && Node.isIdentifier(expr.getExpression())) {
+      const baseDecl = this.resolveDecl(expr.getExpression());
+      if (baseDecl && this.paramsObjDecls.has(baseDecl)) {
+        return this.lowerParamsFieldAccess(expr, ctx);
+      }
+    }
+
     // rt.getVar
     const getVar = asCall(expr, "rt", "getVar");
     if (getVar) {
@@ -2050,8 +2108,11 @@ class ModuleParser {
         return { k: "stateRead", slot: { slot: slotIdx }, field: "index", type: "int" };
       }
       const decl = this.resolveDecl(expr);
+      if (decl && this.paramsObjDecls.has(decl)) {
+        fail("GI132", expr, `the handler params object "${text}" can only be read as "${text}.<field>" or destructured ("({ field }) => ..."); it cannot be passed, spread or stored as a whole`);
+      }
       if (decl && this.tempTypeByDecl.has(decl)) {
-        return { k: "temp", id: text };
+        return { k: "temp", id: this.tempIdByDecl.get(decl) ?? text };
       }
       fail("GI150", expr, `unresolved identifier "${text}"`);
     }
@@ -2099,6 +2160,14 @@ class ModuleParser {
       }
     }
 
+    // An unsupported container expression (object/array literal, spread, ...)
+    // that embeds the whole handler params object: give the precise hint.
+    for (const id of expr.getDescendantsOfKind(SyntaxKind.Identifier)) {
+      const d = this.resolveDecl(id);
+      if (d && this.paramsObjDecls.has(d)) {
+        fail("GI132", id, `the handler params object "${id.getText()}" can only be read as "${id.getText()}.<field>" or destructured ("({ field }) => ..."); it cannot be passed, spread or stored as a whole`);
+      }
+    }
     fail("GI140", expr, `unrecognized expression shape (kind ${expr.getKindName()})`);
   }
 
@@ -2117,6 +2186,15 @@ class ModuleParser {
       return { k: "stateRead", slot: { slot: slotIdx }, field: "lastRemainingTime", type: "float" };
     }
     fail("GI140", undefined, `unrecognized state-slot field read "${field}" on slot kind "${kind}"`);
+  }
+
+  private lowerParamsFieldAccess(expr: import("ts-morph").PropertyAccessExpression, ctx: Ctx): IRExpr {
+    const field = expr.getName();
+    const table = ctx.kind === "handler" && ctx.handlerKind === "onSelect" ? ONSELECT_LOCAL_PARAMS : ctx.kind === "handler" && (ctx.handlerKind === "onHoverIn" || ctx.handlerKind === "onHoverOut") ? HOVER_LOCAL_PARAMS : undefined;
+    if (!table || !(field in table)) {
+      fail("GI140", expr, `unknown handler param "${field}" (available: ${table ? Object.keys(table).join(", ") : "none"})`);
+    }
+    return { k: "param", name: field, type: table[field] };
   }
 
   private resolveDecl(id: Node): Node | undefined {
@@ -2219,7 +2297,9 @@ class ModuleParser {
     if (opKind === SyntaxKind.SlashToken) return this.buildBinaryOp("math/div", "float", leftNode, rightNode, ctx);
     if (opKind === SyntaxKind.AmpersandAmpersandToken) return this.buildBinaryOp("math/and", "bool", leftNode, rightNode, ctx);
     if (opKind === SyntaxKind.BarBarToken) return this.buildBinaryOp("math/or", "bool", leftNode, rightNode, ctx);
-    if (opKind === SyntaxKind.ExclamationEqualsEqualsToken) return this.buildBinaryOp("math/xor", "bool", leftNode, rightNode, ctx);
+    if (opKind === SyntaxKind.ExclamationEqualsEqualsToken) {
+      return this.buildNotEq(this.buildBinaryOp("math/eq", this.inferScalarKind(leftNode, rightNode, ctx, ["bool", "int", "float"]), leftNode, rightNode, ctx));
+    }
     if (opKind === SyntaxKind.EqualsEqualsEqualsToken) {
       return this.buildBinaryOp("math/eq", this.inferScalarKind(leftNode, rightNode, ctx, ["bool", "int", "float"]), leftNode, rightNode, ctx);
     }
@@ -2246,6 +2326,15 @@ class ModuleParser {
       if (opKind === SyntaxKind.MinusToken) return this.buildBinaryOp("math/sub", "int", inner.getLeft(), inner.getRight(), ctx);
     }
     fail("GI160", inner, "unrecognized `(...) | 0`-wrapped expression (expected int add/sub/neg)");
+  }
+
+  // `a != b` lowers to `math/not(math/eq(a, b))`: operand type is inferred
+  // exactly as for `==`. (It must NOT be bool `math/xor`, which coerces both
+  // operands to bool: `mode !== 3` would compute `mode xor true`.)
+  private buildNotEq(eq: IRExpr): IRExpr {
+    const overload = resolveOverload("math/not", { a: "bool" });
+    if (!overload) throw new Error("could not resolve native bool not overload");
+    return { k: "op", op: "math/not", overload, args: [eq] };
   }
 
   private buildBinaryOp(op: string, kind: IRType, leftNode: Node, rightNode: Node, ctx: Ctx): IRExpr {
