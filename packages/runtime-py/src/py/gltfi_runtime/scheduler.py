@@ -16,6 +16,30 @@ import math
 from .kmath import cubic_bezier_ease, quat_slerp
 
 
+def _clone_value(value: dict) -> dict:
+    data = value["data"]
+    return {"type": value["type"], "data": list(data) if isinstance(data, list) else data}
+
+
+def _finite(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and x == x and not math.isinf(x)
+
+
+# Shared input validation of variable/interpolate and pointer/interpolate
+# (mirror of kernel isValidInterpolation): duration finite and >= 0 (0 is
+# allowed); every component of p1/p2 finite; the X components in [0, 1].
+def is_valid_interpolation(duration, p1, p2) -> bool:
+    if not _finite(duration) or duration < 0:
+        return False
+    for p in (p1, p2):
+        if not all(_finite(x) for x in p):
+            return False
+        x = p[0] if len(p) > 0 else 0
+        if x < 0 or x > 1:
+            return False
+    return True
+
+
 def _value_to_number_array(value: dict) -> list:
     if value["type"] == "bool":
         return [1 if x else 0 for x in value["data"]]
@@ -224,7 +248,24 @@ class Scheduler:
         kept_variable_interps = []
         for idx in range(n):
             interp = original_variable_interps[idx]
-            t = min(1.0, (self.time - interp["startTime"]) / interp["duration"])
+            # Spec variable/interpolate tick: t = elapsed / duration; t <= 0
+            # skips; NaN (duration 0 at the start instant) or t >= 1 writes the
+            # exact target, removes the entry and fires `done`.
+            elapsed = self.time - interp["startTime"]
+            duration = interp["duration"]
+            if duration == 0:
+                raw_t = math.nan if elapsed == 0 else (math.inf if elapsed > 0 else -math.inf)
+            else:
+                raw_t = elapsed / duration
+            if raw_t <= 0:
+                kept_variable_interps.append(interp)
+                continue
+            if raw_t != raw_t or raw_t >= 1:
+                effects["setVariable"](interp["variableIndex"], _clone_value(interp["endValue"]))
+                if interp.get("doneCont") is not None:
+                    effects["fireFlow"](interp["doneCont"])
+                continue
+            t = raw_t
             ease = cubic_bezier_ease(t, interp["p1"], interp["p2"])
             if interp["useSlerp"] and interp["startValue"]["type"] == "float4" and interp["endValue"]["type"] == "float4":
                 q = quat_slerp(_value_to_number_array(interp["startValue"]), _value_to_number_array(interp["endValue"]), ease)
@@ -234,11 +275,7 @@ class Scheduler:
                 end_arr = _value_to_number_array(interp["endValue"])
                 out = [start_arr[i2] + (end_arr[i2] - start_arr[i2]) * ease for i2 in range(len(start_arr))]
                 effects["setVariable"](interp["variableIndex"], {"type": interp["endValue"]["type"], "data": out})
-            if t >= 1:
-                if interp.get("doneCont") is not None:
-                    effects["fireFlow"](interp["doneCont"])
-            else:
-                kept_variable_interps.append(interp)
+            kept_variable_interps.append(interp)
         self._variable_interps = kept_variable_interps
 
         # Phase 4: due delays. Two passes before any flow fires.

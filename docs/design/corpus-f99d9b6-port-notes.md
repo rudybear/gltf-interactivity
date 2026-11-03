@@ -256,3 +256,26 @@ The math items (`clamp`, `max`, `pow`, `saturate`, `round`, `min`) behave correc
 runtime for free because JS `Math.*` already follows the corpus's IEEE edge cases; the other
 languages need explicit NaN/infinity/signed-zero handling in `m.*` (compare with `math.ts` /
 the spec's per-op tables).
+
+## 10. Python runtime status (done)
+
+`pnpm conf:py` 158/158 and `pnpm conf:roundtrip-py` 158/158. Python items done
+(`packages/runtime-py/src/py/gltfi_runtime/`):
+
+- Section 1: `pointer._default_raw` returns NaN float defaults.
+- Section 3: `m.isInf` no longer treats NaN as infinite.
+- Section 4: `scheduler.is_valid_interpolation` (shared by `engine.var_interp` /
+  `ptr_interp`) and the variable-interp tick (duration 0 completes on the next
+  tick).
+- Section 6a-6d: `pointer._can_write_pointer` / `_is_read_only_pointer` in
+  `ptr_set` and `ptr_interp_prepare`; `asset/extensions/<n>/enabled` invalid
+  unless used+supported; `meshes/{}/weights` invalid; activeCamera pointer
+  table (`Engine(active_camera=...)`, `harness.py` hands the conformance camera).
+- Section 9 Python list: `Extras/Float_Precision` (`numeric.safe_round` compares
+  the fraction instead of `floor(|x| + 0.5)`), `math/pow` (`pow(NaN, 0) == 1`
+  checked before the NaN guard).
+- Animation (user bug #3/#4): `animation.py` ports kernel `decodeAccessor`
+  (all component types, normalized, byteStride, sparse, missing bufferView),
+  Hermite CUBICSPLINE, per-document cache, binary search with last-key fast
+  path. Tests: `packages/runtime-py/test/test_animation.py` (run by vitest via
+  `animation.test.ts`).

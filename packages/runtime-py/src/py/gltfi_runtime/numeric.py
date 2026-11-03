@@ -122,8 +122,12 @@ def safe_round(x: float) -> float:
     # NOT Python's builtin round() (banker's rounding) or math.floor semantics.
     if x != x or math.isinf(x):
         return x
-    sign = 1.0 if x >= 0 else -1.0
-    return sign * math.floor(abs(x) + 0.5)
+    # Math.sign(x) * Math.round(Math.abs(x)); floor(|x| + 0.5) is wrong for
+    # 0.49999999999999994 (the sum rounds up to 1.0), so compare the fraction.
+    ax = abs(x)
+    f = math.floor(ax)
+    r = f + 1 if ax - f >= 0.5 else f
+    return math.copysign(float(r), x)
 
 
 def safe_sqrt(x: float) -> float:
@@ -209,10 +213,10 @@ def _is_odd_int(x: float) -> bool:
 
 
 def safe_pow(a: float, b: float) -> float:
+    if b == 0.0:
+        return 1.0  # pow(NaN, 0) == 1 (IEEE / Math.pow)
     if a != a or b != b:
         return NAN
-    if b == 0.0:
-        return 1.0
     a_neg_zero = a == 0.0 and math.copysign(1.0, a) < 0
     if a == 0.0:
         if b < 0:
