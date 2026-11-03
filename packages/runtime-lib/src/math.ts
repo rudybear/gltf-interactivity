@@ -123,7 +123,9 @@ export const m = {
   sub: (a: F, b: F): F => map2(a, b, (x, y) => x - y),
   subInt: (a: number, b: number): number => i32(a - b),
   mul: (a: F, b: F): F => map2(a, b, (x, y) => x * y),
-  mulInt: (a: number, b: number): number => i32(a * b),
+  // Math.imul, not i32(a * b): the double product loses low bits past 2^53
+  // (spec math/mul: 2147483647 * 2147483647 == 1).
+  mulInt: (a: number, b: number): number => Math.imul(a, b),
   div: (a: F, b: F): F => map2(a, b, (x, y) => x / y),
   divInt: (a: number, b: number): number => i32(a / b),
   rem: (a: F, b: F): F => map2(a, b, (x, y) => x % y),
@@ -176,7 +178,7 @@ export const m = {
 
   // --- special ---
   isNaN: (a: F): boolean => arr(a).some((x) => Number.isNaN(x)),
-  isInf: (a: F): boolean => arr(a).some((x) => !Number.isFinite(x)),
+  isInf: (a: F): boolean => arr(a).some((x) => x === Infinity || x === -Infinity),
   select: <T>(condition: boolean, a: T, b: T): T => (condition ? a : b),
   // math/switch's intrinsic lowering (see docs/design/ir-and-transpiler.md):
   // `cases` and `values` are parallel arrays (sorted case-number order, as

@@ -47,6 +47,11 @@ export interface OpConfigField {
   // config => fall back to `default`.
   required: boolean;
   default?: unknown;
+  // Extra validity constraints beyond the type check (see config.ts): an
+  // out-of-range / not-listed value makes the whole configuration invalid.
+  min?: number;
+  max?: number;
+  oneOf?: readonly string[];
 }
 
 export type OpCategory =
@@ -330,7 +335,7 @@ const ops: OpSpec[] = [
     overloads: [
       { inputs: [s("x", "float"), s("y", "float"), s("z", "float")], outputs: [s("value", "float4")] }
     ],
-    config: [{ name: "order", type: "string", required: false, default: "yxz" }],
+    config: [{ name: "order", type: "string", required: false, default: "yxz", oneOf: ["xyz", "xzy", "yxz", "yzx", "zxy", "zyx"] }],
     purity: "pureClosed"
   },
   mathOp("math/quatSlerp", [
@@ -475,7 +480,7 @@ const ops: OpSpec[] = [
     category: "flow",
     overloads: [{ inputs: [], outputs: [s("remainingInputs", "int")] }],
     configSockets: "waitAllFlows",
-    config: [{ name: "inputFlows", type: "int", required: false, default: 0 }], // <= 64
+    config: [{ name: "inputFlows", type: "int", required: false, default: 0, min: 0, max: 64 }],
     inputFlows: ["reset"], // + dynamic "0".."N-1" (N = config inputFlows)
     outputFlows: ["out", "completed"],
     purity: "flow",

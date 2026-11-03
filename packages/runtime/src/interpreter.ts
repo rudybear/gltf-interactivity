@@ -45,7 +45,15 @@ import {
   transformVec3,
   valueToNumberArray,
   vectorSlerp,
+  canWritePointer,
+  readActiveCameraPointer,
+  type ActiveCamera,
+  type ActiveCameraProjection,
   doNAdvance,
+  isReadOnlyPointer,
+  isSupportedDeclaration,
+  isValidInterpolation,
+  normalizeConfiguration,
   multiGateAdvance,
   throttleAdvance,
   waitAllAdvance
@@ -68,8 +76,19 @@ export type Graph = {
   types: Array<{ signature: ValueType }>;
   variables: Array<{ id: string; type: number; value: Array<number | boolean | string> }>;
   events: Array<{ id: string; values: Record<string, { type: number; value: Array<number | boolean | string> }> }>;
-  declarations: Array<{ op: string }>;
+  declarations: Array<GraphDeclaration>;
   nodes: GraphNode[];
+};
+
+export type GraphDeclaration = {
+  op: string;
+  extension?: string;
+  outputValueSockets?: Record<string, { type: number }>;
+  // Set by normalizeGraph on declarations the runtime does not implement
+  // (unknown op, or a known op name under a different/unsupported extension):
+  // `op` is then "" (so every op switch falls through to the no-op default)
+  // and this holds the original op name.
+  unsupportedOp?: string;
 };
 
 // The scheduler's continuation type: a thunk closing over executeFlow and
@@ -88,6 +107,8 @@ export type RuntimeGraph = {
   pointerY: number;
   activeCameraPosition: [number, number, number] | null;
   activeCameraRotation: [number, number, number, number] | null;
+  // Projection half of the host-fed active camera (see kernel active-camera.ts).
+  activeCameraProjection: ActiveCameraProjection | null;
   hoveredNodeIndex: number;
   hoverPoint: [number, number, number];
   selectedNodeIndex: number;
@@ -136,6 +157,10 @@ export type EventPayload = {
   intParameter?: number;
   floatParameter?: number;
   expectedDuration?: number;
+  // Generic payload: every value socket of the custom event definition, by
+  // socket id (the four legacy fields above mirror the well-known ids and are
+  // what the conformance protocol reads).
+  values?: Record<string, Value>;
 };
 
 // Shape of a KHR_interactivity conformance-corpus test-oracle JSON file. Env
@@ -204,13 +229,26 @@ export function resolveGraph(gltf: any): Graph {
 // the entry points (createRuntime, InteractivityRuntime) call this once and
 // work on the result. Returns a NEW shallow copy; the input is never mutated.
 export function normalizeGraph(graph: Partial<Graph>): Graph {
+  // Spec "Declarations": an operation the implementation does not support
+  // (including one declared under an unsupported extension, even if it reuses
+  // a core op name such as math/pi) is a no-op. Blank its `op` so no op
+  // switch can match it.
+  const declarations: GraphDeclaration[] = (graph.declarations ?? []).map((decl) =>
+    isSupportedDeclaration(decl.op, decl.extension) ? decl : { ...decl, op: "", unsupportedOp: decl.op }
+  );
+  // Spec "Configuration": an invalid configuration means the op's default
+  // configuration; resolve that once here so no op reader re-validates.
+  const nodes = (graph.nodes ?? []).map((node) => {
+    const configuration = normalizeConfiguration(declarations[node.declaration]?.op ?? "", node.configuration);
+    return configuration === node.configuration ? node : { ...node, configuration: configuration as GraphNode["configuration"] };
+  });
   return {
     ...graph,
     types: graph.types ?? [],
     variables: graph.variables ?? [],
     events: graph.events ?? [],
-    declarations: graph.declarations ?? [],
-    nodes: graph.nodes ?? []
+    declarations,
+    nodes
   };
 }
 
@@ -268,6 +306,12 @@ function getConfigValue(node: GraphNode, key: string) {
   }
   const parsed = entry.value.map((item) => parseScalar(item));
   return parsed.length === 1 ? parsed[0] : parsed;
+}
+
+// The (already validated -- see normalizeGraph) `cases` of a flow/switch or
+// math/switch node as a set of ints.
+function switchCases(node: GraphNode): Set<number> {
+  return new Set((node.configuration?.cases?.value ?? []).map(Number));
 }
 
 function getNodeValue(graph: Graph, node: GraphNode, key: string): Value | NodeRef | undefined {
@@ -345,9 +389,13 @@ function evaluateValue(runtime: RuntimeGraph, nodeId: number, socket: string, st
     case "math/sub":
       result = applyBinary(getInput(runtime, nodeId, "a", stack), getInput(runtime, nodeId, "b", stack), (x, y) => x - y);
       break;
-    case "math/mul":
-      result = applyBinary(getInput(runtime, nodeId, "a", stack), getInput(runtime, nodeId, "b", stack), (x, y) => x * y);
+    case "math/mul": {
+      const a = getInput(runtime, nodeId, "a", stack);
+      // Spec int math/mul: wraps via Math.imul (a double product loses the
+      // low bits above 2^53).
+      result = applyBinary(a, getInput(runtime, nodeId, "b", stack), a.type === "int" ? Math.imul : (x, y) => x * y);
       break;
+    }
     case "math/div":
       result = applyBinary(getInput(runtime, nodeId, "a", stack), getInput(runtime, nodeId, "b", stack), (x, y) => x / y);
       break;
@@ -625,7 +673,7 @@ function evaluateValue(runtime: RuntimeGraph, nodeId: number, socket: string, st
     }
     case "math/isInf": {
       const a = valueToNumberArray(getInput(runtime, nodeId, "a", stack));
-      result = boolValue([a.some((item) => !Number.isFinite(item))]);
+      result = boolValue([a.some((item) => item === Infinity || item === -Infinity)]);
       break;
     }
     case "math/saturate": {
@@ -1022,8 +1070,13 @@ function evaluateValue(runtime: RuntimeGraph, nodeId: number, socket: string, st
     }
     case "math/switch": {
       const selection = valueToNumberArray(getInput(runtime, nodeId, "selection", stack))[0] ?? 0;
+      // Spec math/switch: the per-case sockets exist only for configured
+      // `cases`; a selection not in `cases` yields `default` even if the JSON
+      // happens to carry a same-named socket.
       const valueKey = `${selection}`;
-      const value = getInputOptional(runtime, nodeId, valueKey, stack) ?? getInput(runtime, nodeId, "default", stack);
+      const value =
+        (switchCases(node).has(selection) ? getInputOptional(runtime, nodeId, valueKey, stack) : null)
+        ?? getInput(runtime, nodeId, "default", stack);
       result = cloneValue(value);
       break;
     }
@@ -1147,7 +1200,14 @@ function evaluateValue(runtime: RuntimeGraph, nodeId: number, socket: string, st
         break;
       }
       const payload = getEventPayload(runtime, node);
-      if (socket === "boolParameter") {
+      // Spec event/receive: output value sockets are those of the custom
+      // event definition; unset ones hold the definition's initial value or
+      // the type-default. All receivers of one occurrence see the same values.
+      const receiveEvent = getConfigValue(node, "event") as number | undefined;
+      const generic = payload.values?.[socket] ?? (receiveEvent === undefined ? undefined : eventSocketDefault(runtime, receiveEvent, socket));
+      if (generic) {
+        result = cloneValue(generic);
+      } else if (socket === "boolParameter") {
         result = boolValue([payload.boolParameter ?? false]);
       } else if (socket === "intParameter") {
         result = intValue([payload.intParameter ?? 0]);
@@ -1200,8 +1260,16 @@ function evaluateValue(runtime: RuntimeGraph, nodeId: number, socket: string, st
       result = intValue([remaining]);
       break;
     }
-    default:
+    default: {
+      // Unsupported operation (see normalizeGraph): the value is the
+      // type-default of the declared output socket's type.
+      const declared = runtime.graph.declarations[node.declaration]?.outputValueSockets?.[socket];
+      const signature = declared ? runtime.graph.types[declared.type]?.signature : undefined;
+      if (signature) {
+        result = defaultValue(signature);
+      }
       break;
+    }
   }
 
   const existing = getOutputCached(runtime, nodeId, socket);
@@ -1326,17 +1394,10 @@ function resolvePointerValue(data: any, pointer: string): { value: any; isValid:
       }
       return { value: targetCount, isValid: true };
     }
-    if (meshIdx !== null) {
-      const mesh = data.meshes?.[meshIdx];
-      if (!mesh) {
-        return { value: 0, isValid: false };
-      }
-      const targetCount = getMeshTargetCount(mesh);
-      if (Array.isArray(mesh.weights)) {
-        return { value: mesh.weights.length, isValid: true };
-      }
-      return { value: targetCount, isValid: true };
-    }
+    // `/meshes/{}/weights` is not an Object Model pointer for this extension
+    // (only `/nodes/{}/weights`, which resolves through the node's mesh), so
+    // `meshes/{}/weights.length` is invalid.
+    void meshIdx;
     return { value: 0, isValid: false };
   };
   for (let i = 0; i < tokens.length; i += 1) {
@@ -1406,22 +1467,10 @@ function resolvePointerValue(data: any, pointer: string): { value: any; isValid:
         }
         return { value: undefined, isValid: false };
       }
+      // `/meshes/{}/weights/N` is not a pointer of this extension (see
+      // resolveWeightsLength): invalid.
       if (meshIndex !== null) {
-        const mesh = data.meshes?.[meshIndex];
-        if (!mesh) {
-          return { value: undefined, isValid: false };
-        }
-        const targetCount = getMeshTargetCount(mesh);
-        if (Array.isArray(mesh.weights)) {
-          current = mesh.weights;
-          continue;
-        }
-        if (targetCount > 0) {
-          current = new Array(targetCount).fill(0.5);
-          continue;
-        }
-        current = [0];
-        continue;
+        return { value: undefined, isValid: false };
       }
     }
     const index = Number(token);
@@ -1632,19 +1681,17 @@ const RUNTIME_LIMITS: Record<string, number> = {
 
 function resolveVirtualPointer(runtime: RuntimeGraph, resolved: string, signature: ValueType): { value: Value; isValid: boolean } | null {
   // Host-fed virtual pointers: active camera pose.
-  if (resolved === "/extensions/KHR_interactivity/activeCamera/position") {
-    if (signature !== "float3") {
+  const camera = readActiveCameraPointer(
+    { position: runtime.activeCameraPosition, rotation: runtime.activeCameraRotation, projection: runtime.activeCameraProjection },
+    resolved
+  );
+  if (camera) {
+    // Always valid (NaN components when the host provides no camera / a
+    // different projection kind); only a type mismatch is invalid.
+    if (signature !== camera.type) {
       return { value: defaultValue(signature), isValid: false };
     }
-    const value = runtime.activeCameraPosition ?? [NaN, NaN, NaN];
-    return { value: { type: "float3" as ValueType, data: [...value] }, isValid: true };
-  }
-  if (resolved === "/extensions/KHR_interactivity/activeCamera/rotation") {
-    if (signature !== "float4") {
-      return { value: defaultValue(signature), isValid: false };
-    }
-    const value = runtime.activeCameraRotation ?? [NaN, NaN, NaN, NaN];
-    return { value: { type: "float4" as ValueType, data: [...value] }, isValid: true };
+    return { value: { type: camera.type, data: camera.value }, isValid: true };
   }
   if (resolved === "/extensions/KHR_interactivity/asset/majorVersion"
     || resolved === "/extensions/KHR_interactivity/asset/minorVersion") {
@@ -1661,7 +1708,14 @@ function resolveVirtualPointer(runtime: RuntimeGraph, resolved: string, signatur
     const used: string[] = Array.isArray(runtime.gltf?.extensionsUsed) ? runtime.gltf.extensionsUsed : [];
     const name = extMatch[1];
     const enabled = SUPPORTED_EXTENSIONS.has(name) && (name === "KHR_interactivity" || used.includes(name));
-    return { value: boolValue([enabled]), isValid: true };
+    // Spec "Asset Capabilities": a virtual `asset/extensions/<name>` object
+    // exists only for extensions that are listed in `extensionsUsed` AND
+    // supported; for any other name the pointer does not resolve (isValid
+    // false, value = type-default false) -- it is NOT a valid `false`.
+    if (!enabled) {
+      return { value: defaultValue("bool"), isValid: false };
+    }
+    return { value: boolValue([true]), isValid: true };
   }
   const limitMatch = resolved.match(/^\/extensions\/KHR_interactivity\/limits\/([^/]+)$/);
   if (limitMatch) {
@@ -1799,19 +1853,13 @@ function handlePointerInterpolate(runtime: RuntimeGraph, nodeId: number, stack: 
     return false;
   }
   const { value: current, isValid } = resolvePointerValue(runtime.gltf, resolved);
-  if (!isValid || !pointerValueMatchesType(current, signature)) {
+  if (!isValid || !pointerValueMatchesType(current, signature) || isReadOnlyPointer(resolved)) {
     return false;
   }
   const duration = valueToNumberArray(getInput(runtime, nodeId, "duration", stack))[0] ?? 0;
-  if (Number.isNaN(duration) || !Number.isFinite(duration) || duration < 0) {
-    return false;
-  }
   const p1 = valueToNumberArray(getInput(runtime, nodeId, "p1", stack));
   const p2 = valueToNumberArray(getInput(runtime, nodeId, "p2", stack));
-  if (
-    !p1.every(Number.isFinite) || !p2.every(Number.isFinite)
-    || p1[0] < 0 || p1[0] > 1 || p2[0] < 0 || p2[0] > 1
-  ) {
+  if (!isValidInterpolation(duration, p1, p2)) {
     return false;
   }
   const target = valueToNumberArray(getInput(runtime, nodeId, "value", stack));
@@ -1948,6 +1996,14 @@ function handlePointerSet(runtime: RuntimeGraph, nodeId: number, stack: Set<stri
   // enforcement point of the "always a real boolean over the wire" half of
   // the bool pointer-value contract.
   const normalized = signature === "bool" ? Boolean(value) : value;
+  // Spec pointer/set step 4: unresolvable target, Object Model type
+  // mismatch, or immutable property => `err` (see kernel pointer-write.ts).
+  if (!canWritePointer(resolved, signature, (p) => resolvePointerValue(runtime.gltf, p))) {
+    if (runtime.trace) {
+      runtime.trace.push(-3000 - nodeId);
+    }
+    return false;
+  }
   const ok = setPointerValue(runtime.gltf, resolved, normalized);
   if (ok) {
     // Spec pointer/set step 5: setting a pointer silently kills any
@@ -1995,6 +2051,17 @@ function coerceBoolLikeForWrite(gltf: any, pointer: string, value: number | numb
     return (Array.isArray(value) ? value : [value]).map(toBool);
   }
   return value;
+}
+
+// Initial value (or type-default) of value socket `id` of custom event
+// definition `eventIndex`; undefined when the definition has no such socket.
+function eventSocketDefault(runtime: RuntimeGraph, eventIndex: number, id: string): Value | undefined {
+  const def = runtime.graph.events?.[eventIndex]?.values?.[id];
+  if (!def) {
+    return undefined;
+  }
+  const signature = runtime.graph.types[def.type]?.signature;
+  return signature ? toValue(signature, def.value) : undefined;
 }
 
 function getEventPayload(runtime: RuntimeGraph, node: GraphNode): EventPayload {
@@ -2045,7 +2112,16 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
     case "event/send": {
       const eventIndex = getConfigValue(node, "event") as number | undefined;
       if (eventIndex !== undefined) {
-        const payload: EventPayload = {};
+        const payload: EventPayload = { values: {} };
+        // Spec event/send: one input per value socket of the event definition
+        // (an unwired one carries the initial value / type-default).
+        const defIds = Object.keys(runtime.graph.events?.[eventIndex]?.values ?? {});
+        for (const id of new Set([...defIds, ...Object.keys(node.values ?? {})])) {
+          const sent = node.values?.[id] ? getInput(runtime, nodeId, id, stack) : eventSocketDefault(runtime, eventIndex, id);
+          if (sent) {
+            payload.values![id] = cloneValue(sent);
+          }
+        }
         if (node.values?.boolParameter) {
           payload.boolParameter = Boolean(valueToNumberArray(getInput(runtime, nodeId, "boolParameter", stack))[0]);
         }
@@ -2105,8 +2181,9 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
         break;
       }
       const selection = valueToNumberArray(getInput(runtime, nodeId, "selection", stack))[0] ?? 0;
+      // Spec flow/switch: output flows exist only for configured `cases`.
       const key = `${selection}`;
-      if (node.flows?.[key]) {
+      if (switchCases(node).has(selection) && node.flows?.[key]) {
         executeFlow(runtime, node.flows[key].node, node.flows[key].socket);
       } else if (node.flows?.default) {
         executeFlow(runtime, node.flows.default.node, node.flows.default.socket);
@@ -2469,8 +2546,7 @@ function executeNodeFlow(runtime: RuntimeGraph, nodeId: number, socket: string, 
       const value = getInput(runtime, nodeId, "value", stack);
       const p1 = valueToNumberArray(getInput(runtime, nodeId, "p1", stack));
       const p2 = valueToNumberArray(getInput(runtime, nodeId, "p2", stack));
-      const isValid = duration > 0 && Number.isFinite(duration) && isFiniteValue(value) && p1.every(Number.isFinite) && p2.every(Number.isFinite);
-      if (!isValid) {
+      if (!isValidInterpolation(duration, p1, p2)) {
         runFlow(runtime, node, "err");
         break;
       }
@@ -2551,6 +2627,9 @@ export function createRuntime(
     // sampling; without it, animation control ops still track playhead state
     // and fire done flows, but skip writing sampled TRS/weights values.
     binary?: Uint8Array | ArrayBuffer | null;
+    // Initial host-fed active camera (otherwise the activeCamera pointers
+    // read NaN until the host calls InteractivityRuntime.setActiveCamera).
+    activeCamera?: ActiveCamera | null;
   } = {}
 ): RuntimeGraph {
   const graph = normalizeGraph(inputGraph);
@@ -2596,8 +2675,9 @@ export function createRuntime(
     eventPayloads: new Map(),
     pointerX: 0,
     pointerY: 0,
-    activeCameraPosition: null,
-    activeCameraRotation: null,
+    activeCameraPosition: options.activeCamera ? [...options.activeCamera.position] : null,
+    activeCameraRotation: options.activeCamera ? [...options.activeCamera.rotation] : null,
+    activeCameraProjection: options.activeCamera?.projection ?? null,
     hoveredNodeIndex: -1,
     hoverPoint: [NaN, NaN, NaN],
     selectedNodeIndex: -1,

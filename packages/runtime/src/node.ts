@@ -4,6 +4,7 @@
 // tooling); browser bundlers should stick to the package root, which never
 // touches node:fs.
 import fs from "node:fs";
+import type { ActiveCamera } from "@gltfi/kernel";
 import {
   createRuntime,
   evaluateGraphTests,
@@ -46,10 +47,10 @@ function readGlb(filePath: string): { json: any; bin: Buffer | null } {
   return { json: JSON.parse(jsonChunk.toString("utf8")), bin: binChunk };
 }
 
-export function createRuntimeFromGlbFile(glbPath: string): RuntimeGraph {
+export function createRuntimeFromGlbFile(glbPath: string, options: { activeCamera?: ActiveCamera | null } = {}): RuntimeGraph {
   const { json: gltf, bin } = readGlb(glbPath);
   const graph = resolveGraph(gltf);
-  return createRuntime(graph, gltf, { binary: bin ?? undefined });
+  return createRuntime(graph, gltf, { binary: bin ?? undefined, activeCamera: options.activeCamera });
 }
 
 // F10: the InteractivityRuntime (host.ts) sibling of createRuntimeFromGlbFile

@@ -113,3 +113,19 @@ export function resolveOverload(op: string, inputTypes: Record<string, TypeSig>)
 
   return undefined;
 }
+
+// A graph declaration is "supported" iff the registry knows the op AND the
+// declaration's `extension` (if any) is the very extension the registry
+// attributes the op to (OpSpec.extension: KHR_node_selectability /
+// KHR_node_hoverability events). Spec, "Declarations": operations declared with
+// an unsupported extension -- even one reusing a core name such as `math/pi`
+// -- are unsupported operations: they have no behavior (flow nodes never
+// activate their flows, value nodes output the type-default of each declared
+// output socket) and must not be mistaken for the core operation.
+export function isSupportedDeclaration(op: string, extension?: string): boolean {
+  const spec = OP_REGISTRY.get(op);
+  if (!spec) {
+    return false;
+  }
+  return (spec.extension ?? undefined) === (extension ?? undefined);
+}

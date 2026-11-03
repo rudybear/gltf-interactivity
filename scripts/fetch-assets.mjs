@@ -15,7 +15,7 @@ const assetsPath = join(repoRoot, "external", "glTF-Test-Assets-Interactivity");
 // changes what the gates measure. Bump deliberately, together with the code
 // and expected counts (e.g. "145 tests") that depend on it.
 const ASSETS_REPO = "https://github.com/KhronosGroup/glTF-Test-Assets-Interactivity";
-const ASSETS_REV = "0f24a49f2d861ac666652ce5b8e4181803db9c1f";
+const ASSETS_REV = "f99d9b6cac73513282fc4fa8bbcc6b3a94ad8283";
 
 function git(args, cwd) {
   const result = spawnSync("git", args, { cwd, stdio: "inherit" });

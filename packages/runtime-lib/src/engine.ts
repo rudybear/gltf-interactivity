@@ -23,9 +23,11 @@
 // per-op case exactly (that file is the semantic oracle; see each method's
 // doc comment below for the interpreter case it ports).
 import {
+  type ActiveCamera,
   applyAnimationAt,
   createScheduler,
   doNAdvance,
+  isValidInterpolation,
   multiGateAdvance,
   throttleAdvance,
   waitAllAdvance,
@@ -83,6 +85,10 @@ export type EngineOptions = {
   // @gltfi/kernel's animation.ts's readAccessorElements doc comment).
   glbBin?: ArrayBuffer | Uint8Array | DataView | null;
   seed?: number;
+  // Host-fed active camera behind the `/extensions/KHR_interactivity/
+  // activeCamera/*` pointers (mirrors interpreter.ts's
+  // createRuntime({activeCamera})); absent => those pointers read NaN.
+  activeCamera?: ActiveCamera | null;
   // Mirrors interpreter.ts's createRuntime({onPointerSet}) exactly — called
   // with the fully-resolved pointer and raw value whenever a direct
   // pointer/set write (rt.ptrSet), a scheduled pointer/interpolate tick
@@ -332,16 +338,6 @@ export interface EngineBuilder {
 
 const DEFAULT_SEED = 123456789;
 
-function isFiniteRaw(value: RawValue): boolean {
-  if (typeof value === "number") {
-    return Number.isFinite(value);
-  }
-  if (Array.isArray(value)) {
-    return value.every((item) => Number.isFinite(item));
-  }
-  return true;
-}
-
 function normalizeGlbBin(bin: EngineOptions["glbBin"]): DataView | null {
   if (!bin) {
     return null;
@@ -461,8 +457,9 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
       // report), so this stays permanently null, matching
       // interpreter.ts's own default (nothing in the corpus ever calls the
       // interpreter's equivalent camera-pose setter either).
-      activeCameraPosition: null,
-      activeCameraRotation: null,
+      activeCameraPosition: options.activeCamera ? [...options.activeCamera.position] : null,
+      activeCameraRotation: options.activeCamera ? [...options.activeCamera.rotation] : null,
+      activeCameraProjection: options.activeCamera?.projection ?? null,
       onPointerSet: options.onPointerSet as ((pointer: string, value: unknown) => void) | undefined,
       // Spec pointer/set step 5 (see pointer.ts's PointerHost doc comment):
       // ptrSet (compiled pointer/set) kills any in-flight pointer/interpolate
@@ -726,9 +723,7 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
       varInterp(varId, value, duration, p1, p2, useSlerp, done) {
         const type = varTypes[varId] ?? "float";
         const endKernel = rawToKernelValue(type, value);
-        const isValid =
-          Number.isFinite(duration) && duration > 0 && isFiniteRaw(value) && p1.every(Number.isFinite) && p2.every(Number.isFinite);
-        if (!isValid) {
+        if (!isValidInterpolation(duration, p1, p2)) {
           return { ok: false };
         }
         const startKernel = rawToKernelValue(type, varRaw[varId]);
@@ -778,13 +773,7 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
         if (!prep) {
           return { ok: false };
         }
-        if (!Number.isFinite(duration) || duration < 0) {
-          return { ok: false };
-        }
-        if (
-          !p1.every(Number.isFinite) || !p2.every(Number.isFinite)
-          || (p1[0] ?? 0) < 0 || (p1[0] ?? 0) > 1 || (p2[0] ?? 0) < 0 || (p2[0] ?? 0) > 1
-        ) {
+        if (!isValidInterpolation(duration, p1, p2)) {
           return { ok: false };
         }
         const target = Array.isArray(value) ? value.map(Number) : [Number(value)];

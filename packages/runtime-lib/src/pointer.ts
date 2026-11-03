@@ -8,7 +8,8 @@
 // KHR_interactivity host-fed / runtime virtual pointers (asset capabilities,
 // extension-enabled flags, runtime limits, active camera pose, animation
 // control state, delay/event reference validity).
-import { getAnimationTimeRange, mat4Compose, mat4Mul } from "@gltfi/kernel";
+import { canWritePointer, defaultValue, getAnimationTimeRange, isReadOnlyPointer, mat4Compose, mat4Mul, readActiveCameraPointer } from "@gltfi/kernel";
+import type { ActiveCameraProjection } from "@gltfi/kernel";
 import type { ValueType } from "@gltfi/kernel";
 
 // Host state a pointer resolution may need beyond the raw glTF JSON —
@@ -20,6 +21,7 @@ export interface PointerHost {
   getAnimationPlayhead(animationIndex: number): { playhead: number; virtualPlayhead: number };
   activeCameraPosition: [number, number, number] | null;
   activeCameraRotation: [number, number, number, number] | null;
+  activeCameraProjection?: ActiveCameraProjection | null;
   // Optional observer for successful direct pointer/set writes (mirrors
   // interpreter.ts's runtime.onPointerSet — see engine.ts's EngineOptions
   // doc comment): lets a host (e.g. the viewer's SceneAdapter bridge) mirror
@@ -186,17 +188,10 @@ function resolveWeightsLength(gltf: any, nodeIndex: number | null, meshIndex: nu
     }
     return { value: targetCount, isValid: true };
   }
-  if (meshIndex !== null) {
-    const mesh = gltf.meshes?.[meshIndex];
-    if (!mesh) {
-      return { value: 0, isValid: false };
-    }
-    const targetCount = getMeshTargetCount(mesh);
-    if (Array.isArray(mesh.weights)) {
-      return { value: mesh.weights.length, isValid: true };
-    }
-    return { value: targetCount, isValid: true };
-  }
+  // `/meshes/{}/weights` is not an Object Model pointer for this extension
+  // (only `/nodes/{}/weights`, resolved through the node's mesh), so
+  // `meshes/{}/weights.length` is invalid.
+  void meshIndex;
   return { value: 0, isValid: false };
 }
 
@@ -267,22 +262,9 @@ function resolvePointerValue(gltf: any, resolved: string): { value: any; isValid
         }
         return { value: undefined, isValid: false };
       }
+      // `/meshes/{}/weights/N` is not a pointer of this extension: invalid.
       if (meshIndex !== null) {
-        const mesh = gltf.meshes?.[meshIndex];
-        if (!mesh) {
-          return { value: undefined, isValid: false };
-        }
-        const targetCount = getMeshTargetCount(mesh);
-        if (Array.isArray(mesh.weights)) {
-          current = mesh.weights;
-          continue;
-        }
-        if (targetCount > 0) {
-          current = new Array(targetCount).fill(0.5);
-          continue;
-        }
-        current = [0];
-        continue;
+        return { value: undefined, isValid: false };
       }
     }
     const index = Number(token);
@@ -480,28 +462,11 @@ function valueMatchesType(value: unknown, type: ValueType): boolean {
   return false;
 }
 
+// Type-default raw value (spec "Custom Variable Types": NaN for every float
+// component, false, 0, null reference).
 function defaultRaw(type: ValueType): unknown {
-  switch (type) {
-    case "bool":
-      return false;
-    case "int":
-    case "float":
-      return 0;
-    case "float2":
-      return [0, 0];
-    case "float3":
-      return [0, 0, 0];
-    case "float4":
-      return [0, 0, 0, 0];
-    case "float2x2":
-      return [1, 0, 0, 1];
-    case "float3x3":
-      return [1, 0, 0, 0, 1, 0, 0, 0, 1];
-    case "float4x4":
-      return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-    case "ref":
-      return "";
-  }
+  const data = defaultValue(type).data as unknown[];
+  return data.length === 1 ? data[0] : [...data];
 }
 
 // Extensions this runtime implements; used by the asset/extensions/{name}/
@@ -524,17 +489,16 @@ const RUNTIME_LIMITS: Record<string, number> = {
 };
 
 function resolveVirtualPointer(host: PointerHost, resolved: string, type: ValueType): { value: unknown; isValid: boolean } | null {
-  if (resolved === "/extensions/KHR_interactivity/activeCamera/position") {
-    if (type !== "float3") {
+  const camera = readActiveCameraPointer(
+    { position: host.activeCameraPosition, rotation: host.activeCameraRotation, projection: host.activeCameraProjection },
+    resolved
+  );
+  if (camera) {
+    // Always valid (NaN components when no camera / other projection kind).
+    if (type !== camera.type) {
       return { value: defaultRaw(type), isValid: false };
     }
-    return { value: host.activeCameraPosition ?? [NaN, NaN, NaN], isValid: true };
-  }
-  if (resolved === "/extensions/KHR_interactivity/activeCamera/rotation") {
-    if (type !== "float4") {
-      return { value: defaultRaw(type), isValid: false };
-    }
-    return { value: host.activeCameraRotation ?? [NaN, NaN, NaN, NaN], isValid: true };
+    return { value: camera.type === "float" ? camera.value[0] : camera.value, isValid: true };
   }
   if (resolved === "/extensions/KHR_interactivity/asset/majorVersion" || resolved === "/extensions/KHR_interactivity/asset/minorVersion") {
     if (type !== "int") {
@@ -550,7 +514,13 @@ function resolveVirtualPointer(host: PointerHost, resolved: string, type: ValueT
     const used: string[] = Array.isArray(host.gltf?.extensionsUsed) ? host.gltf.extensionsUsed : [];
     const name = extMatch[1];
     const enabled = SUPPORTED_EXTENSIONS.has(name) && (name === "KHR_interactivity" || used.includes(name));
-    return { value: enabled, isValid: true };
+    // Spec "Asset Capabilities": the virtual `asset/extensions/<name>` object
+    // only exists for used+supported extensions; otherwise the pointer does
+    // not resolve (isValid false, type-default value).
+    if (!enabled) {
+      return { value: defaultRaw(type), isValid: false };
+    }
+    return { value: true, isValid: true };
   }
   const limitMatch = resolved.match(/^\/extensions\/KHR_interactivity\/limits\/([^/]+)$/);
   if (limitMatch) {
@@ -657,6 +627,10 @@ export function ptrSet(host: PointerHost, pointer: string, args: Record<string, 
   if (resolved === null) {
     return false;
   }
+  // Spec pointer/set step 4 (see kernel pointer-write.ts).
+  if (!canWritePointer(resolved, type, (p) => resolvePointerValue(host.gltf, p))) {
+    return false;
+  }
   const ok = setPointerValue(host.gltf, resolved, value);
   if (ok) {
     host.killPointerInterp?.(resolved);
@@ -708,7 +682,7 @@ export function ptrInterpPrepare(
     return null;
   }
   const { value, isValid } = resolvePointerValue(host.gltf, resolved);
-  if (!isValid || !valueMatchesType(value, type)) {
+  if (!isValid || !valueMatchesType(value, type) || isReadOnlyPointer(resolved)) {
     return null;
   }
   const startValue = Array.isArray(value) ? value.map(Number) : [Number(value)];

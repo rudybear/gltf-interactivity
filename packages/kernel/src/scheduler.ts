@@ -17,7 +17,30 @@
 // could hand back a resume-point id instead.
 
 import { cubicBezierEase, quatSlerp } from "./math.js";
-import { type Value, valueToNumberArray } from "./value.js";
+import { cloneValue, type Value, valueToNumberArray } from "./value.js";
+
+// Shared input validation of variable/interpolate and pointer/interpolate
+// (spec, "Variable"/"Object Model Access" sections, `in` activation steps):
+// `duration` must be finite and non-negative (0 is allowed), and every
+// component of `p1`/`p2` must be finite with the X components inside [0, 1];
+// otherwise the `err` flow is activated.
+export function isValidInterpolation(duration: number, p1: ArrayLike<number>, p2: ArrayLike<number>): boolean {
+  if (!Number.isFinite(duration) || duration < 0) {
+    return false;
+  }
+  for (const p of [p1, p2]) {
+    for (let i = 0; i < p.length; i += 1) {
+      if (!Number.isFinite(p[i])) {
+        return false;
+      }
+    }
+    const x = p[0] ?? 0;
+    if (x < 0 || x > 1) {
+      return false;
+    }
+  }
+  return true;
+}
 
 export type DelayHandle = { id: number; ref: string };
 
@@ -340,7 +363,21 @@ export function createScheduler<Cont>(effects: SchedulerEffects<Cont>): Schedule
     // pushes onto this same table while it's still being filtered, and
     // (per normal JS Array#filter semantics) won't be visited by this pass.
     variableInterps = variableInterps.filter((interp) => {
-      const t = Math.min(1, (time - interp.startTime) / interp.duration);
+      // Spec variable/interpolate tick: t = elapsed / duration; t <= 0 skips;
+      // NaN (duration 0 at the start instant) or t >= 1 writes the target
+      // value, removes the entry and fires `done`.
+      const rawT = (time - interp.startTime) / interp.duration;
+      if (rawT <= 0) {
+        return true;
+      }
+      if (Number.isNaN(rawT) || rawT >= 1) {
+        effects.setVariable(interp.variableIndex, cloneValue(interp.endValue));
+        if (interp.doneCont !== undefined) {
+          effects.fireFlow(interp.doneCont);
+        }
+        return false;
+      }
+      const t = rawT;
       const ease = cubicBezierEase(t, interp.p1, interp.p2);
       if (interp.useSlerp && interp.startValue.type === "float4" && interp.endValue.type === "float4") {
         const q = quatSlerp(valueToNumberArray(interp.startValue), valueToNumberArray(interp.endValue), ease);
@@ -350,12 +387,6 @@ export function createScheduler<Cont>(effects: SchedulerEffects<Cont>): Schedule
         const end = valueToNumberArray(interp.endValue);
         const out = start.map((item, index) => item + (end[index] - item) * ease);
         effects.setVariable(interp.variableIndex, { type: interp.endValue.type, data: out } as Value);
-      }
-      if (t >= 1) {
-        if (interp.doneCont !== undefined) {
-          effects.fireFlow(interp.doneCont);
-        }
-        return false;
       }
       return true;
     });

@@ -8,6 +8,7 @@
 // interp-adapter.ts) and the compiled engine satisfy — this file has no
 // knowledge of graph nodes, IR, or generated code at all.
 import type { Value, ValueType } from "@gltfi/kernel";
+export { CONFORMANCE_ACTIVE_CAMERA } from "@gltfi/kernel";
 import type { EngineInteractive, EngineLike } from "@gltfi/runtime-lib";
 
 // F10: the `requiredInteractions` entry shape the `UserInteractions/*`

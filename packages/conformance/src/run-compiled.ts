@@ -20,7 +20,7 @@ import { checkModule, importGraph, type Graph as IrGraph } from "@gltfi/ir";
 import { emitModule, EmitError } from "@gltfi/emit-ts";
 import type { EngineFactory } from "@gltfi/runtime-lib";
 import { loadTestAssets } from "./assets.js";
-import { judgeTest, type TestJson } from "./protocol.js";
+import { CONFORMANCE_ACTIVE_CAMERA, judgeTest, type TestJson } from "./protocol.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../..");
 const CACHE_DIR = process.env.SCRATCH ? path.join(process.env.SCRATCH, "gltfi-compiled-cache") : path.join(REPO_ROOT, "node_modules/.cache/gltfi");
@@ -98,7 +98,7 @@ async function runOne(asset: { name: string; glbPath: string; testPath: string }
   }
 
   try {
-    const result = judgeTest(() => factory({ gltf, glbBin }), testJson);
+    const result = judgeTest(() => factory({ gltf, glbBin, activeCamera: CONFORMANCE_ACTIVE_CAMERA }), testJson);
     if (!result.ok) {
       return { ok: false, kind: "FAIL", reason: result.failures.join("\n  - ") };
     }

@@ -67,7 +67,12 @@ export function formatValueArray(data: ReadonlyArray<number | boolean | string>)
   return data.map(formatScalar);
 }
 
-export function toValue(signature: ValueType, raw: Array<number | boolean | string>): Value {
+export function toValue(signature: ValueType, raw: Array<number | boolean | string> | undefined): Value {
+  // Spec "Variable" section: when the `value` array is undefined the value is
+  // the type-default (NaN for float types, 0 for int, ...).
+  if (raw === undefined || raw === null) {
+    return defaultValue(signature);
+  }
   if (signature === "ref") {
     return { type: signature, data: raw.map((item) => String(item)) };
   }
@@ -82,28 +87,29 @@ export function cloneValue(value: Value): Value {
   return { type: value.type, data: Array.isArray(value.data) ? [...value.data] : value.data } as Value;
 }
 
+// Type-default values per the spec's "Custom Variable Types" table: bool
+// false, int 0, ref null, and NaN in every component of every float type
+// (matrices included -- NOT the identity).
 export function defaultValue(signature: ValueType): Value {
   switch (signature) {
     case "bool":
       return { type: signature, data: [false] };
     case "int":
-    case "float":
       return { type: signature, data: [0] };
+    case "float":
+      return { type: signature, data: [NaN] };
     case "float2":
-      return { type: signature, data: [0, 0] };
+      return { type: signature, data: [NaN, NaN] };
     case "float3":
-      return { type: signature, data: [0, 0, 0] };
+      return { type: signature, data: [NaN, NaN, NaN] };
     case "float4":
-      return { type: signature, data: [0, 0, 0, 0] };
+      return { type: signature, data: [NaN, NaN, NaN, NaN] };
     case "float2x2":
-      return { type: signature, data: [1, 0, 0, 1] };
+      return { type: signature, data: new Array(4).fill(NaN) };
     case "float3x3":
-      return { type: signature, data: [1, 0, 0, 0, 1, 0, 0, 0, 1] };
+      return { type: signature, data: new Array(9).fill(NaN) };
     case "float4x4":
-      return {
-        type: signature,
-        data: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
-      };
+      return { type: signature, data: new Array(16).fill(NaN) };
     case "ref":
       return { type: signature, data: [""] };
   }

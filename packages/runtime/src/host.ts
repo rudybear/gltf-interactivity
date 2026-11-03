@@ -3,6 +3,7 @@
 // fork's runtime/index.ts; adjusted to import the core's own Graph type
 // instead of a host-app-specific KHR_interactivity parser type.
 import { advanceTime, createRuntime, executeFlow, normalizeGraph, type Graph, type RuntimeGraph, type Value } from "./interpreter.js";
+import type { ActiveCameraProjection } from "@gltfi/kernel";
 
 export type InteractivityEvent =
   | { type: "pointermove"; x: number; y: number }
@@ -92,9 +93,17 @@ export class InteractivityRuntime {
     this.adapter = adapter;
   }
 
-  setActiveCamera(position: [number, number, number], rotation: [number, number, number, number]) {
+  // `projection` is optional: when omitted the `activeCamera/perspective/*`
+  // and `activeCamera/orthographic/*` pointers read NaN (spec "Active Camera
+  // State": unavailable projection => NaNs).
+  setActiveCamera(
+    position: [number, number, number],
+    rotation: [number, number, number, number],
+    projection: ActiveCameraProjection | null = null
+  ) {
     this.runtime.activeCameraPosition = [...position];
     this.runtime.activeCameraRotation = [...rotation];
+    this.runtime.activeCameraProjection = projection ? { ...projection } : null;
   }
 
   setHover(nodeIndex: number, point: [number, number, number]) {

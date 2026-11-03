@@ -20,7 +20,7 @@ import { exportGraph } from "@gltfi/ir";
 import { validateGraph, equivalentGraphs, type VGraph } from "@gltfi/verify";
 import { loadTestAssets } from "./assets.js";
 import { interpEngineFromRuntime } from "./interp-adapter.js";
-import { judgeTest, type TestJson } from "./protocol.js";
+import { judgeTest, type TestJson, CONFORMANCE_ACTIVE_CAMERA } from "./protocol.js";
 
 function parseArgs(argv: string[]): { filter?: string } {
   const out: { filter?: string } = {};
@@ -81,7 +81,7 @@ async function runOne(asset: { name: string; glbPath: string; testPath: string }
     const binary = toUint8(probe.glbBin);
     const testJson = JSON.parse(fs.readFileSync(asset.testPath, "utf8")) as TestJson;
     const runtimeGraph2 = graph2 as unknown as RuntimeGraphType;
-    const result = judgeTest(() => interpEngineFromRuntime(createRuntime(runtimeGraph2, probe.gltf, { binary })), testJson);
+    const result = judgeTest(() => interpEngineFromRuntime(createRuntime(runtimeGraph2, probe.gltf, { binary, activeCamera: CONFORMANCE_ACTIVE_CAMERA })), testJson);
 
     const equiv = equivalentGraphs(originalGraph as unknown as VGraph, graph2 as unknown as VGraph);
 

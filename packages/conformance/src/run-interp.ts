@@ -8,7 +8,7 @@ import fs from "node:fs";
 import { createRuntimeFromGlbFile } from "@gltfi/runtime/node";
 import { loadTestAssets } from "./assets.js";
 import { interpEngineFromRuntime } from "./interp-adapter.js";
-import { judgeTest, type TestJson } from "./protocol.js";
+import { CONFORMANCE_ACTIVE_CAMERA, judgeTest, type TestJson } from "./protocol.js";
 
 function main() {
   const assets = loadTestAssets();
@@ -17,7 +17,7 @@ function main() {
     let result;
     try {
       const testJson = JSON.parse(fs.readFileSync(asset.testPath, "utf8")) as TestJson;
-      result = judgeTest(() => interpEngineFromRuntime(createRuntimeFromGlbFile(asset.glbPath)), testJson);
+      result = judgeTest(() => interpEngineFromRuntime(createRuntimeFromGlbFile(asset.glbPath, { activeCamera: CONFORMANCE_ACTIVE_CAMERA })), testJson);
     } catch (err) {
       result = { ok: false, failures: [`runner crash: ${err instanceof Error ? err.message : String(err)}`] };
     }
