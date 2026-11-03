@@ -226,7 +226,15 @@ func _cmd_reset(req: Dictionary) -> Dictionary:
 func _rebuild() -> Dictionary:
 	_mod = _script.new()
 	_mod.m = MMod
-	_engine = EngineMod.new(_gltf, _glb_bin, 123456789.0)
+	# Mirrors kernel CONFORMANCE_ACTIVE_CAMERA (pointer/activeCamera assumes a
+	# viewer with an active camera); divisions give the exact doubles of
+	# 16/9, 0.8 and 0.1.
+	var camera := {
+		"position": [0.0, 1.0, 5.0],
+		"rotation": [0.0, 0.0, 0.0, 1.0],
+		"projection": {"type": "perspective", "aspectRatio": 16.0 / 9.0, "yfov": 8.0 / 10.0, "znear": 1.0 / 10.0, "zfar": 100.0},
+	}
+	_engine = EngineMod.new(_gltf, _glb_bin, 123456789.0, Callable(), camera)
 	_mod.build(_engine)
 	return {"ok": true, "time": enc_num(_engine.time)}
 
