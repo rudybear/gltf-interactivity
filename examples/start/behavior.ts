@@ -1,17 +1,17 @@
 import { createEngine, m } from "@gltfi/runtime-lib";
 
 export default createEngine((rt) => {
-  const V = rt.vars({ FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b: rt.withId("FlowSequenceCount_cd624fe9-1c76-4daf-9ebc-5a4014c8fb9b", rt.int(0)), TestResult_animation_start__out__fired_right_after__in_: rt.withId("TestResult_animation/start_[out] fired right after [in]", rt.bool(false)), TestResult_HasPassed_animation_start_Position_at_50_: rt.withId("TestResult_HasPassed_animation/start_Position at 50%", rt.bool(false)), TestResult_animation_start_Position_at_50_: rt.withId("TestResult_animation/start_Position at 50%", rt.float3(-0.0142, -0.0142, -0.0142)), TestResult_animation_start_Flow__done_: rt.withId("TestResult_animation/start_Flow [done]", rt.bool(false)), TestResult_HasPassed_animation_start_Position_at_100_: rt.withId("TestResult_HasPassed_animation/start_Position at 100%", rt.bool(false)), TestResult_animation_start_Position_at_100_: rt.withId("TestResult_animation/start_Position at 100%", rt.float3(-0.0142, -0.0142, -0.0142)), TestResult_animation_start__err__flow__speed__1_: rt.withId("TestResult_animation/start_[err] flow (speed -1)", rt.bool(false)), TestResult_animation_start__err__flow__speed_0_: rt.withId("TestResult_animation/start_[err] flow (speed 0)", rt.bool(false)), TestResult_animation_start__err__flow__speed_NaN_: rt.withId("TestResult_animation/start_[err] flow (speed NaN)", rt.bool(false)), TestResult_animation_start__err__flow__speed__Inf_: rt.withId("TestResult_animation/start_[err] flow (speed +Inf)", rt.bool(false)), TestResult_animation_start__err__flow__startTime_NaN_: rt.withId("TestResult_animation/start_[err] flow (startTime NaN)", rt.bool(false)), TestResult_animation_start__err__flow__startTime__Inf_: rt.withId("TestResult_animation/start_[err] flow (startTime +Inf)", rt.bool(false)), TestResult_animation_start__err__flow__endTime_NaN_: rt.withId("TestResult_animation/start_[err] flow (endTime NaN)", rt.bool(false)), TestResult_animation_start__err__flow__invalid_ref_: rt.withId("TestResult_animation/start_[err] flow (invalid ref)", rt.bool(false)) });
+  const V = rt.vars({ FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5: rt.withId("FlowSequenceCount_e0d0c35a-dd7f-45a0-8e0b-e3856b82c2a5", rt.int(0)), TestResult_animation_start__out__fired_right_after__in_: rt.withId("TestResult_animation/start_[out] fired right after [in]", rt.bool(false)), TestResult_HasPassed_animation_start_Position_at_50_: rt.withId("TestResult_HasPassed_animation/start_Position at 50%", rt.bool(false)), TestResult_animation_start_Position_at_50_: rt.withId("TestResult_animation/start_Position at 50%", rt.float3(-0.0142, -0.0142, -0.0142)), TestResult_animation_start_Flow__done_: rt.withId("TestResult_animation/start_Flow [done]", rt.bool(false)), TestResult_HasPassed_animation_start_Position_at_100_: rt.withId("TestResult_HasPassed_animation/start_Position at 100%", rt.bool(false)), TestResult_animation_start_Position_at_100_: rt.withId("TestResult_animation/start_Position at 100%", rt.float3(-0.0142, -0.0142, -0.0142)), TestResult_animation_start__err__flow__speed__1_: rt.withId("TestResult_animation/start_[err] flow (speed -1)", rt.bool(false)), TestResult_animation_start__err__flow__speed_0_: rt.withId("TestResult_animation/start_[err] flow (speed 0)", rt.bool(false)), TestResult_animation_start__err__flow__speed_NaN_: rt.withId("TestResult_animation/start_[err] flow (speed NaN)", rt.bool(false)), TestResult_animation_start__err__flow__speed__Inf_: rt.withId("TestResult_animation/start_[err] flow (speed +Inf)", rt.bool(false)), TestResult_animation_start__err__flow__startTime_NaN_: rt.withId("TestResult_animation/start_[err] flow (startTime NaN)", rt.bool(false)), TestResult_animation_start__err__flow__startTime__Inf_: rt.withId("TestResult_animation/start_[err] flow (startTime +Inf)", rt.bool(false)), TestResult_animation_start__err__flow__endTime_NaN_: rt.withId("TestResult_animation/start_[err] flow (endTime NaN)", rt.bool(false)), TestResult_animation_start__err__flow__invalid_ref_: rt.withId("TestResult_animation/start_[err] flow (invalid ref)", rt.bool(false)) });
   const E = rt.events({ test_onStart: { externalId: "test/onStart", expectedDuration: 3.5 }, test_onSuccess: { externalId: "test/onSuccess" }, test_onFailed: { externalId: "test/onFailed" } });
   const delay1 = rt.delayState();
   const delay2 = rt.delayState();
   const delay3 = rt.delayState();
-  function proc87() {
-    rt.log("<animation/start - Position at 100%>: Value is {0}, should be {1} (Proximity range: 0,01)", [rt.ptrGet("/nodes/3/translation", "float3").value, [-1, 2, 3]]);
+  function proc91() {
+    rt.log("<animation/start - Position at 100%>: Value is {0}, should be {1} (Proximity range: 0.01)", [rt.ptrGet("/nodes/3/translation", "float3").value, [-1, 2, 3]]);
     V.TestResult_animation_start_Position_at_100_ = rt.ptrGet("/nodes/3/translation", "float3").value;
   }
-  function proc35() {
-    rt.log("<animation/start - Position at 50%>: Value is {0}, should be {1} (Proximity range: 0,3)", [rt.ptrGet("/nodes/3/translation", "float3").value, [-0.5, 1, 1.5]]);
+  function proc34() {
+    rt.log("<animation/start - Position at 50%>: Value is {0}, should be {1} (Proximity range: 0.3)", [rt.ptrGet("/nodes/3/translation", "float3").value, [-0.5, 1, 1.5]]);
     V.TestResult_animation_start_Position_at_50_ = rt.ptrGet("/nodes/3/translation", "float3").value;
   }
   rt.onStart(() => {
@@ -51,30 +51,30 @@ export default createEngine((rt) => {
                 const t2 = rt.ptrGet("/nodes/3/translation", "float3").value;
                 V.TestResult_HasPassed_animation_start_Position_at_100_ = m.length(t2) > 3.73165751 && m.dot(m.normalize(t2).value, [-0.267261237, 0.5345225, 0.8017837]) > 0.99;
                 rt.log("<animation/start - Position at 100%>: Test Successful");
-                proc87();
+                proc91();
               }
             }
           } else {
-            proc87();
+            proc91();
           }
         }
       }
       if (rt.animStart("/animations/0", 0, 2, 1, cont2).ok) {
-        V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b = (V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b + 1) | 0;
-        if (!(V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b === 1)) {
+        V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 = (V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 + 1) | 0;
+        if (!(V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 === 1)) {
           rt.log("ERROR! <animation/start - [out] fired right after [in]>: Incorrect flow order triggered! Expected Socket Id: out");
-          V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b = -1000;
+          V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 = -1000;
         }
       }
-      V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b = (V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b + 1) | 0;
-      if (V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b === 2) {
+      V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 = (V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 + 1) | 0;
+      if (V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 === 2) {
         if (rt.ptrSet("/nodes/6/translation", "float3", [0, 0, 0.8])) {
           rt.log("<animation/start - [out] fired right after [in]>: Correct flow order triggered");
           V.TestResult_animation_start__out__fired_right_after__in_ = true;
         }
       } else {
         rt.log("ERROR! <animation/start - [out] fired right after [in]>: Incorrect flow order triggered! Expected Socket Id: 1");
-        V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b = -1000;
+        V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 = -1000;
       }
       function cont3() {
         if (rt.ptrSet("/nodes/13/translation", "float3", [0, 0, 0])) {
@@ -85,11 +85,11 @@ export default createEngine((rt) => {
                 const t4 = rt.ptrGet("/nodes/3/translation", "float3").value;
                 V.TestResult_HasPassed_animation_start_Position_at_50_ = m.length(t4) > 1.57082868 && m.dot(m.normalize(t4).value, [-0.267261237, 0.5345225, 0.8017837]) > 0.7;
                 rt.log("<animation/start - Position at 50%>: Test Successful");
-                proc35();
+                proc34();
               }
             }
           } else {
-            proc35();
+            proc34();
           }
         }
       }

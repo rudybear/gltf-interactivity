@@ -20,15 +20,15 @@
       ],
       "variables": [
         {
-          "id": "TestResult_HasPassed_math/cross_[a] (1.00, 0.00, 0.00) [b] (0.00, 1.00, 0.00) = (0.00, 0.00, 1.00)",
           "type": 0,
+          "name": "TestResult_HasPassed_math/cross_[a] (1, 0, 0) [b] (0, 1, 0) = (0, 0, 1)",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_math/cross_[a] (1.00, 0.00, 0.00) [b] (0.00, 1.00, 0.00) = (0.00, 0.00, 1.00)",
           "type": 3,
+          "name": "TestResult_math/cross_[a] (1, 0, 0) [b] (0, 1, 0) = (0, 0, 1)",
           "value": [
             -0.0142,
             -0.0142,
@@ -36,15 +36,15 @@
           ]
         },
         {
-          "id": "TestResult_HasPassed_math/cross_[a] (2.00, 3.00, 4.00) [b] (5.00, 6.00, 7.00) = (-3.00, 6.00, -3.00)",
           "type": 0,
+          "name": "TestResult_HasPassed_math/cross_[a] (2, 3, 4) [b] (5, 6, 7) = (-3, 6, -3)",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_math/cross_[a] (2.00, 3.00, 4.00) [b] (5.00, 6.00, 7.00) = (-3.00, 6.00, -3.00)",
           "type": 3,
+          "name": "TestResult_math/cross_[a] (2, 3, 4) [b] (5, 6, 7) = (-3, 6, -3)",
           "value": [
             -0.0142,
             -0.0142,
@@ -52,15 +52,15 @@
           ]
         },
         {
-          "id": "TestResult_HasPassed_math/cross_[a] (2.00, 4.00, 6.00) [b] (1.00, 2.00, 3.00) = (0.00, 0.00, 0.00)",
           "type": 0,
+          "name": "TestResult_HasPassed_math/cross_[a] (2, 4, 6) [b] (1, 2, 3) = (0, 0, 0)",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_math/cross_[a] (2.00, 4.00, 6.00) [b] (1.00, 2.00, 3.00) = (0.00, 0.00, 0.00)",
           "type": 3,
+          "name": "TestResult_math/cross_[a] (2, 4, 6) [b] (1, 2, 3) = (0, 0, 0)",
           "value": [
             -0.0142,
             -0.0142,
@@ -71,6 +71,7 @@
       "events": [
         {
           "id": "test/onStart",
+          "name": "test/onStart",
           "values": {
             "expectedDuration": {
               "type": 2,
@@ -82,11 +83,11 @@
         },
         {
           "id": "test/onSuccess",
-          "values": {}
+          "name": "test/onSuccess"
         },
         {
           "id": "test/onFailed",
-          "values": {}
+          "name": "test/onFailed"
         }
       ],
       "declarations": [
@@ -112,34 +113,33 @@
           "op": "math/and"
         },
         {
-          "op": "flow/branch"
-        },
-        {
-          "op": "pointer/set"
-        },
-        {
-          "op": "debug/log"
-        },
-        {
-          "op": "variable/set"
-        },
-        {
-          "op": "event/send"
-        },
-        {
           "op": "variable/get"
         },
         {
           "op": "flow/sequence"
         },
         {
+          "op": "flow/branch"
+        },
+        {
+          "op": "pointer/set"
+        },
+        {
+          "op": "variable/set"
+        },
+        {
+          "op": "debug/log"
+        },
+        {
           "op": "math/eq"
+        },
+        {
+          "op": "event/send"
         }
       ],
       "nodes": [
         {
           "declaration": 0,
-          "configuration": {},
           "values": {
             "a": {
               "type": 3,
@@ -157,34 +157,28 @@
                 0
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 1,
-          "configuration": {},
-          "values": {},
           "flows": {
             "out": {
-              "node": 18,
+              "node": 9,
               "socket": "in"
             }
           }
         },
         {
           "declaration": 2,
-          "configuration": {},
           "values": {
             "a": {
               "node": 0,
               "socket": "value"
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 3,
-          "configuration": {},
           "values": {
             "a": {
               "node": 2,
@@ -198,12 +192,10 @@
                 1
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 4,
-          "configuration": {},
           "values": {
             "a": {
               "node": 3,
@@ -215,23 +207,19 @@
                 0.9999
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 5,
-          "configuration": {},
           "values": {
             "a": {
               "node": 0,
               "socket": "value"
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 4,
-          "configuration": {},
           "values": {
             "a": {
               "node": 5,
@@ -243,12 +231,10 @@
                 0.9999
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 6,
-          "configuration": {},
           "values": {
             "a": {
               "node": 6,
@@ -258,12 +244,33 @@
               "node": 4,
               "socket": "value"
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 7,
-          "configuration": {},
+          "configuration": {
+            "variable": {
+              "value": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 8,
+          "flows": {
+            "001": {
+              "node": 16,
+              "socket": "in"
+            },
+            "000": {
+              "node": 10,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 9,
           "values": {
             "condition": {
               "node": 7,
@@ -272,17 +279,17 @@
           },
           "flows": {
             "true": {
-              "node": 9,
+              "node": 11,
               "socket": "in"
             },
             "false": {
-              "node": 10,
+              "node": 14,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 8,
+          "declaration": 10,
           "configuration": {
             "pointer": {
               "value": [
@@ -319,11 +326,54 @@
           }
         },
         {
-          "declaration": 9,
+          "declaration": 11,
+          "configuration": {
+            "variables": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "values": {
+            "0": {
+              "node": 7,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 13,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 12,
           "configuration": {
             "message": {
               "value": [
-                "<math/cross - [a] (1.00, 0.00, 0.00) [b] (0.00, 1.00, 0.00) = (0.00, 0.00, 1.00)>: Value is {0}, should be {1} (Proximity range: 0,0001)"
+                "<math/cross - [a] (1, 0, 0) [b] (0, 1, 0) = (0, 0, 1)>: Test Successful"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 14,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 12,
+          "configuration": {
+            "message": {
+              "value": [
+                "<math/cross - [a] (1, 0, 0) [b] (0, 1, 0) = (0, 0, 1)>: Value is {0}, should be {1} (Proximity range: 0.0001)"
               ]
             },
             "severity": {
@@ -348,57 +398,13 @@
           },
           "flows": {
             "out": {
-              "node": 13,
+              "node": 15,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 9,
-          "configuration": {
-            "message": {
-              "value": [
-                "<math/cross - [a] (1.00, 0.00, 0.00) [b] (0.00, 1.00, 0.00) = (0.00, 0.00, 1.00)>: Test Successful"
-              ]
-            },
-            "severity": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {
-            "out": {
-              "node": 10,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
-          "configuration": {
-            "variables": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {
-            "0": {
-              "node": 7,
-              "socket": "value"
-            }
-          },
-          "flows": {
-            "out": {
-              "node": 11,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
+          "declaration": 11,
           "configuration": {
             "variables": {
               "value": [
@@ -411,39 +417,13 @@
               "node": 0,
               "socket": "value"
             }
-          },
-          "flows": {}
+          }
         },
         {
-          "declaration": 11,
-          "configuration": {
-            "event": {
-              "value": [
-                2
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 12,
-          "configuration": {
-            "variable": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 7,
-          "configuration": {},
+          "declaration": 9,
           "values": {
             "condition": {
-              "node": 15,
+              "node": 8,
               "socket": "value"
             }
           },
@@ -455,11 +435,11 @@
           }
         },
         {
-          "declaration": 9,
+          "declaration": 12,
           "configuration": {
             "message": {
               "value": [
-                "ERROR! <math/cross - [a] (1.00, 0.00, 0.00) [b] (0.00, 1.00, 0.00) = (0.00, 0.00, 1.00)>: Test Failed"
+                "ERROR! <math/cross - [a] (1, 0, 0) [b] (0, 1, 0) = (0, 0, 1)>: Test Failed"
               ]
             },
             "severity": {
@@ -467,28 +447,10 @@
                 0
               ]
             }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 13,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "001": {
-              "node": 16,
-              "socket": "in"
-            },
-            "000": {
-              "node": 8,
-              "socket": "in"
-            }
           }
         },
         {
           "declaration": 0,
-          "configuration": {},
           "values": {
             "a": {
               "type": 3,
@@ -506,37 +468,31 @@
                 7
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 1,
-          "configuration": {},
-          "values": {},
           "flows": {
             "out": {
-              "node": 37,
+              "node": 27,
               "socket": "in"
             }
           }
         },
         {
           "declaration": 2,
-          "configuration": {},
           "values": {
             "a": {
-              "node": 19,
+              "node": 18,
               "socket": "value"
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 3,
-          "configuration": {},
           "values": {
             "a": {
-              "node": 21,
+              "node": 20,
               "socket": "value"
             },
             "b": {
@@ -547,15 +503,13 @@
                 -0.408248276
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 4,
-          "configuration": {},
           "values": {
             "a": {
-              "node": 22,
+              "node": 21,
               "socket": "value"
             },
             "b": {
@@ -564,26 +518,22 @@
                 0.9999
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 5,
-          "configuration": {},
           "values": {
             "a": {
-              "node": 19,
+              "node": 18,
               "socket": "value"
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 4,
-          "configuration": {},
           "values": {
             "a": {
-              "node": 24,
+              "node": 23,
               "socket": "value"
             },
             "b": {
@@ -592,46 +542,65 @@
                 7.348369
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 6,
-          "configuration": {},
           "values": {
             "a": {
-              "node": 25,
+              "node": 24,
               "socket": "value"
             },
             "b": {
-              "node": 23,
+              "node": 22,
               "socket": "value"
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 7,
-          "configuration": {},
-          "values": {
-            "condition": {
-              "node": 26,
-              "socket": "value"
-            }
-          },
-          "flows": {
-            "true": {
-              "node": 28,
-              "socket": "in"
-            },
-            "false": {
-              "node": 29,
-              "socket": "in"
+          "configuration": {
+            "variable": {
+              "value": [
+                2
+              ]
             }
           }
         },
         {
           "declaration": 8,
+          "flows": {
+            "001": {
+              "node": 34,
+              "socket": "in"
+            },
+            "000": {
+              "node": 28,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 9,
+          "values": {
+            "condition": {
+              "node": 25,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "true": {
+              "node": 29,
+              "socket": "in"
+            },
+            "false": {
+              "node": 32,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 10,
           "configuration": {
             "pointer": {
               "value": [
@@ -662,17 +631,60 @@
           },
           "flows": {
             "out": {
+              "node": 30,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 11,
+          "configuration": {
+            "variables": {
+              "value": [
+                2
+              ]
+            }
+          },
+          "values": {
+            "2": {
+              "node": 25,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "out": {
               "node": 31,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 9,
+          "declaration": 12,
           "configuration": {
             "message": {
               "value": [
-                "<math/cross - [a] (2.00, 3.00, 4.00) [b] (5.00, 6.00, 7.00) = (-3.00, 6.00, -3.00)>: Value is {0}, should be {1} (Proximity range: 0,0001)"
+                "<math/cross - [a] (2, 3, 4) [b] (5, 6, 7) = (-3, 6, -3)>: Test Successful"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 32,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 12,
+          "configuration": {
+            "message": {
+              "value": [
+                "<math/cross - [a] (2, 3, 4) [b] (5, 6, 7) = (-3, 6, -3)>: Value is {0}, should be {1} (Proximity range: 0.0001)"
               ]
             },
             "severity": {
@@ -683,7 +695,7 @@
           },
           "values": {
             "0": {
-              "node": 19,
+              "node": 18,
               "socket": "value"
             },
             "1": {
@@ -697,57 +709,13 @@
           },
           "flows": {
             "out": {
-              "node": 32,
+              "node": 33,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 9,
-          "configuration": {
-            "message": {
-              "value": [
-                "<math/cross - [a] (2.00, 3.00, 4.00) [b] (5.00, 6.00, 7.00) = (-3.00, 6.00, -3.00)>: Test Successful"
-              ]
-            },
-            "severity": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {
-            "out": {
-              "node": 29,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
-          "configuration": {
-            "variables": {
-              "value": [
-                2
-              ]
-            }
-          },
-          "values": {
-            "2": {
-              "node": 26,
-              "socket": "value"
-            }
-          },
-          "flows": {
-            "out": {
-              "node": 30,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
+          "declaration": 11,
           "configuration": {
             "variables": {
               "value": [
@@ -757,58 +725,32 @@
           },
           "values": {
             "3": {
-              "node": 19,
+              "node": 18,
               "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 11,
-          "configuration": {
-            "event": {
-              "value": [
-                1
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 12,
-          "configuration": {
-            "variable": {
-              "value": [
-                2
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 7,
-          "configuration": {},
-          "values": {
-            "condition": {
-              "node": 34,
-              "socket": "value"
-            }
-          },
-          "flows": {
-            "false": {
-              "node": 36,
-              "socket": "in"
             }
           }
         },
         {
           "declaration": 9,
+          "values": {
+            "condition": {
+              "node": 26,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "false": {
+              "node": 35,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 12,
           "configuration": {
             "message": {
               "value": [
-                "ERROR! <math/cross - [a] (2.00, 3.00, 4.00) [b] (5.00, 6.00, 7.00) = (-3.00, 6.00, -3.00)>: Test Failed"
+                "ERROR! <math/cross - [a] (2, 3, 4) [b] (5, 6, 7) = (-3, 6, -3)>: Test Failed"
               ]
             },
             "severity": {
@@ -816,28 +758,10 @@
                 0
               ]
             }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 13,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "001": {
-              "node": 35,
-              "socket": "in"
-            },
-            "000": {
-              "node": 27,
-              "socket": "in"
-            }
           }
         },
         {
           "declaration": 0,
-          "configuration": {},
           "values": {
             "a": {
               "type": 3,
@@ -855,26 +779,22 @@
                 3
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 1,
-          "configuration": {},
-          "values": {},
           "flows": {
             "out": {
-              "node": 56,
+              "node": 45,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 14,
-          "configuration": {},
+          "declaration": 13,
           "values": {
             "a": {
-              "node": 38,
+              "node": 36,
               "socket": "value"
             },
             "b": {
@@ -885,31 +805,108 @@
                 0
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 7,
-          "configuration": {},
+          "configuration": {
+            "variable": {
+              "value": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 7,
+          "configuration": {
+            "variable": {
+              "value": [
+                2
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 6,
           "values": {
-            "condition": {
+            "a": {
+              "node": 39,
+              "socket": "value"
+            },
+            "b": {
               "node": 40,
               "socket": "value"
             }
-          },
-          "flows": {
-            "true": {
-              "node": 42,
-              "socket": "in"
+          }
+        },
+        {
+          "declaration": 7,
+          "configuration": {
+            "variable": {
+              "value": [
+                4
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 6,
+          "values": {
+            "a": {
+              "node": 41,
+              "socket": "value"
             },
-            "false": {
-              "node": 43,
-              "socket": "in"
+            "b": {
+              "node": 42,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 7,
+          "configuration": {
+            "variable": {
+              "value": [
+                4
+              ]
             }
           }
         },
         {
           "declaration": 8,
+          "flows": {
+            "001": {
+              "node": 52,
+              "socket": "in"
+            },
+            "000": {
+              "node": 46,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 9,
+          "values": {
+            "condition": {
+              "node": 38,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "true": {
+              "node": 47,
+              "socket": "in"
+            },
+            "false": {
+              "node": 50,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 10,
           "configuration": {
             "pointer": {
               "value": [
@@ -940,17 +937,60 @@
           },
           "flows": {
             "out": {
-              "node": 45,
+              "node": 48,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 9,
+          "declaration": 11,
+          "configuration": {
+            "variables": {
+              "value": [
+                4
+              ]
+            }
+          },
+          "values": {
+            "4": {
+              "node": 38,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 49,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 12,
           "configuration": {
             "message": {
               "value": [
-                "<math/cross - [a] (2.00, 4.00, 6.00) [b] (1.00, 2.00, 3.00) = (0.00, 0.00, 0.00)>: Value is {0}, should be {1} "
+                "<math/cross - [a] (2, 4, 6) [b] (1, 2, 3) = (0, 0, 0)>: Test Successful"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 50,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 12,
+          "configuration": {
+            "message": {
+              "value": [
+                "<math/cross - [a] (2, 4, 6) [b] (1, 2, 3) = (0, 0, 0)>: Value is {0}, should be {1} "
               ]
             },
             "severity": {
@@ -961,7 +1001,7 @@
           },
           "values": {
             "0": {
-              "node": 38,
+              "node": 36,
               "socket": "value"
             },
             "1": {
@@ -975,57 +1015,13 @@
           },
           "flows": {
             "out": {
-              "node": 46,
+              "node": 51,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 9,
-          "configuration": {
-            "message": {
-              "value": [
-                "<math/cross - [a] (2.00, 4.00, 6.00) [b] (1.00, 2.00, 3.00) = (0.00, 0.00, 0.00)>: Test Successful"
-              ]
-            },
-            "severity": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {
-            "out": {
-              "node": 43,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
-          "configuration": {
-            "variables": {
-              "value": [
-                4
-              ]
-            }
-          },
-          "values": {
-            "4": {
-              "node": 40,
-              "socket": "value"
-            }
-          },
-          "flows": {
-            "out": {
-              "node": 44,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
+          "declaration": 11,
           "configuration": {
             "variables": {
               "value": [
@@ -1035,132 +1031,32 @@
           },
           "values": {
             "5": {
-              "node": 38,
+              "node": 36,
               "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 12,
-          "configuration": {
-            "variable": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 12,
-          "configuration": {
-            "variable": {
-              "value": [
-                2
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 6,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 47,
-              "socket": "value"
-            },
-            "b": {
-              "node": 48,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 12,
-          "configuration": {
-            "variable": {
-              "value": [
-                4
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 6,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 49,
-              "socket": "value"
-            },
-            "b": {
-              "node": 50,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 7,
-          "configuration": {},
-          "values": {
-            "condition": {
-              "node": 51,
-              "socket": "value"
-            }
-          },
-          "flows": {
-            "true": {
-              "node": 33,
-              "socket": "in"
-            },
-            "false": {
-              "node": 14,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 12,
-          "configuration": {
-            "variable": {
-              "value": [
-                4
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 7,
-          "configuration": {},
-          "values": {
-            "condition": {
-              "node": 53,
-              "socket": "value"
-            }
-          },
-          "flows": {
-            "false": {
-              "node": 55,
-              "socket": "in"
             }
           }
         },
         {
           "declaration": 9,
+          "values": {
+            "condition": {
+              "node": 44,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "false": {
+              "node": 53,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 12,
           "configuration": {
             "message": {
               "value": [
-                "ERROR! <math/cross - [a] (2.00, 4.00, 6.00) [b] (1.00, 2.00, 3.00) = (0.00, 0.00, 0.00)>: Test Failed"
+                "ERROR! <math/cross - [a] (2, 4, 6) [b] (1, 2, 3) = (0, 0, 0)>: Test Failed"
               ]
             },
             "severity": {
@@ -1168,38 +1064,19 @@
                 0
               ]
             }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 13,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "001": {
-              "node": 54,
-              "socket": "in"
-            },
-            "000": {
-              "node": 41,
-              "socket": "in"
-            }
           }
         },
         {
           "declaration": 1,
-          "configuration": {},
-          "values": {},
           "flows": {
             "out": {
-              "node": 58,
+              "node": 55,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 11,
+          "declaration": 14,
           "configuration": {
             "event": {
               "value": [
@@ -1217,8 +1094,47 @@
           },
           "flows": {
             "out": {
-              "node": 52,
+              "node": 56,
               "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 9,
+          "values": {
+            "condition": {
+              "node": 43,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "true": {
+              "node": 58,
+              "socket": "in"
+            },
+            "false": {
+              "node": 57,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 14,
+          "configuration": {
+            "event": {
+              "value": [
+                2
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 14,
+          "configuration": {
+            "event": {
+              "value": [
+                1
+              ]
             }
           }
         }

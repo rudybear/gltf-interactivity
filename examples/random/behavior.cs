@@ -9,7 +9,7 @@ public static class Module
     {
         private readonly Engine E;
         public Vars(Engine e) { E = e; }
-        public double LastRandomNumberbddbf9eb_0219_4ecf_949c_f01dcb0d0e38 { get => E.GetVarFloat(0); set => E.SetVarFloat(0, value); }
+        public double LastRandomNumbera7efddb9_d1d0_45cb_aef6_1a1d5ebd10d8 { get => E.GetVarFloat(0); set => E.SetVarFloat(0, value); }
         public bool TestResult_math_random_Random__new_number_in_new_flow_ { get => E.GetVarBool(1); set => E.SetVarBool(1, value); }
         public bool TestResult_HasPassed_math_random_Random__same_number_in_current_flow_ { get => E.GetVarBool(2); set => E.SetVarBool(2, value); }
         public double TestResult_math_random_Random__same_number_in_current_flow_ { get => E.GetVarFloat(3); set => E.SetVarFloat(3, value); }
@@ -19,6 +19,10 @@ public static class Module
         public int counter2 { get => E.GetVarInt(7); set => E.SetVarInt(7, value); }
         public bool TestResult_HasPassed_math_random_Monte_Carlo_10k_random_number_distribution_ { get => E.GetVarBool(8); set => E.SetVarBool(8, value); }
         public double TestResult_math_random_Monte_Carlo_10k_random_number_distribution_ { get => E.GetVarFloat(9); set => E.SetVarFloat(9, value); }
+        public double PreviousLoopRandomNumberf06f2b1e_c899_48ec_85d0_0bbcfad5089f { get => E.GetVarFloat(10); set => E.SetVarFloat(10, value); }
+        public int counter3 { get => E.GetVarInt(11); set => E.SetVarInt(11, value); }
+        public bool TestResult_HasPassed_math_random_Random__new_number_in_each_flow_for_iteration__10x_ { get => E.GetVarBool(12); set => E.SetVarBool(12, value); }
+        public int TestResult_math_random_Random__new_number_in_each_flow_for_iteration__10x_ { get => E.GetVarInt(13); set => E.SetVarInt(13, value); }
     }
 
     public static class Events
@@ -30,44 +34,54 @@ public static class Module
 
     public static void Build(Engine rt)
     {
-        rt.DeclareVar("float", -1.0, "LastRandomNumberbddbf9eb-0219-4ecf-949c-f01dcb0d0e38");
+        rt.DeclareVar("float", -1.0, "LastRandomNumbera7efddb9-d1d0-45cb-aef6-1a1d5ebd10d8");
         rt.DeclareVar("bool", false, "TestResult_math/random_Random (new number in new flow)");
         rt.DeclareVar("bool", false, "TestResult_HasPassed_math/random_Random (same number in current flow)");
         rt.DeclareVar("float", -0.0142, "TestResult_math/random_Random (same number in current flow)");
-        rt.DeclareVar("int", 0, "6c89dba7-e578-4ac6-a7a1-f316d1f49b17");
+        rt.DeclareVar("int", 0, "3f3281e0-4104-46fd-8360-3e53d0fadcab");
         rt.DeclareVar("bool", false, "TestResult_HasPassed_math/random_Monte Carlo 1k(random number distribution)");
         rt.DeclareVar("float", -0.0142, "TestResult_math/random_Monte Carlo 1k(random number distribution)");
-        rt.DeclareVar("int", 0, "b0a7e119-0a71-4d4a-b9f5-9ea717673aa0");
+        rt.DeclareVar("int", 0, "ec1fd5a3-a361-47c6-87df-da2b9a247159");
         rt.DeclareVar("bool", false, "TestResult_HasPassed_math/random_Monte Carlo 10k(random number distribution)");
         rt.DeclareVar("float", -0.0142, "TestResult_math/random_Monte Carlo 10k(random number distribution)");
+        rt.DeclareVar("float", -1.0, "PreviousLoopRandomNumberf06f2b1e-c899-48ec-85d0-0bbcfad5089f");
+        rt.DeclareVar("int", 0, "836512be-531d-443c-a803-5fd2837d9689");
+        rt.DeclareVar("bool", false, "TestResult_HasPassed_math/random_Random (new number in each flow/for iteration, 10x)");
+        rt.DeclareVar("int", -1, "TestResult_math/random_Random (new number in each flow/for iteration, 10x)");
         rt.DeclareEvent("test/onStart", (bool?)null, (int?)null, (double?)null, (double?)0.0);
         rt.DeclareEvent("test/onSuccess", (bool?)null, (int?)null, (double?)null, (double?)null);
         rt.DeclareEvent("test/onFailed", (bool?)null, (int?)null, (double?)null, (double?)null);
         var V = new Vars(rt);
         int for1 = 0;
         int for2 = 0;
-        void proc21()
+        int for3 = 0;
+        void proc24()
         {
             var t1 = rt.Random();
             rt.Log("<math/random - Random (same number in current flow)>: Value is {0}, should be {1} ", new object[] { t1 - t1, 0.0 });
             var t2 = rt.Random();
             V.TestResult_math_random_Random__same_number_in_current_flow_ = t2 - t2;
         }
-        void proc51()
+        void proc110()
         {
-            rt.Log("<math/random - Monte Carlo 1k(random number distribution)>: Value is {0}, should be {1} (Proximity range: 0,4)", new object[] { M.IntToFloat(V.counter1) / 1000.0 * 4.0, 3.141592653589793 });
+            rt.Log("<math/random - Monte Carlo 1k(random number distribution)>: Value is {0}, should be {1} (Proximity range: 0.4)", new object[] { M.IntToFloat(V.counter1) / 1000.0 * 4.0, 3.141592653589793 });
             V.TestResult_math_random_Monte_Carlo_1k_random_number_distribution_ = M.IntToFloat(V.counter1) / 1000.0 * 4.0;
         }
-        void proc89()
+        void proc122()
         {
-            rt.Log("<math/random - Monte Carlo 10k(random number distribution)>: Value is {0}, should be {1} (Proximity range: 0,1)", new object[] { M.IntToFloat(V.counter2) / 10000.0 * 4.0, 3.141592653589793 });
+            rt.Log("<math/random - Monte Carlo 10k(random number distribution)>: Value is {0}, should be {1} (Proximity range: 0.1)", new object[] { M.IntToFloat(V.counter2) / 10000.0 * 4.0, 3.141592653589793 });
             V.TestResult_math_random_Monte_Carlo_10k_random_number_distribution_ = M.IntToFloat(V.counter2) / 10000.0 * 4.0;
+        }
+        void proc91()
+        {
+            rt.Log("<math/random - Random (new number in each flow/for iteration, 10x)>: Value is {0}, should be {1} ", new object[] { V.counter3, 10 });
+            V.TestResult_math_random_Random__new_number_in_each_flow_for_iteration__10x_ = V.counter3;
         }
         void OnStart0()
         {
-            V.LastRandomNumberbddbf9eb_0219_4ecf_949c_f01dcb0d0e38 = rt.Random();
-            rt.Log("<math/random - Random (new number in new flow)>: Value A is {0} and Value B is {1}. Should be not-equal.", new object[] { rt.Random(), V.LastRandomNumberbddbf9eb_0219_4ecf_949c_f01dcb0d0e38 });
-            if (!(rt.Random() == V.LastRandomNumberbddbf9eb_0219_4ecf_949c_f01dcb0d0e38))
+            V.LastRandomNumbera7efddb9_d1d0_45cb_aef6_1a1d5ebd10d8 = rt.Random();
+            rt.Log("<math/random - Random (new number in new flow)>: Value A is {0} and Value B is {1}. Should be not-equal.", new object[] { rt.Random(), V.LastRandomNumbera7efddb9_d1d0_45cb_aef6_1a1d5ebd10d8 });
+            if (!(rt.Random() == V.LastRandomNumbera7efddb9_d1d0_45cb_aef6_1a1d5ebd10d8))
             {
                 if (rt.PtrSet("/nodes/5/translation", "float3", new double[] { 0.0, 0.0, 0.8 }))
                 {
@@ -91,12 +105,12 @@ public static class Module
                     var t2 = rt.Random();
                     V.TestResult_HasPassed_math_random_Random__same_number_in_current_flow_ = t2 - t2 == 0.0;
                     rt.Log("<math/random - Random (same number in current flow)>: Test Successful");
-                    proc21();
+                    proc24();
                 }
             }
             else
             {
-                proc21();
+                proc24();
             }
             if (!V.TestResult_HasPassed_math_random_Random__same_number_in_current_flow_)
             {
@@ -122,12 +136,12 @@ public static class Module
                 {
                     V.TestResult_HasPassed_math_random_Monte_Carlo_1k_random_number_distribution_ = M.Abs(M.IntToFloat(V.counter1) / 1000.0 * 4.0 - 3.141592653589793) < 0.4;
                     rt.Log("<math/random - Monte Carlo 1k(random number distribution)>: Test Successful");
-                    proc51();
+                    proc110();
                 }
             }
             else
             {
-                proc51();
+                proc110();
             }
             if (!V.TestResult_HasPassed_math_random_Monte_Carlo_1k_random_number_distribution_)
             {
@@ -153,12 +167,12 @@ public static class Module
                 {
                     V.TestResult_HasPassed_math_random_Monte_Carlo_10k_random_number_distribution_ = M.Abs(M.IntToFloat(V.counter2) / 10000.0 * 4.0 - 3.141592653589793) < 0.1;
                     rt.Log("<math/random - Monte Carlo 10k(random number distribution)>: Test Successful");
-                    proc89();
+                    proc122();
                 }
             }
             else
             {
-                proc89();
+                proc122();
             }
             if (!V.TestResult_HasPassed_math_random_Monte_Carlo_10k_random_number_distribution_)
             {
@@ -168,8 +182,39 @@ public static class Module
         rt.OnStart(OnStart3);
         void OnStart4()
         {
+            for3 = 0;
+            while (for3 < (10))
+            {
+                if (!(rt.Random() == V.PreviousLoopRandomNumberf06f2b1e_c899_48ec_85d0_0bbcfad5089f))
+                {
+                    V.counter3 = unchecked(V.counter3 + 1);
+                }
+                V.PreviousLoopRandomNumberf06f2b1e_c899_48ec_85d0_0bbcfad5089f = rt.Random();
+                for3 = for3 + 1;
+            }
+            if (V.counter3 == 10)
+            {
+                if (rt.PtrSet("/nodes/29/translation", "float3", new double[] { 0.0, 0.0, 0.8 }))
+                {
+                    V.TestResult_HasPassed_math_random_Random__new_number_in_each_flow_for_iteration__10x_ = V.counter3 == 10;
+                    rt.Log("<math/random - Random (new number in each flow/for iteration, 10x)>: Test Successful");
+                    proc91();
+                }
+            }
+            else
+            {
+                proc91();
+            }
+            if (!V.TestResult_HasPassed_math_random_Random__new_number_in_each_flow_for_iteration__10x_)
+            {
+                rt.Log("ERROR! <math/random - Random (new number in each flow/for iteration, 10x)>: Test Failed");
+            }
+        }
+        rt.OnStart(OnStart4);
+        void OnStart5()
+        {
             rt.Send(Events.test_onStart);
-            if (V.TestResult_math_random_Random__new_number_in_new_flow_ && V.TestResult_HasPassed_math_random_Random__same_number_in_current_flow_ && V.TestResult_HasPassed_math_random_Monte_Carlo_1k_random_number_distribution_ && V.TestResult_HasPassed_math_random_Monte_Carlo_10k_random_number_distribution_)
+            if (V.TestResult_math_random_Random__new_number_in_new_flow_ && V.TestResult_HasPassed_math_random_Random__same_number_in_current_flow_ && V.TestResult_HasPassed_math_random_Monte_Carlo_1k_random_number_distribution_ && V.TestResult_HasPassed_math_random_Monte_Carlo_10k_random_number_distribution_ && V.TestResult_HasPassed_math_random_Random__new_number_in_each_flow_for_iteration__10x_)
             {
                 rt.Send(Events.test_onSuccess);
             }
@@ -178,6 +223,6 @@ public static class Module
                 rt.Send(Events.test_onFailed);
             }
         }
-        rt.OnStart(OnStart4);
+        rt.OnStart(OnStart5);
     }
 }

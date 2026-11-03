@@ -10,7 +10,7 @@ var delay3
 
 func build(_rt) -> void:
     rt = _rt
-    V = rt.vars([["FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b", rt.int_var(0), "FlowSequenceCount_cd624fe9-1c76-4daf-9ebc-5a4014c8fb9b"], ["TestResult_animation_start__out__fired_right_after__in_", rt.bool_var(false), "TestResult_animation/start_[out] fired right after [in]"], ["TestResult_HasPassed_animation_start_Position_at_50_", rt.bool_var(false), "TestResult_HasPassed_animation/start_Position at 50%"], ["TestResult_animation_start_Position_at_50_", rt.float3(-0.0142, -0.0142, -0.0142), "TestResult_animation/start_Position at 50%"], ["TestResult_animation_start_Flow__done_", rt.bool_var(false), "TestResult_animation/start_Flow [done]"], ["TestResult_HasPassed_animation_start_Position_at_100_", rt.bool_var(false), "TestResult_HasPassed_animation/start_Position at 100%"], ["TestResult_animation_start_Position_at_100_", rt.float3(-0.0142, -0.0142, -0.0142), "TestResult_animation/start_Position at 100%"], ["TestResult_animation_start__err__flow__speed__1_", rt.bool_var(false), "TestResult_animation/start_[err] flow (speed -1)"], ["TestResult_animation_start__err__flow__speed_0_", rt.bool_var(false), "TestResult_animation/start_[err] flow (speed 0)"], ["TestResult_animation_start__err__flow__speed_NaN_", rt.bool_var(false), "TestResult_animation/start_[err] flow (speed NaN)"], ["TestResult_animation_start__err__flow__speed__Inf_", rt.bool_var(false), "TestResult_animation/start_[err] flow (speed +Inf)"], ["TestResult_animation_start__err__flow__startTime_NaN_", rt.bool_var(false), "TestResult_animation/start_[err] flow (startTime NaN)"], ["TestResult_animation_start__err__flow__startTime__Inf_", rt.bool_var(false), "TestResult_animation/start_[err] flow (startTime +Inf)"], ["TestResult_animation_start__err__flow__endTime_NaN_", rt.bool_var(false), "TestResult_animation/start_[err] flow (endTime NaN)"], ["TestResult_animation_start__err__flow__invalid_ref_", rt.bool_var(false), "TestResult_animation/start_[err] flow (invalid ref)"]])
+    V = rt.vars([["FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5", rt.int_var(0), "FlowSequenceCount_e0d0c35a-dd7f-45a0-8e0b-e3856b82c2a5"], ["TestResult_animation_start__out__fired_right_after__in_", rt.bool_var(false), "TestResult_animation/start_[out] fired right after [in]"], ["TestResult_HasPassed_animation_start_Position_at_50_", rt.bool_var(false), "TestResult_HasPassed_animation/start_Position at 50%"], ["TestResult_animation_start_Position_at_50_", rt.float3(-0.0142, -0.0142, -0.0142), "TestResult_animation/start_Position at 50%"], ["TestResult_animation_start_Flow__done_", rt.bool_var(false), "TestResult_animation/start_Flow [done]"], ["TestResult_HasPassed_animation_start_Position_at_100_", rt.bool_var(false), "TestResult_HasPassed_animation/start_Position at 100%"], ["TestResult_animation_start_Position_at_100_", rt.float3(-0.0142, -0.0142, -0.0142), "TestResult_animation/start_Position at 100%"], ["TestResult_animation_start__err__flow__speed__1_", rt.bool_var(false), "TestResult_animation/start_[err] flow (speed -1)"], ["TestResult_animation_start__err__flow__speed_0_", rt.bool_var(false), "TestResult_animation/start_[err] flow (speed 0)"], ["TestResult_animation_start__err__flow__speed_NaN_", rt.bool_var(false), "TestResult_animation/start_[err] flow (speed NaN)"], ["TestResult_animation_start__err__flow__speed__Inf_", rt.bool_var(false), "TestResult_animation/start_[err] flow (speed +Inf)"], ["TestResult_animation_start__err__flow__startTime_NaN_", rt.bool_var(false), "TestResult_animation/start_[err] flow (startTime NaN)"], ["TestResult_animation_start__err__flow__startTime__Inf_", rt.bool_var(false), "TestResult_animation/start_[err] flow (startTime +Inf)"], ["TestResult_animation_start__err__flow__endTime_NaN_", rt.bool_var(false), "TestResult_animation/start_[err] flow (endTime NaN)"], ["TestResult_animation_start__err__flow__invalid_ref_", rt.bool_var(false), "TestResult_animation/start_[err] flow (invalid ref)"]])
     E = rt.events([["test_onStart", {"externalId": "test/onStart", "expectedDuration": 3.5}], ["test_onSuccess", {"externalId": "test/onSuccess"}], ["test_onFailed", {"externalId": "test/onFailed"}]])
     delay1 = rt.delay_state()
     delay2 = rt.delay_state()
@@ -26,29 +26,29 @@ func build(_rt) -> void:
     rt.on_start(__on_start_8)
     rt.on_start(__on_start_9)
 
-func proc87() -> void:
-    rt.log_msg("<animation/start - Position at 100%>: Value is {0}, should be {1} (Proximity range: 0,01)", [rt.ptr_get("/nodes/3/translation", "float3")["value"], [-1.0, 2.0, 3.0]])
+func proc91() -> void:
+    rt.log_msg("<animation/start - Position at 100%>: Value is {0}, should be {1} (Proximity range: 0.01)", [rt.ptr_get("/nodes/3/translation", "float3")["value"], [-1.0, 2.0, 3.0]])
     V.TestResult_animation_start_Position_at_100_ = rt.ptr_get("/nodes/3/translation", "float3")["value"]
 
-func proc35() -> void:
-    rt.log_msg("<animation/start - Position at 50%>: Value is {0}, should be {1} (Proximity range: 0,3)", [rt.ptr_get("/nodes/3/translation", "float3")["value"], [-0.5, 1.0, 1.5]])
+func proc34() -> void:
+    rt.log_msg("<animation/start - Position at 50%>: Value is {0}, should be {1} (Proximity range: 0.3)", [rt.ptr_get("/nodes/3/translation", "float3")["value"], [-0.5, 1.0, 1.5]])
     V.TestResult_animation_start_Position_at_50_ = rt.ptr_get("/nodes/3/translation", "float3")["value"]
 
 func __on_start_0() -> void:
     if rt.set_delay(delay2, 3.0, cont1)["ok"]:
         if rt.anim_start("/animations/0", 0.0, 2.0, 1.0, cont2)["ok"]:
-            V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b = m.addInt(V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b, 1)
-            if not m.eqInt(V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b, 1):
+            V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 = m.addInt(V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5, 1)
+            if not m.eqInt(V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5, 1):
                 rt.log_msg("ERROR! <animation/start - [out] fired right after [in]>: Incorrect flow order triggered! Expected Socket Id: out")
-                V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b = -1000
-        V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b = m.addInt(V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b, 1)
-        if m.eqInt(V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b, 2):
+                V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 = -1000
+        V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 = m.addInt(V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5, 1)
+        if m.eqInt(V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5, 2):
             if rt.ptr_set("/nodes/6/translation", "float3", [0.0, 0.0, 0.8]):
                 rt.log_msg("<animation/start - [out] fired right after [in]>: Correct flow order triggered")
                 V.TestResult_animation_start__out__fired_right_after__in_ = true
         else:
             rt.log_msg("ERROR! <animation/start - [out] fired right after [in]>: Incorrect flow order triggered! Expected Socket Id: 1")
-            V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b = -1000
+            V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 = -1000
         rt.set_delay(delay1, 1.0, cont3)
 
 func cont1() -> void:
@@ -77,9 +77,9 @@ func cont2() -> void:
                     var t2 = rt.ptr_get("/nodes/3/translation", "float3")["value"]
                     V.TestResult_HasPassed_animation_start_Position_at_100_ = m.length(t2) > 3.73165751 and m.dot(m.normalize(t2)["value"], [-0.267261237, 0.5345225, 0.8017837]) > 0.99
                     rt.log_msg("<animation/start - Position at 100%>: Test Successful")
-                    proc87()
+                    proc91()
         else:
-            proc87()
+            proc91()
 
 func cont3() -> void:
     if rt.ptr_set("/nodes/13/translation", "float3", [0.0, 0.0, 0.0]):
@@ -90,9 +90,9 @@ func cont3() -> void:
                     var t4 = rt.ptr_get("/nodes/3/translation", "float3")["value"]
                     V.TestResult_HasPassed_animation_start_Position_at_50_ = m.length(t4) > 1.57082868 and m.dot(m.normalize(t4)["value"], [-0.267261237, 0.5345225, 0.8017837]) > 0.7
                     rt.log_msg("<animation/start - Position at 50%>: Test Successful")
-                    proc35()
+                    proc34()
         else:
-            proc35()
+            proc34()
 
 func __on_start_1() -> void:
     if not rt.anim_start("/animations/0", 0.0, 2.0, -1.0, Callable())["ok"]:

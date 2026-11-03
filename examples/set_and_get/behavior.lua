@@ -1,332 +1,332 @@
   return function(rt)
   local V = rt.vars({ { name = "TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__color", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/extensions/KHR_lights_punctual/lights/[lightIndex]/color" }, { name = "TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__color", decl = rt.float3(-0.0142, -0.0142, -0.0142), id = "TestResult_pointer/set and get_/extensions/KHR_lights_punctual/lights/[lightIndex]/color" }, { name = "TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__intensity", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/extensions/KHR_lights_punctual/lights/[lightIndex]/intensity" }, { name = "TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__intensity", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/extensions/KHR_lights_punctual/lights/[lightIndex]/intensity" }, { name = "TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__range", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/extensions/KHR_lights_punctual/lights/[lightIndex]/range" }, { name = "TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__range", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/extensions/KHR_lights_punctual/lights/[lightIndex]/range" }, { name = "TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__spot_innerConeAngle", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/extensions/KHR_lights_punctual/lights/[lightIndex]/spot/innerConeAngle" }, { name = "TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__spot_innerConeAngle", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/extensions/KHR_lights_punctual/lights/[lightIndex]/spot/innerConeAngle" }, { name = "TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__spot_outerConeAngle", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/extensions/KHR_lights_punctual/lights/[lightIndex]/spot/outerConeAngle" }, { name = "TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__spot_outerConeAngle", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/extensions/KHR_lights_punctual/lights/[lightIndex]/spot/outerConeAngle" }, { name = "TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____color", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/extensions/KHR_lights_punctual/lights/[]/color" }, { name = "TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____color", decl = rt.float3(-0.0142, -0.0142, -0.0142), id = "TestResult_pointer/set and get_/extensions/KHR_lights_punctual/lights/[]/color" }, { name = "TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____intensity", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/extensions/KHR_lights_punctual/lights/[]/intensity" }, { name = "TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____intensity", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/extensions/KHR_lights_punctual/lights/[]/intensity" }, { name = "TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____range", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/extensions/KHR_lights_punctual/lights/[]/range" }, { name = "TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____range", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/extensions/KHR_lights_punctual/lights/[]/range" }, { name = "TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____spot_innerConeAngle", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/extensions/KHR_lights_punctual/lights/[]/spot/innerConeAngle" }, { name = "TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____spot_innerConeAngle", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/extensions/KHR_lights_punctual/lights/[]/spot/innerConeAngle" }, { name = "TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____spot_outerConeAngle", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/extensions/KHR_lights_punctual/lights/[]/spot/outerConeAngle" }, { name = "TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____spot_outerConeAngle", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/extensions/KHR_lights_punctual/lights/[]/spot/outerConeAngle" }, { name = "TestResult_HasPassed_pointer_set_and_get__alphaCutoff", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/alphaCutoff" }, { name = "TestResult_pointer_set_and_get__alphaCutoff", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/alphaCutoff" }, { name = "TestResult_HasPassed_pointer_set_and_get__emissiveFactor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/emissiveFactor" }, { name = "TestResult_pointer_set_and_get__emissiveFactor", decl = rt.float3(-0.0142, -0.0142, -0.0142), id = "TestResult_pointer/set and get_/emissiveFactor" }, { name = "TestResult_HasPassed_pointer_set_and_get__normalTexture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/normalTexture/scale" }, { name = "TestResult_pointer_set_and_get__normalTexture_scale", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/normalTexture/scale" }, { name = "TestResult_HasPassed_pointer_set_and_get__occlusionTexture_strength", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/occlusionTexture/strength" }, { name = "TestResult_pointer_set_and_get__occlusionTexture_strength", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/occlusionTexture/strength" }, { name = "TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/normalTexture texture offset" }, { name = "TestResult_pointer_set_and_get__normalTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_/normalTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/normalTexture texture rotation" }, { name = "TestResult_pointer_set_and_get__normalTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/normalTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/normalTexture texture scale" }, { name = "TestResult_pointer_set_and_get__normalTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_/normalTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/occlusionTexture texture offset" }, { name = "TestResult_pointer_set_and_get__occlusionTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_/occlusionTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/occlusionTexture texture rotation" }, { name = "TestResult_pointer_set_and_get__occlusionTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/occlusionTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/occlusionTexture texture scale" }, { name = "TestResult_pointer_set_and_get__occlusionTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_/occlusionTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/emissiveTexture texture offset" }, { name = "TestResult_pointer_set_and_get__emissiveTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_/emissiveTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/emissiveTexture texture rotation" }, { name = "TestResult_pointer_set_and_get__emissiveTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/emissiveTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/emissiveTexture texture scale" }, { name = "TestResult_pointer_set_and_get__emissiveTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_/emissiveTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get__baseColorFactor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/baseColorFactor" }, { name = "TestResult_pointer_set_and_get__baseColorFactor", decl = rt.float4(-0.0142, -0.0142, -0.0142, 0.0), id = "TestResult_pointer/set and get_/baseColorFactor" }, { name = "TestResult_HasPassed_pointer_set_and_get__metallicFactor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/metallicFactor" }, { name = "TestResult_pointer_set_and_get__metallicFactor", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/metallicFactor" }, { name = "TestResult_HasPassed_pointer_set_and_get__roughnessFactor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/roughnessFactor" }, { name = "TestResult_pointer_set_and_get__roughnessFactor", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/roughnessFactor" }, { name = "TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/baseColorTexture texture offset" }, { name = "TestResult_pointer_set_and_get__baseColorTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_/baseColorTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/baseColorTexture texture rotation" }, { name = "TestResult_pointer_set_and_get__baseColorTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/baseColorTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/baseColorTexture texture scale" }, { name = "TestResult_pointer_set_and_get__baseColorTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_/baseColorTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/metallicRoughnessTexture texture offset" }, { name = "TestResult_pointer_set_and_get__metallicRoughnessTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_/metallicRoughnessTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/metallicRoughnessTexture texture rotation" }, { name = "TestResult_pointer_set_and_get__metallicRoughnessTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_/metallicRoughnessTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_/metallicRoughnessTexture texture scale" }, { name = "TestResult_pointer_set_and_get__metallicRoughnessTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_/metallicRoughnessTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyStrength", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_anisotropy/anisotropyStrength" }, { name = "TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyStrength", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_anisotropy/anisotropyStrength" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyRotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_anisotropy/anisotropyRotation" }, { name = "TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyRotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_anisotropy/anisotropyRotation" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_anisotropy/anisotropyTexture texture offset" }, { name = "TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_anisotropy/anisotropyTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_anisotropy/anisotropyTexture texture rotation" }, { name = "TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_anisotropy/anisotropyTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_anisotropy/anisotropyTexture texture scale" }, { name = "TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_anisotropy/anisotropyTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_clearcoat/clearcoatTexture texture offset" }, { name = "TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_clearcoat/clearcoatTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_clearcoat/clearcoatTexture texture rotation" }, { name = "TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_clearcoat/clearcoatTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_clearcoat/clearcoatTexture texture scale" }, { name = "TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_clearcoat/clearcoatTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_clearcoat/clearcoatRoughnessTexture texture offset" }, { name = "TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_clearcoat/clearcoatRoughnessTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_clearcoat/clearcoatRoughnessTexture texture rotation" }, { name = "TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_clearcoat/clearcoatRoughnessTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_clearcoat/clearcoatRoughnessTexture texture scale" }, { name = "TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_clearcoat/clearcoatRoughnessTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_dispersion_dispersion", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_dispersion/dispersion" }, { name = "TestResult_pointer_set_and_get_KHR_materials_dispersion_dispersion", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_dispersion/dispersion" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_emissive_strength_emissiveStrength", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_emissive_strength/emissiveStrength" }, { name = "TestResult_pointer_set_and_get_KHR_materials_emissive_strength_emissiveStrength", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_emissive_strength/emissiveStrength" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_ior_ior", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_ior/ior" }, { name = "TestResult_pointer_set_and_get_KHR_materials_ior_ior", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_ior/ior" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceFactor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_iridescence/iridescenceFactor" }, { name = "TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceFactor", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_iridescence/iridescenceFactor" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceIor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_iridescence/iridescenceIor" }, { name = "TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceIor", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_iridescence/iridescenceIor" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMinimum", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_iridescence/iridescenceThicknessMinimum" }, { name = "TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMinimum", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_iridescence/iridescenceThicknessMinimum" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMaximum", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_iridescence/iridescenceThicknessMaximum" }, { name = "TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMaximum", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_iridescence/iridescenceThicknessMaximum" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_iridescence/iridescenceTexture texture offset" }, { name = "TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_iridescence/iridescenceTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_iridescence/iridescenceTexture texture rotation" }, { name = "TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_iridescence/iridescenceTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_iridescence/iridescenceTexture texture scale" }, { name = "TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_iridescence/iridescenceTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_iridescence/iridescenceThicknessTexture texture offset" }, { name = "TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_iridescence/iridescenceThicknessTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_iridescence/iridescenceThicknessTexture texture rotation" }, { name = "TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_iridescence/iridescenceThicknessTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_iridescence/iridescenceThicknessTexture texture scale" }, { name = "TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_iridescence/iridescenceThicknessTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorFactor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_sheen/sheenColorFactor" }, { name = "TestResult_pointer_set_and_get_KHR_materials_sheen_sheenColorFactor", decl = rt.float3(-0.0142, -0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_sheen/sheenColorFactor" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessFactor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_sheen/sheenRoughnessFactor" }, { name = "TestResult_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessFactor", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_sheen/sheenRoughnessFactor" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_sheen/sheenColorTexture texture offset" }, { name = "TestResult_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_sheen/sheenColorTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_sheen/sheenColorTexture texture rotation" }, { name = "TestResult_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_sheen/sheenColorTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_sheen/sheenColorTexture texture scale" }, { name = "TestResult_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_sheen/sheenColorTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_sheen/sheenRoughnessTexture texture offset" }, { name = "TestResult_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_sheen/sheenRoughnessTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_sheen/sheenRoughnessTexture texture rotation" }, { name = "TestResult_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_sheen/sheenRoughnessTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_sheen/sheenRoughnessTexture texture scale" }, { name = "TestResult_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_sheen/sheenRoughnessTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularFactor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_specular/specularFactor" }, { name = "TestResult_pointer_set_and_get_KHR_materials_specular_specularFactor", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_specular/specularFactor" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorFactor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_specular/specularColorFactor" }, { name = "TestResult_pointer_set_and_get_KHR_materials_specular_specularColorFactor", decl = rt.float3(-0.0142, -0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_specular/specularColorFactor" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_specular/specularTexture texture offset" }, { name = "TestResult_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_specular/specularTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_specular/specularTexture texture rotation" }, { name = "TestResult_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_specular/specularTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_specular/specularTexture texture scale" }, { name = "TestResult_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_specular/specularTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_specular/specularColorTexture texture offset" }, { name = "TestResult_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_specular/specularColorTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_specular/specularColorTexture texture rotation" }, { name = "TestResult_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_specular/specularColorTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_specular/specularColorTexture texture scale" }, { name = "TestResult_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_specular/specularColorTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionFactor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_transmission/transmissionFactor" }, { name = "TestResult_pointer_set_and_get_KHR_materials_transmission_transmissionFactor", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_transmission/transmissionFactor" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_transmission/transmissionTexture texture offset" }, { name = "TestResult_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_transmission/transmissionTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_transmission/transmissionTexture texture rotation" }, { name = "TestResult_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_transmission/transmissionTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_transmission/transmissionTexture texture scale" }, { name = "TestResult_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_transmission/transmissionTexture texture scale" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessFactor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_volume/thicknessFactor" }, { name = "TestResult_pointer_set_and_get_KHR_materials_volume_thicknessFactor", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_volume/thicknessFactor" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_attenuationDistance", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_volume/attenuationDistance" }, { name = "TestResult_pointer_set_and_get_KHR_materials_volume_attenuationDistance", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_volume/attenuationDistance" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_attenuationColor", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_volume/attenuationColor" }, { name = "TestResult_pointer_set_and_get_KHR_materials_volume_attenuationColor", decl = rt.float3(-0.0142, -0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_volume/attenuationColor" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_offset", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_volume/thicknessTexture texture offset" }, { name = "TestResult_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_offset", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_volume/thicknessTexture texture offset" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_rotation", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_volume/thicknessTexture texture rotation" }, { name = "TestResult_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_rotation", decl = rt.float(-0.0142), id = "TestResult_pointer/set and get_KHR_materials_volume/thicknessTexture texture rotation" }, { name = "TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_scale", decl = rt.bool(false), id = "TestResult_HasPassed_pointer/set and get_KHR_materials_volume/thicknessTexture texture scale" }, { name = "TestResult_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_scale", decl = rt.float2(-0.0142, -0.0142), id = "TestResult_pointer/set and get_KHR_materials_volume/thicknessTexture texture scale" } })
   local E = rt.events({ { name = "test_onStart", decl = { externalId = "test/onStart", expectedDuration = 0.0 } }, { name = "test_onSuccess", decl = { externalId = "test/onSuccess" } }, { name = "test_onFailed", decl = { externalId = "test/onFailed" } } })
-  local proc7, proc23, proc39, proc218, proc233, proc248, proc263, proc278, proc293, proc308, proc323, proc338, proc353, proc368, proc383, proc400, proc415, proc430, proc447, proc462, proc477, proc494, proc509, proc524, proc539, proc554, proc569, proc586, proc601, proc616, proc633, proc648, proc663, proc680, proc695, proc712, proc727, proc742, proc759, proc774, proc789, proc806, proc821, proc836, proc851, proc866, proc881, proc896, proc911, proc926, proc941, proc958, proc973, proc988, proc1005, proc1020, proc1035, proc1050, proc1065, proc1082, proc1097, proc1112, proc1129, proc1144, proc1159, proc1174, proc1189, proc1206, proc1221, proc1236, proc1253, proc1268, proc1283, proc1298, proc1315, proc1330, proc1345, proc1360, proc1375, proc1390, proc1407, proc1422
-  proc7 = function()
+  local proc11, proc26, proc204, proc219, proc234, proc249, proc264, proc279, proc294, proc309, proc324, proc339, proc354, proc369, proc384, proc401, proc416, proc431, proc448, proc463, proc478, proc495, proc510, proc525, proc540, proc555, proc570, proc587, proc602, proc617, proc634, proc649, proc664, proc681, proc696, proc713, proc728, proc743, proc760, proc775, proc790, proc807, proc822, proc837, proc852, proc867, proc882, proc897, proc912, proc927, proc942, proc959, proc974, proc989, proc1006, proc1021, proc1036, proc1051, proc1066, proc1083, proc1098, proc1113, proc1130, proc1145, proc1160, proc1175, proc1190, proc1207, proc1222, proc1237, proc1254, proc1269, proc1284, proc1299, proc1316, proc1331, proc1346, proc1361, proc1376, proc1391, proc1408, proc1423
+  proc11 = function()
     rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/color>: Value is {0}, should be {1} ", { rt.ptrGet("/extensions/KHR_lights_punctual/lights/0/color", "float3").value, { 1.0, 0.0, 0.0 } })
     V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__color = rt.ptrGet("/extensions/KHR_lights_punctual/lights/0/color", "float3").value
   end
-  proc23 = function()
+  proc26 = function()
     rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/intensity>: Value is {0}, should be {1} ", { rt.ptrGet("/extensions/KHR_lights_punctual/lights/1/intensity", "float").value, 4.0 })
     V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__intensity = rt.ptrGet("/extensions/KHR_lights_punctual/lights/1/intensity", "float").value
   end
-  proc39 = function()
+  proc204 = function()
     rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/range>: Value is {0}, should be {1} ", { rt.ptrGet("/extensions/KHR_lights_punctual/lights/2/range", "float").value, 9.0 })
     V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__range = rt.ptrGet("/extensions/KHR_lights_punctual/lights/2/range", "float").value
   end
-  proc218 = function()
+  proc219 = function()
     rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/spot/innerConeAngle>: Value is {0}, should be {1} ", { rt.ptrGet("/extensions/KHR_lights_punctual/lights/3/spot/innerConeAngle", "float").value, 2.0 })
     V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__spot_innerConeAngle = rt.ptrGet("/extensions/KHR_lights_punctual/lights/3/spot/innerConeAngle", "float").value
   end
-  proc233 = function()
+  proc234 = function()
     rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/spot/outerConeAngle>: Value is {0}, should be {1} ", { rt.ptrGet("/extensions/KHR_lights_punctual/lights/4/spot/outerConeAngle", "float").value, 5.0 })
     V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__spot_outerConeAngle = rt.ptrGet("/extensions/KHR_lights_punctual/lights/4/spot/outerConeAngle", "float").value
   end
-  proc248 = function()
+  proc249 = function()
     rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/color>: Value is {0}, should be {1} ", { rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/color", { lightRef = "/extensions/KHR_lights_punctual/lights/5" }, "float3").value, { 1.0, 0.0, 0.0 } })
     V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____color = rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/color", { lightRef = "/extensions/KHR_lights_punctual/lights/5" }, "float3").value
   end
-  proc263 = function()
+  proc264 = function()
     rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/intensity>: Value is {0}, should be {1} ", { rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/intensity", { lightRef = "/extensions/KHR_lights_punctual/lights/6" }, "float").value, 4.0 })
     V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____intensity = rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/intensity", { lightRef = "/extensions/KHR_lights_punctual/lights/6" }, "float").value
   end
-  proc278 = function()
+  proc279 = function()
     rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/range>: Value is {0}, should be {1} ", { rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/range", { lightRef = "/extensions/KHR_lights_punctual/lights/7" }, "float").value, 9.0 })
     V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____range = rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/range", { lightRef = "/extensions/KHR_lights_punctual/lights/7" }, "float").value
   end
-  proc293 = function()
+  proc294 = function()
     rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/spot/innerConeAngle>: Value is {0}, should be {1} ", { rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/spot/innerConeAngle", { lightRef = "/extensions/KHR_lights_punctual/lights/8" }, "float").value, 2.0 })
     V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____spot_innerConeAngle = rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/spot/innerConeAngle", { lightRef = "/extensions/KHR_lights_punctual/lights/8" }, "float").value
   end
-  proc308 = function()
+  proc309 = function()
     rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/spot/outerConeAngle>: Value is {0}, should be {1} ", { rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/spot/outerConeAngle", { lightRef = "/extensions/KHR_lights_punctual/lights/9" }, "float").value, 5.0 })
     V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____spot_outerConeAngle = rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/spot/outerConeAngle", { lightRef = "/extensions/KHR_lights_punctual/lights/9" }, "float").value
   end
-  proc323 = function()
+  proc324 = function()
     rt.log("<pointer/set and get - /alphaCutoff>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/6/alphaCutoff", "float").value, 0.5 })
     V.TestResult_pointer_set_and_get__alphaCutoff = rt.ptrGet("/materials/6/alphaCutoff", "float").value
   end
-  proc338 = function()
+  proc339 = function()
     rt.log("<pointer/set and get - /emissiveFactor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/6/emissiveFactor", "float3").value, { 1.0, 0.0, 0.0 } })
     V.TestResult_pointer_set_and_get__emissiveFactor = rt.ptrGet("/materials/6/emissiveFactor", "float3").value
   end
-  proc353 = function()
+  proc354 = function()
     rt.log("<pointer/set and get - /normalTexture/scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/6/normalTexture/scale", "float").value, 0.5 })
     V.TestResult_pointer_set_and_get__normalTexture_scale = rt.ptrGet("/materials/6/normalTexture/scale", "float").value
   end
-  proc368 = function()
+  proc369 = function()
     rt.log("<pointer/set and get - /occlusionTexture/strength>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/6/occlusionTexture/strength", "float").value, 0.5 })
     V.TestResult_pointer_set_and_get__occlusionTexture_strength = rt.ptrGet("/materials/6/occlusionTexture/strength", "float").value
   end
-  proc383 = function()
+  proc384 = function()
     rt.log("<pointer/set and get - /normalTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get__normalTexture_texture_offset = rt.ptrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc400 = function()
-    rt.log("<pointer/set and get - /normalTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc401 = function()
+    rt.log("<pointer/set and get - /normalTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get__normalTexture_texture_rotation = rt.ptrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc415 = function()
+  proc416 = function()
     rt.log("<pointer/set and get - /normalTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get__normalTexture_texture_scale = rt.ptrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc430 = function()
+  proc431 = function()
     rt.log("<pointer/set and get - /occlusionTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get__occlusionTexture_texture_offset = rt.ptrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc447 = function()
-    rt.log("<pointer/set and get - /occlusionTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc448 = function()
+    rt.log("<pointer/set and get - /occlusionTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get__occlusionTexture_texture_rotation = rt.ptrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc462 = function()
+  proc463 = function()
     rt.log("<pointer/set and get - /occlusionTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get__occlusionTexture_texture_scale = rt.ptrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc477 = function()
+  proc478 = function()
     rt.log("<pointer/set and get - /emissiveTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get__emissiveTexture_texture_offset = rt.ptrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc494 = function()
-    rt.log("<pointer/set and get - /emissiveTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc495 = function()
+    rt.log("<pointer/set and get - /emissiveTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get__emissiveTexture_texture_rotation = rt.ptrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc509 = function()
+  proc510 = function()
     rt.log("<pointer/set and get - /emissiveTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get__emissiveTexture_texture_scale = rt.ptrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc524 = function()
+  proc525 = function()
     rt.log("<pointer/set and get - /baseColorFactor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorFactor", "float4").value, { 0.0, 0.0, 1.0, 1.0 } })
     V.TestResult_pointer_set_and_get__baseColorFactor = rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorFactor", "float4").value
   end
-  proc539 = function()
+  proc540 = function()
     rt.log("<pointer/set and get - /metallicFactor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicFactor", "float").value, 0.5 })
     V.TestResult_pointer_set_and_get__metallicFactor = rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicFactor", "float").value
   end
-  proc554 = function()
+  proc555 = function()
     rt.log("<pointer/set and get - /roughnessFactor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/7/pbrMetallicRoughness/roughnessFactor", "float").value, 0.5 })
     V.TestResult_pointer_set_and_get__roughnessFactor = rt.ptrGet("/materials/7/pbrMetallicRoughness/roughnessFactor", "float").value
   end
-  proc569 = function()
+  proc570 = function()
     rt.log("<pointer/set and get - /baseColorTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get__baseColorTexture_texture_offset = rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc586 = function()
-    rt.log("<pointer/set and get - /baseColorTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc587 = function()
+    rt.log("<pointer/set and get - /baseColorTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get__baseColorTexture_texture_rotation = rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc601 = function()
+  proc602 = function()
     rt.log("<pointer/set and get - /baseColorTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get__baseColorTexture_texture_scale = rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc616 = function()
+  proc617 = function()
     rt.log("<pointer/set and get - /metallicRoughnessTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get__metallicRoughnessTexture_texture_offset = rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc633 = function()
-    rt.log("<pointer/set and get - /metallicRoughnessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc634 = function()
+    rt.log("<pointer/set and get - /metallicRoughnessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get__metallicRoughnessTexture_texture_rotation = rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc648 = function()
+  proc649 = function()
     rt.log("<pointer/set and get - /metallicRoughnessTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get__metallicRoughnessTexture_texture_scale = rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc663 = function()
+  proc664 = function()
     rt.log("<pointer/set and get - KHR_materials_anisotropy/anisotropyStrength>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyStrength", "float").value, 2.0 })
     V.TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyStrength = rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyStrength", "float").value
   end
-  proc680 = function()
-    rt.log("<pointer/set and get - KHR_materials_anisotropy/anisotropyRotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyRotation", "float").value, 0.5235988 })
+  proc681 = function()
+    rt.log("<pointer/set and get - KHR_materials_anisotropy/anisotropyRotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyRotation", "float").value, 0.5235988 })
     V.TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyRotation = rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyRotation", "float").value
   end
-  proc695 = function()
+  proc696 = function()
     rt.log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_offset = rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc712 = function()
-    rt.log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc713 = function()
+    rt.log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_rotation = rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc727 = function()
+  proc728 = function()
     rt.log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_scale = rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc742 = function()
+  proc743 = function()
     rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_offset = rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc759 = function()
-    rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc760 = function()
+    rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_rotation = rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc774 = function()
+  proc775 = function()
     rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_scale = rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc789 = function()
+  proc790 = function()
     rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_offset = rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc806 = function()
-    rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc807 = function()
+    rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_rotation = rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc821 = function()
+  proc822 = function()
     rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_scale = rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc836 = function()
+  proc837 = function()
     rt.log("<pointer/set and get - KHR_materials_dispersion/dispersion>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/10/extensions/KHR_materials_dispersion/dispersion", "float").value, 2.0 })
     V.TestResult_pointer_set_and_get_KHR_materials_dispersion_dispersion = rt.ptrGet("/materials/10/extensions/KHR_materials_dispersion/dispersion", "float").value
   end
-  proc851 = function()
+  proc852 = function()
     rt.log("<pointer/set and get - KHR_materials_emissive_strength/emissiveStrength>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/11/extensions/KHR_materials_emissive_strength/emissiveStrength", "float").value, 2.0 })
     V.TestResult_pointer_set_and_get_KHR_materials_emissive_strength_emissiveStrength = rt.ptrGet("/materials/11/extensions/KHR_materials_emissive_strength/emissiveStrength", "float").value
   end
-  proc866 = function()
+  proc867 = function()
     rt.log("<pointer/set and get - KHR_materials_ior/ior>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/12/extensions/KHR_materials_ior/ior", "float").value, 3.0 })
     V.TestResult_pointer_set_and_get_KHR_materials_ior_ior = rt.ptrGet("/materials/12/extensions/KHR_materials_ior/ior", "float").value
   end
-  proc881 = function()
+  proc882 = function()
     rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceFactor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceFactor", "float").value, 1.2 })
     V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceFactor = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceFactor", "float").value
   end
-  proc896 = function()
+  proc897 = function()
     rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceIor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceIor", "float").value, 2.3 })
     V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceIor = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceIor", "float").value
   end
-  proc911 = function()
+  proc912 = function()
     rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessMinimum>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMinimum", "float").value, 0.5 })
     V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMinimum = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMinimum", "float").value
   end
-  proc926 = function()
+  proc927 = function()
     rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessMaximum>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMaximum", "float").value, 1.2 })
     V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMaximum = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMaximum", "float").value
   end
-  proc941 = function()
+  proc942 = function()
     rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_offset = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc958 = function()
-    rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc959 = function()
+    rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_rotation = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc973 = function()
+  proc974 = function()
     rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_scale = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc988 = function()
+  proc989 = function()
     rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_offset = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc1005 = function()
-    rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc1006 = function()
+    rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_rotation = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc1020 = function()
+  proc1021 = function()
     rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_scale = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc1035 = function()
+  proc1036 = function()
     rt.log("<pointer/set and get - KHR_materials_sheen/sheenColorFactor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorFactor", "float3").value, { 0.0, 0.0, 1.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenColorFactor = rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorFactor", "float3").value
   end
-  proc1050 = function()
+  proc1051 = function()
     rt.log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessFactor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessFactor", "float").value, 2.3 })
     V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessFactor = rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessFactor", "float").value
   end
-  proc1065 = function()
+  proc1066 = function()
     rt.log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_offset = rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc1082 = function()
-    rt.log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc1083 = function()
+    rt.log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_rotation = rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc1097 = function()
+  proc1098 = function()
     rt.log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_scale = rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc1112 = function()
+  proc1113 = function()
     rt.log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_offset = rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc1129 = function()
-    rt.log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc1130 = function()
+    rt.log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_rotation = rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc1144 = function()
+  proc1145 = function()
     rt.log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_scale = rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc1159 = function()
+  proc1160 = function()
     rt.log("<pointer/set and get - KHR_materials_specular/specularFactor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularFactor", "float").value, 1.2 })
     V.TestResult_pointer_set_and_get_KHR_materials_specular_specularFactor = rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularFactor", "float").value
   end
-  proc1174 = function()
+  proc1175 = function()
     rt.log("<pointer/set and get - KHR_materials_specular/specularColorFactor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorFactor", "float3").value, { 1.0, 0.0, 0.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_specular_specularColorFactor = rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorFactor", "float3").value
   end
-  proc1189 = function()
+  proc1190 = function()
     rt.log("<pointer/set and get - KHR_materials_specular/specularTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_offset = rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc1206 = function()
-    rt.log("<pointer/set and get - KHR_materials_specular/specularTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc1207 = function()
+    rt.log("<pointer/set and get - KHR_materials_specular/specularTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_rotation = rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc1221 = function()
+  proc1222 = function()
     rt.log("<pointer/set and get - KHR_materials_specular/specularTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_scale = rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc1236 = function()
+  proc1237 = function()
     rt.log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_offset = rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc1253 = function()
-    rt.log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc1254 = function()
+    rt.log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_rotation = rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc1268 = function()
+  proc1269 = function()
     rt.log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_scale = rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc1283 = function()
+  proc1284 = function()
     rt.log("<pointer/set and get - KHR_materials_transmission/transmissionFactor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionFactor", "float").value, 1.2 })
     V.TestResult_pointer_set_and_get_KHR_materials_transmission_transmissionFactor = rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionFactor", "float").value
   end
-  proc1298 = function()
+  proc1299 = function()
     rt.log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_offset = rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc1315 = function()
-    rt.log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc1316 = function()
+    rt.log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_rotation = rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc1330 = function()
+  proc1331 = function()
     rt.log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_scale = rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
-  proc1345 = function()
+  proc1346 = function()
     rt.log("<pointer/set and get - KHR_materials_volume/thicknessFactor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessFactor", "float").value, 1.2 })
     V.TestResult_pointer_set_and_get_KHR_materials_volume_thicknessFactor = rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessFactor", "float").value
   end
-  proc1360 = function()
+  proc1361 = function()
     rt.log("<pointer/set and get - KHR_materials_volume/attenuationDistance>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/17/extensions/KHR_materials_volume/attenuationDistance", "float").value, 2.2 })
     V.TestResult_pointer_set_and_get_KHR_materials_volume_attenuationDistance = rt.ptrGet("/materials/17/extensions/KHR_materials_volume/attenuationDistance", "float").value
   end
-  proc1375 = function()
+  proc1376 = function()
     rt.log("<pointer/set and get - KHR_materials_volume/attenuationColor>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/17/extensions/KHR_materials_volume/attenuationColor", "float3").value, { 1.0, 0.0, 0.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_volume_attenuationColor = rt.ptrGet("/materials/17/extensions/KHR_materials_volume/attenuationColor", "float3").value
   end
-  proc1390 = function()
+  proc1391 = function()
     rt.log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture offset>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_offset = rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/offset", "float2").value
   end
-  proc1407 = function()
-    rt.log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", { rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
+  proc1408 = function()
+    rt.log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", { rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/rotation", "float").value, 0.7853982 })
     V.TestResult_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_rotation = rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/rotation", "float").value
   end
-  proc1422 = function()
+  proc1423 = function()
     rt.log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture scale>: Value is {0}, should be {1} ", { rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 } })
     V.TestResult_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_scale = rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/scale", "float2").value
   end
@@ -336,13 +336,13 @@
         if rt.ptrSet("/nodes/5/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__color = m.eq(rt.ptrGet("/extensions/KHR_lights_punctual/lights/0/color", "float3").value, { 1.0, 0.0, 0.0 })
           rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/color>: Test Successful")
-          proc7()
+          proc11()
         end
       else
-        proc7()
+        proc11()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/0/color with (1.00, 0.00, 0.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/0/color with (1, 0, 0) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__color then
       rt.log("ERROR! <pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/color>: Test Failed")
@@ -354,10 +354,10 @@
         if rt.ptrSet("/nodes/12/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__intensity = rt.ptrGet("/extensions/KHR_lights_punctual/lights/1/intensity", "float").value == 4.0
           rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/intensity>: Test Successful")
-          proc23()
+          proc26()
         end
       else
-        proc23()
+        proc26()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/1/intensity with 4 can't be set.")
@@ -372,10 +372,10 @@
         if rt.ptrSet("/nodes/19/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__range = rt.ptrGet("/extensions/KHR_lights_punctual/lights/2/range", "float").value == 9.0
           rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/range>: Test Successful")
-          proc39()
+          proc204()
         end
       else
-        proc39()
+        proc204()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/2/range with 9 can't be set.")
@@ -390,10 +390,10 @@
         if rt.ptrSet("/nodes/26/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__spot_innerConeAngle = rt.ptrGet("/extensions/KHR_lights_punctual/lights/3/spot/innerConeAngle", "float").value == 2.0
           rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/spot/innerConeAngle>: Test Successful")
-          proc218()
+          proc219()
         end
       else
-        proc218()
+        proc219()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/3/spot/innerConeAngle with 2 can't be set.")
@@ -408,10 +408,10 @@
         if rt.ptrSet("/nodes/33/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__spot_outerConeAngle = rt.ptrGet("/extensions/KHR_lights_punctual/lights/4/spot/outerConeAngle", "float").value == 5.0
           rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/spot/outerConeAngle>: Test Successful")
-          proc233()
+          proc234()
         end
       else
-        proc233()
+        proc234()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/4/spot/outerConeAngle with 5 can't be set.")
@@ -426,13 +426,13 @@
         if rt.ptrSet("/nodes/40/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____color = m.eq(rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/color", { lightRef = "/extensions/KHR_lights_punctual/lights/5" }, "float3").value, { 1.0, 0.0, 0.0 })
           rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/color>: Test Successful")
-          proc248()
+          proc249()
         end
       else
-        proc248()
+        proc249()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/5/color with (1.00, 0.00, 0.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/5/color with (1, 0, 0) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____color then
       rt.log("ERROR! <pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/color>: Test Failed")
@@ -444,10 +444,10 @@
         if rt.ptrSet("/nodes/47/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____intensity = rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/intensity", { lightRef = "/extensions/KHR_lights_punctual/lights/6" }, "float").value == 4.0
           rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/intensity>: Test Successful")
-          proc263()
+          proc264()
         end
       else
-        proc263()
+        proc264()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/6/intensity with 4 can't be set.")
@@ -462,10 +462,10 @@
         if rt.ptrSet("/nodes/54/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____range = rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/range", { lightRef = "/extensions/KHR_lights_punctual/lights/7" }, "float").value == 9.0
           rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/range>: Test Successful")
-          proc278()
+          proc279()
         end
       else
-        proc278()
+        proc279()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/7/range with 9 can't be set.")
@@ -480,10 +480,10 @@
         if rt.ptrSet("/nodes/61/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____spot_innerConeAngle = rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/spot/innerConeAngle", { lightRef = "/extensions/KHR_lights_punctual/lights/8" }, "float").value == 2.0
           rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/spot/innerConeAngle>: Test Successful")
-          proc293()
+          proc294()
         end
       else
-        proc293()
+        proc294()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/8/spot/innerConeAngle with 2 can't be set.")
@@ -498,10 +498,10 @@
         if rt.ptrSet("/nodes/68/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____spot_outerConeAngle = rt.ptrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/spot/outerConeAngle", { lightRef = "/extensions/KHR_lights_punctual/lights/9" }, "float").value == 5.0
           rt.log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/spot/outerConeAngle>: Test Successful")
-          proc308()
+          proc309()
         end
       else
-        proc308()
+        proc309()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/9/spot/outerConeAngle with 5 can't be set.")
@@ -516,13 +516,13 @@
         if rt.ptrSet("/nodes/75/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__alphaCutoff = rt.ptrGet("/materials/6/alphaCutoff", "float").value == 0.5
           rt.log("<pointer/set and get - /alphaCutoff>: Test Successful")
-          proc323()
+          proc324()
         end
       else
-        proc323()
+        proc324()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/alphaCutoff with 0,5 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/alphaCutoff with 0.5 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__alphaCutoff then
       rt.log("ERROR! <pointer/set and get - /alphaCutoff>: Test Failed")
@@ -534,13 +534,13 @@
         if rt.ptrSet("/nodes/81/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__emissiveFactor = m.eq(rt.ptrGet("/materials/6/emissiveFactor", "float3").value, { 1.0, 0.0, 0.0 })
           rt.log("<pointer/set and get - /emissiveFactor>: Test Successful")
-          proc338()
+          proc339()
         end
       else
-        proc338()
+        proc339()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveFactor with (1.00, 0.00, 0.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveFactor with (1, 0, 0) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__emissiveFactor then
       rt.log("ERROR! <pointer/set and get - /emissiveFactor>: Test Failed")
@@ -552,13 +552,13 @@
         if rt.ptrSet("/nodes/87/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__normalTexture_scale = rt.ptrGet("/materials/6/normalTexture/scale", "float").value == 0.5
           rt.log("<pointer/set and get - /normalTexture/scale>: Test Successful")
-          proc353()
+          proc354()
         end
       else
-        proc353()
+        proc354()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/scale with 0,5 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/scale with 0.5 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__normalTexture_scale then
       rt.log("ERROR! <pointer/set and get - /normalTexture/scale>: Test Failed")
@@ -570,13 +570,13 @@
         if rt.ptrSet("/nodes/93/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_strength = rt.ptrGet("/materials/6/occlusionTexture/strength", "float").value == 0.5
           rt.log("<pointer/set and get - /occlusionTexture/strength>: Test Successful")
-          proc368()
+          proc369()
         end
       else
-        proc368()
+        proc369()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/strength with 0,5 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/strength with 0.5 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_strength then
       rt.log("ERROR! <pointer/set and get - /occlusionTexture/strength>: Test Failed")
@@ -588,13 +588,13 @@
         if rt.ptrSet("/nodes/99/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_offset = m.eq(rt.ptrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - /normalTexture texture offset>: Test Successful")
-          proc383()
+          proc384()
         end
       else
-        proc383()
+        proc384()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - /normalTexture texture offset>: Test Failed")
@@ -606,13 +606,13 @@
         if rt.ptrSet("/nodes/105/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_rotation = m.abs(rt.ptrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - /normalTexture texture rotation>: Test Successful")
-          proc400()
+          proc401()
         end
       else
-        proc400()
+        proc401()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - /normalTexture texture rotation>: Test Failed")
@@ -624,13 +624,13 @@
         if rt.ptrSet("/nodes/111/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_scale = m.eq(rt.ptrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - /normalTexture texture scale>: Test Successful")
-          proc415()
+          proc416()
         end
       else
-        proc415()
+        proc416()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - /normalTexture texture scale>: Test Failed")
@@ -642,13 +642,13 @@
         if rt.ptrSet("/nodes/117/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_offset = m.eq(rt.ptrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - /occlusionTexture texture offset>: Test Successful")
-          proc430()
+          proc431()
         end
       else
-        proc430()
+        proc431()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - /occlusionTexture texture offset>: Test Failed")
@@ -660,13 +660,13 @@
         if rt.ptrSet("/nodes/123/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_rotation = m.abs(rt.ptrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - /occlusionTexture texture rotation>: Test Successful")
-          proc447()
+          proc448()
         end
       else
-        proc447()
+        proc448()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - /occlusionTexture texture rotation>: Test Failed")
@@ -678,13 +678,13 @@
         if rt.ptrSet("/nodes/129/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_scale = m.eq(rt.ptrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - /occlusionTexture texture scale>: Test Successful")
-          proc462()
+          proc463()
         end
       else
-        proc462()
+        proc463()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - /occlusionTexture texture scale>: Test Failed")
@@ -696,13 +696,13 @@
         if rt.ptrSet("/nodes/135/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_offset = m.eq(rt.ptrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - /emissiveTexture texture offset>: Test Successful")
-          proc477()
+          proc478()
         end
       else
-        proc477()
+        proc478()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - /emissiveTexture texture offset>: Test Failed")
@@ -714,13 +714,13 @@
         if rt.ptrSet("/nodes/141/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_rotation = m.abs(rt.ptrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - /emissiveTexture texture rotation>: Test Successful")
-          proc494()
+          proc495()
         end
       else
-        proc494()
+        proc495()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - /emissiveTexture texture rotation>: Test Failed")
@@ -732,13 +732,13 @@
         if rt.ptrSet("/nodes/147/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_scale = m.eq(rt.ptrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - /emissiveTexture texture scale>: Test Successful")
-          proc509()
+          proc510()
         end
       else
-        proc509()
+        proc510()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - /emissiveTexture texture scale>: Test Failed")
@@ -750,10 +750,10 @@
         if rt.ptrSet("/nodes/154/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__baseColorFactor = m.eq(rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorFactor", "float4").value, { 0.0, 0.0, 1.0, 1.0 })
           rt.log("<pointer/set and get - /baseColorFactor>: Test Successful")
-          proc524()
+          proc525()
         end
       else
-        proc524()
+        proc525()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorFactor with RGBA(0.000, 0.000, 1.000, 1.000) can't be set.")
@@ -768,13 +768,13 @@
         if rt.ptrSet("/nodes/160/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__metallicFactor = rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicFactor", "float").value == 0.5
           rt.log("<pointer/set and get - /metallicFactor>: Test Successful")
-          proc539()
+          proc540()
         end
       else
-        proc539()
+        proc540()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicFactor with 0,5 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicFactor with 0.5 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__metallicFactor then
       rt.log("ERROR! <pointer/set and get - /metallicFactor>: Test Failed")
@@ -786,13 +786,13 @@
         if rt.ptrSet("/nodes/166/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__roughnessFactor = rt.ptrGet("/materials/7/pbrMetallicRoughness/roughnessFactor", "float").value == 0.5
           rt.log("<pointer/set and get - /roughnessFactor>: Test Successful")
-          proc554()
+          proc555()
         end
       else
-        proc554()
+        proc555()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/roughnessFactor with 0,5 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/roughnessFactor with 0.5 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__roughnessFactor then
       rt.log("ERROR! <pointer/set and get - /roughnessFactor>: Test Failed")
@@ -804,13 +804,13 @@
         if rt.ptrSet("/nodes/172/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_offset = m.eq(rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - /baseColorTexture texture offset>: Test Successful")
-          proc569()
+          proc570()
         end
       else
-        proc569()
+        proc570()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - /baseColorTexture texture offset>: Test Failed")
@@ -822,13 +822,13 @@
         if rt.ptrSet("/nodes/178/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_rotation = m.abs(rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - /baseColorTexture texture rotation>: Test Successful")
-          proc586()
+          proc587()
         end
       else
-        proc586()
+        proc587()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - /baseColorTexture texture rotation>: Test Failed")
@@ -840,13 +840,13 @@
         if rt.ptrSet("/nodes/184/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_scale = m.eq(rt.ptrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - /baseColorTexture texture scale>: Test Successful")
-          proc601()
+          proc602()
         end
       else
-        proc601()
+        proc602()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - /baseColorTexture texture scale>: Test Failed")
@@ -858,13 +858,13 @@
         if rt.ptrSet("/nodes/190/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_offset = m.eq(rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - /metallicRoughnessTexture texture offset>: Test Successful")
-          proc616()
+          proc617()
         end
       else
-        proc616()
+        proc617()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - /metallicRoughnessTexture texture offset>: Test Failed")
@@ -876,13 +876,13 @@
         if rt.ptrSet("/nodes/196/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_rotation = m.abs(rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - /metallicRoughnessTexture texture rotation>: Test Successful")
-          proc633()
+          proc634()
         end
       else
-        proc633()
+        proc634()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - /metallicRoughnessTexture texture rotation>: Test Failed")
@@ -894,13 +894,13 @@
         if rt.ptrSet("/nodes/202/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_scale = m.eq(rt.ptrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - /metallicRoughnessTexture texture scale>: Test Successful")
-          proc648()
+          proc649()
         end
       else
-        proc648()
+        proc649()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - /metallicRoughnessTexture texture scale>: Test Failed")
@@ -912,10 +912,10 @@
         if rt.ptrSet("/nodes/209/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyStrength = rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyStrength", "float").value == 2.0
           rt.log("<pointer/set and get - KHR_materials_anisotropy/anisotropyStrength>: Test Successful")
-          proc663()
+          proc664()
         end
       else
-        proc663()
+        proc664()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyStrength with 2 can't be set.")
@@ -930,13 +930,13 @@
         if rt.ptrSet("/nodes/215/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyRotation = m.abs(rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyRotation", "float").value - 0.5235988) < 0.0001
           rt.log("<pointer/set and get - KHR_materials_anisotropy/anisotropyRotation>: Test Successful")
-          proc680()
+          proc681()
         end
       else
-        proc680()
+        proc681()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyRotation with 0,5235988 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyRotation with 0.5235988 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyRotation then
       rt.log("ERROR! <pointer/set and get - KHR_materials_anisotropy/anisotropyRotation>: Test Failed")
@@ -948,13 +948,13 @@
         if rt.ptrSet("/nodes/221/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_offset = m.eq(rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture offset>: Test Successful")
-          proc695()
+          proc696()
         end
       else
-        proc695()
+        proc696()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture offset>: Test Failed")
@@ -966,13 +966,13 @@
         if rt.ptrSet("/nodes/227/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_rotation = m.abs(rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture rotation>: Test Successful")
-          proc712()
+          proc713()
         end
       else
-        proc712()
+        proc713()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture rotation>: Test Failed")
@@ -984,13 +984,13 @@
         if rt.ptrSet("/nodes/233/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_scale = m.eq(rt.ptrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture scale>: Test Successful")
-          proc727()
+          proc728()
         end
       else
-        proc727()
+        proc728()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture scale>: Test Failed")
@@ -1002,13 +1002,13 @@
         if rt.ptrSet("/nodes/240/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_offset = m.eq(rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture offset>: Test Successful")
-          proc742()
+          proc743()
         end
       else
-        proc742()
+        proc743()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture offset>: Test Failed")
@@ -1020,13 +1020,13 @@
         if rt.ptrSet("/nodes/246/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_rotation = m.abs(rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture rotation>: Test Successful")
-          proc759()
+          proc760()
         end
       else
-        proc759()
+        proc760()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture rotation>: Test Failed")
@@ -1038,13 +1038,13 @@
         if rt.ptrSet("/nodes/252/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_scale = m.eq(rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture scale>: Test Successful")
-          proc774()
+          proc775()
         end
       else
-        proc774()
+        proc775()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture scale>: Test Failed")
@@ -1056,13 +1056,13 @@
         if rt.ptrSet("/nodes/258/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_offset = m.eq(rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture offset>: Test Successful")
-          proc789()
+          proc790()
         end
       else
-        proc789()
+        proc790()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture offset>: Test Failed")
@@ -1074,13 +1074,13 @@
         if rt.ptrSet("/nodes/264/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_rotation = m.abs(rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture rotation>: Test Successful")
-          proc806()
+          proc807()
         end
       else
-        proc806()
+        proc807()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture rotation>: Test Failed")
@@ -1092,13 +1092,13 @@
         if rt.ptrSet("/nodes/270/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_scale = m.eq(rt.ptrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture scale>: Test Successful")
-          proc821()
+          proc822()
         end
       else
-        proc821()
+        proc822()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture scale>: Test Failed")
@@ -1110,10 +1110,10 @@
         if rt.ptrSet("/nodes/277/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_dispersion_dispersion = rt.ptrGet("/materials/10/extensions/KHR_materials_dispersion/dispersion", "float").value == 2.0
           rt.log("<pointer/set and get - KHR_materials_dispersion/dispersion>: Test Successful")
-          proc836()
+          proc837()
         end
       else
-        proc836()
+        proc837()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /materials/10/extensions/KHR_materials_dispersion/dispersion with 2 can't be set.")
@@ -1128,10 +1128,10 @@
         if rt.ptrSet("/nodes/284/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_emissive_strength_emissiveStrength = rt.ptrGet("/materials/11/extensions/KHR_materials_emissive_strength/emissiveStrength", "float").value == 2.0
           rt.log("<pointer/set and get - KHR_materials_emissive_strength/emissiveStrength>: Test Successful")
-          proc851()
+          proc852()
         end
       else
-        proc851()
+        proc852()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /materials/11/extensions/KHR_materials_emissive_strength/emissiveStrength with 2 can't be set.")
@@ -1146,10 +1146,10 @@
         if rt.ptrSet("/nodes/291/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_ior_ior = rt.ptrGet("/materials/12/extensions/KHR_materials_ior/ior", "float").value == 3.0
           rt.log("<pointer/set and get - KHR_materials_ior/ior>: Test Successful")
-          proc866()
+          proc867()
         end
       else
-        proc866()
+        proc867()
       end
     else
       rt.log("ERROR! Flow-[err] on Set pointer: /materials/12/extensions/KHR_materials_ior/ior with 3 can't be set.")
@@ -1164,13 +1164,13 @@
         if rt.ptrSet("/nodes/298/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceFactor = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceFactor", "float").value == 1.2
           rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceFactor>: Test Successful")
-          proc881()
+          proc882()
         end
       else
-        proc881()
+        proc882()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceFactor with 1,2 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceFactor with 1.2 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceFactor then
       rt.log("ERROR! <pointer/set and get - KHR_materials_iridescence/iridescenceFactor>: Test Failed")
@@ -1182,13 +1182,13 @@
         if rt.ptrSet("/nodes/304/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceIor = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceIor", "float").value == 2.3
           rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceIor>: Test Successful")
-          proc896()
+          proc897()
         end
       else
-        proc896()
+        proc897()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceIor with 2,3 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceIor with 2.3 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceIor then
       rt.log("ERROR! <pointer/set and get - KHR_materials_iridescence/iridescenceIor>: Test Failed")
@@ -1200,13 +1200,13 @@
         if rt.ptrSet("/nodes/310/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMinimum = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMinimum", "float").value == 0.5
           rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessMinimum>: Test Successful")
-          proc911()
+          proc912()
         end
       else
-        proc911()
+        proc912()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMinimum with 0,5 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMinimum with 0.5 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMinimum then
       rt.log("ERROR! <pointer/set and get - KHR_materials_iridescence/iridescenceThicknessMinimum>: Test Failed")
@@ -1218,13 +1218,13 @@
         if rt.ptrSet("/nodes/316/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMaximum = rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMaximum", "float").value == 1.2
           rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessMaximum>: Test Successful")
-          proc926()
+          proc927()
         end
       else
-        proc926()
+        proc927()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMaximum with 1,2 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMaximum with 1.2 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMaximum then
       rt.log("ERROR! <pointer/set and get - KHR_materials_iridescence/iridescenceThicknessMaximum>: Test Failed")
@@ -1236,13 +1236,13 @@
         if rt.ptrSet("/nodes/322/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_offset = m.eq(rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture offset>: Test Successful")
-          proc941()
+          proc942()
         end
       else
-        proc941()
+        proc942()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture offset>: Test Failed")
@@ -1254,13 +1254,13 @@
         if rt.ptrSet("/nodes/328/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_rotation = m.abs(rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture rotation>: Test Successful")
-          proc958()
+          proc959()
         end
       else
-        proc958()
+        proc959()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture rotation>: Test Failed")
@@ -1272,13 +1272,13 @@
         if rt.ptrSet("/nodes/334/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_scale = m.eq(rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture scale>: Test Successful")
-          proc973()
+          proc974()
         end
       else
-        proc973()
+        proc974()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture scale>: Test Failed")
@@ -1290,13 +1290,13 @@
         if rt.ptrSet("/nodes/340/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_offset = m.eq(rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture offset>: Test Successful")
-          proc988()
+          proc989()
         end
       else
-        proc988()
+        proc989()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture offset>: Test Failed")
@@ -1308,13 +1308,13 @@
         if rt.ptrSet("/nodes/346/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_rotation = m.abs(rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture rotation>: Test Successful")
-          proc1005()
+          proc1006()
         end
       else
-        proc1005()
+        proc1006()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture rotation>: Test Failed")
@@ -1326,13 +1326,13 @@
         if rt.ptrSet("/nodes/352/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_scale = m.eq(rt.ptrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture scale>: Test Successful")
-          proc1020()
+          proc1021()
         end
       else
-        proc1020()
+        proc1021()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture scale>: Test Failed")
@@ -1344,13 +1344,13 @@
         if rt.ptrSet("/nodes/359/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorFactor = m.eq(rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorFactor", "float3").value, { 0.0, 0.0, 1.0 })
           rt.log("<pointer/set and get - KHR_materials_sheen/sheenColorFactor>: Test Successful")
-          proc1035()
+          proc1036()
         end
       else
-        proc1035()
+        proc1036()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorFactor with (0.00, 0.00, 1.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorFactor with (0, 0, 1) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorFactor then
       rt.log("ERROR! <pointer/set and get - KHR_materials_sheen/sheenColorFactor>: Test Failed")
@@ -1362,13 +1362,13 @@
         if rt.ptrSet("/nodes/365/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessFactor = rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessFactor", "float").value == 2.3
           rt.log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessFactor>: Test Successful")
-          proc1050()
+          proc1051()
         end
       else
-        proc1050()
+        proc1051()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessFactor with 2,3 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessFactor with 2.3 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessFactor then
       rt.log("ERROR! <pointer/set and get - KHR_materials_sheen/sheenRoughnessFactor>: Test Failed")
@@ -1380,13 +1380,13 @@
         if rt.ptrSet("/nodes/371/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_offset = m.eq(rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture offset>: Test Successful")
-          proc1065()
+          proc1066()
         end
       else
-        proc1065()
+        proc1066()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - KHR_materials_sheen/sheenColorTexture texture offset>: Test Failed")
@@ -1398,13 +1398,13 @@
         if rt.ptrSet("/nodes/377/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_rotation = m.abs(rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture rotation>: Test Successful")
-          proc1082()
+          proc1083()
         end
       else
-        proc1082()
+        proc1083()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - KHR_materials_sheen/sheenColorTexture texture rotation>: Test Failed")
@@ -1416,13 +1416,13 @@
         if rt.ptrSet("/nodes/383/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_scale = m.eq(rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture scale>: Test Successful")
-          proc1097()
+          proc1098()
         end
       else
-        proc1097()
+        proc1098()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - KHR_materials_sheen/sheenColorTexture texture scale>: Test Failed")
@@ -1434,13 +1434,13 @@
         if rt.ptrSet("/nodes/389/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_offset = m.eq(rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture offset>: Test Successful")
-          proc1112()
+          proc1113()
         end
       else
-        proc1112()
+        proc1113()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture offset>: Test Failed")
@@ -1452,13 +1452,13 @@
         if rt.ptrSet("/nodes/395/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_rotation = m.abs(rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture rotation>: Test Successful")
-          proc1129()
+          proc1130()
         end
       else
-        proc1129()
+        proc1130()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture rotation>: Test Failed")
@@ -1470,13 +1470,13 @@
         if rt.ptrSet("/nodes/401/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_scale = m.eq(rt.ptrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture scale>: Test Successful")
-          proc1144()
+          proc1145()
         end
       else
-        proc1144()
+        proc1145()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture scale>: Test Failed")
@@ -1488,13 +1488,13 @@
         if rt.ptrSet("/nodes/408/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularFactor = rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularFactor", "float").value == 1.2
           rt.log("<pointer/set and get - KHR_materials_specular/specularFactor>: Test Successful")
-          proc1159()
+          proc1160()
         end
       else
-        proc1159()
+        proc1160()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularFactor with 1,2 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularFactor with 1.2 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularFactor then
       rt.log("ERROR! <pointer/set and get - KHR_materials_specular/specularFactor>: Test Failed")
@@ -1506,13 +1506,13 @@
         if rt.ptrSet("/nodes/414/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorFactor = m.eq(rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorFactor", "float3").value, { 1.0, 0.0, 0.0 })
           rt.log("<pointer/set and get - KHR_materials_specular/specularColorFactor>: Test Successful")
-          proc1174()
+          proc1175()
         end
       else
-        proc1174()
+        proc1175()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorFactor with (1.00, 0.00, 0.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorFactor with (1, 0, 0) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorFactor then
       rt.log("ERROR! <pointer/set and get - KHR_materials_specular/specularColorFactor>: Test Failed")
@@ -1524,13 +1524,13 @@
         if rt.ptrSet("/nodes/420/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_offset = m.eq(rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_specular/specularTexture texture offset>: Test Successful")
-          proc1189()
+          proc1190()
         end
       else
-        proc1189()
+        proc1190()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - KHR_materials_specular/specularTexture texture offset>: Test Failed")
@@ -1542,13 +1542,13 @@
         if rt.ptrSet("/nodes/426/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_rotation = m.abs(rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - KHR_materials_specular/specularTexture texture rotation>: Test Successful")
-          proc1206()
+          proc1207()
         end
       else
-        proc1206()
+        proc1207()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - KHR_materials_specular/specularTexture texture rotation>: Test Failed")
@@ -1560,13 +1560,13 @@
         if rt.ptrSet("/nodes/432/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_scale = m.eq(rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_specular/specularTexture texture scale>: Test Successful")
-          proc1221()
+          proc1222()
         end
       else
-        proc1221()
+        proc1222()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - KHR_materials_specular/specularTexture texture scale>: Test Failed")
@@ -1578,13 +1578,13 @@
         if rt.ptrSet("/nodes/438/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_offset = m.eq(rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture offset>: Test Successful")
-          proc1236()
+          proc1237()
         end
       else
-        proc1236()
+        proc1237()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - KHR_materials_specular/specularColorTexture texture offset>: Test Failed")
@@ -1596,13 +1596,13 @@
         if rt.ptrSet("/nodes/444/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_rotation = m.abs(rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture rotation>: Test Successful")
-          proc1253()
+          proc1254()
         end
       else
-        proc1253()
+        proc1254()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - KHR_materials_specular/specularColorTexture texture rotation>: Test Failed")
@@ -1614,13 +1614,13 @@
         if rt.ptrSet("/nodes/450/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_scale = m.eq(rt.ptrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture scale>: Test Successful")
-          proc1268()
+          proc1269()
         end
       else
-        proc1268()
+        proc1269()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - KHR_materials_specular/specularColorTexture texture scale>: Test Failed")
@@ -1632,13 +1632,13 @@
         if rt.ptrSet("/nodes/457/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionFactor = rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionFactor", "float").value == 1.2
           rt.log("<pointer/set and get - KHR_materials_transmission/transmissionFactor>: Test Successful")
-          proc1283()
+          proc1284()
         end
       else
-        proc1283()
+        proc1284()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionFactor with 1,2 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionFactor with 1.2 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionFactor then
       rt.log("ERROR! <pointer/set and get - KHR_materials_transmission/transmissionFactor>: Test Failed")
@@ -1650,13 +1650,13 @@
         if rt.ptrSet("/nodes/463/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_offset = m.eq(rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture offset>: Test Successful")
-          proc1298()
+          proc1299()
         end
       else
-        proc1298()
+        proc1299()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - KHR_materials_transmission/transmissionTexture texture offset>: Test Failed")
@@ -1668,13 +1668,13 @@
         if rt.ptrSet("/nodes/469/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_rotation = m.abs(rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture rotation>: Test Successful")
-          proc1315()
+          proc1316()
         end
       else
-        proc1315()
+        proc1316()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - KHR_materials_transmission/transmissionTexture texture rotation>: Test Failed")
@@ -1686,13 +1686,13 @@
         if rt.ptrSet("/nodes/475/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_scale = m.eq(rt.ptrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture scale>: Test Successful")
-          proc1330()
+          proc1331()
         end
       else
-        proc1330()
+        proc1331()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - KHR_materials_transmission/transmissionTexture texture scale>: Test Failed")
@@ -1704,13 +1704,13 @@
         if rt.ptrSet("/nodes/482/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessFactor = rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessFactor", "float").value == 1.2
           rt.log("<pointer/set and get - KHR_materials_volume/thicknessFactor>: Test Successful")
-          proc1345()
+          proc1346()
         end
       else
-        proc1345()
+        proc1346()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessFactor with 1,2 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessFactor with 1.2 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessFactor then
       rt.log("ERROR! <pointer/set and get - KHR_materials_volume/thicknessFactor>: Test Failed")
@@ -1722,13 +1722,13 @@
         if rt.ptrSet("/nodes/488/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_attenuationDistance = rt.ptrGet("/materials/17/extensions/KHR_materials_volume/attenuationDistance", "float").value == 2.2
           rt.log("<pointer/set and get - KHR_materials_volume/attenuationDistance>: Test Successful")
-          proc1360()
+          proc1361()
         end
       else
-        proc1360()
+        proc1361()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/attenuationDistance with 2,2 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/attenuationDistance with 2.2 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_attenuationDistance then
       rt.log("ERROR! <pointer/set and get - KHR_materials_volume/attenuationDistance>: Test Failed")
@@ -1740,13 +1740,13 @@
         if rt.ptrSet("/nodes/494/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_attenuationColor = m.eq(rt.ptrGet("/materials/17/extensions/KHR_materials_volume/attenuationColor", "float3").value, { 1.0, 0.0, 0.0 })
           rt.log("<pointer/set and get - KHR_materials_volume/attenuationColor>: Test Successful")
-          proc1375()
+          proc1376()
         end
       else
-        proc1375()
+        proc1376()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/attenuationColor with (1.00, 0.00, 0.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/attenuationColor with (1, 0, 0) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_attenuationColor then
       rt.log("ERROR! <pointer/set and get - KHR_materials_volume/attenuationColor>: Test Failed")
@@ -1758,13 +1758,13 @@
         if rt.ptrSet("/nodes/500/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_offset = m.eq(rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/offset", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture offset>: Test Successful")
-          proc1390()
+          proc1391()
         end
       else
-        proc1390()
+        proc1391()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_offset then
       rt.log("ERROR! <pointer/set and get - KHR_materials_volume/thicknessTexture texture offset>: Test Failed")
@@ -1776,13 +1776,13 @@
         if rt.ptrSet("/nodes/506/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_rotation = m.abs(rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/rotation", "float").value - 0.7853982) < 0.0001
           rt.log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture rotation>: Test Successful")
-          proc1407()
+          proc1408()
         end
       else
-        proc1407()
+        proc1408()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_rotation then
       rt.log("ERROR! <pointer/set and get - KHR_materials_volume/thicknessTexture texture rotation>: Test Failed")
@@ -1794,13 +1794,13 @@
         if rt.ptrSet("/nodes/512/translation", "float3", { 0.0, 0.0, 0.8 }) then
           V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_scale = m.eq(rt.ptrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/scale", "float2").value, { 2.0, 3.0 })
           rt.log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture scale>: Test Successful")
-          proc1422()
+          proc1423()
         end
       else
-        proc1422()
+        proc1423()
       end
     else
-      rt.log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.")
+      rt.log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.")
     end
     if not V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_scale then
       rt.log("ERROR! <pointer/set and get - KHR_materials_volume/thicknessTexture texture scale>: Test Failed")

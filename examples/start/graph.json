@@ -20,29 +20,29 @@
       ],
       "variables": [
         {
-          "id": "FlowSequenceCount_cd624fe9-1c76-4daf-9ebc-5a4014c8fb9b",
           "type": 1,
+          "name": "FlowSequenceCount_e0d0c35a-dd7f-45a0-8e0b-e3856b82c2a5",
           "value": [
             0
           ]
         },
         {
-          "id": "TestResult_animation/start_[out] fired right after [in]",
           "type": 0,
+          "name": "TestResult_animation/start_[out] fired right after [in]",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_HasPassed_animation/start_Position at 50%",
           "type": 0,
+          "name": "TestResult_HasPassed_animation/start_Position at 50%",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_animation/start_Position at 50%",
           "type": 3,
+          "name": "TestResult_animation/start_Position at 50%",
           "value": [
             -0.0142,
             -0.0142,
@@ -50,22 +50,22 @@
           ]
         },
         {
-          "id": "TestResult_animation/start_Flow [done]",
           "type": 0,
+          "name": "TestResult_animation/start_Flow [done]",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_HasPassed_animation/start_Position at 100%",
           "type": 0,
+          "name": "TestResult_HasPassed_animation/start_Position at 100%",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_animation/start_Position at 100%",
           "type": 3,
+          "name": "TestResult_animation/start_Position at 100%",
           "value": [
             -0.0142,
             -0.0142,
@@ -73,57 +73,57 @@
           ]
         },
         {
-          "id": "TestResult_animation/start_[err] flow (speed -1)",
           "type": 0,
+          "name": "TestResult_animation/start_[err] flow (speed -1)",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_animation/start_[err] flow (speed 0)",
           "type": 0,
+          "name": "TestResult_animation/start_[err] flow (speed 0)",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_animation/start_[err] flow (speed NaN)",
           "type": 0,
+          "name": "TestResult_animation/start_[err] flow (speed NaN)",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_animation/start_[err] flow (speed +Inf)",
           "type": 0,
+          "name": "TestResult_animation/start_[err] flow (speed +Inf)",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_animation/start_[err] flow (startTime NaN)",
           "type": 0,
+          "name": "TestResult_animation/start_[err] flow (startTime NaN)",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_animation/start_[err] flow (startTime +Inf)",
           "type": 0,
+          "name": "TestResult_animation/start_[err] flow (startTime +Inf)",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_animation/start_[err] flow (endTime NaN)",
           "type": 0,
+          "name": "TestResult_animation/start_[err] flow (endTime NaN)",
           "value": [
             false
           ]
         },
         {
-          "id": "TestResult_animation/start_[err] flow (invalid ref)",
           "type": 0,
+          "name": "TestResult_animation/start_[err] flow (invalid ref)",
           "value": [
             false
           ]
@@ -132,6 +132,7 @@
       "events": [
         {
           "id": "test/onStart",
+          "name": "test/onStart",
           "values": {
             "expectedDuration": {
               "type": 2,
@@ -143,25 +144,16 @@
         },
         {
           "id": "test/onSuccess",
-          "values": {}
+          "name": "test/onSuccess"
         },
         {
           "id": "test/onFailed",
-          "values": {}
+          "name": "test/onFailed"
         }
       ],
       "declarations": [
         {
-          "op": "animation/start"
-        },
-        {
           "op": "pointer/get"
-        },
-        {
-          "op": "flow/setDelay"
-        },
-        {
-          "op": "flow/sequence"
         },
         {
           "op": "event/onStart"
@@ -176,6 +168,15 @@
           "op": "math/eq"
         },
         {
+          "op": "flow/setDelay"
+        },
+        {
+          "op": "flow/sequence"
+        },
+        {
+          "op": "animation/start"
+        },
+        {
           "op": "variable/set"
         },
         {
@@ -186,9 +187,6 @@
         },
         {
           "op": "pointer/set"
-        },
-        {
-          "op": "event/send"
         },
         {
           "op": "math/normalize"
@@ -206,6 +204,9 @@
           "op": "math/and"
         },
         {
+          "op": "event/send"
+        },
+        {
           "op": "math/NaN"
         },
         {
@@ -215,7 +216,141 @@
       "nodes": [
         {
           "declaration": 0,
-          "configuration": {},
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                3
+              ]
+            }
+          },
+          "values": {
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                3
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 1,
+          "flows": {
+            "out": {
+              "node": 7,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 3,
+          "values": {
+            "a": {
+              "node": 2,
+              "socket": "value"
+            },
+            "b": {
+              "type": 1,
+              "value": [
+                1
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 4,
+          "values": {
+            "a": {
+              "node": 2,
+              "socket": "value"
+            },
+            "b": {
+              "type": 1,
+              "value": [
+                1
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 4,
+          "values": {
+            "a": {
+              "node": 2,
+              "socket": "value"
+            },
+            "b": {
+              "type": 1,
+              "value": [
+                2
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                1
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 5,
+          "values": {
+            "duration": {
+              "type": 2,
+              "value": [
+                3
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 8,
+              "socket": "in"
+            },
+            "done": {
+              "node": 37,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 6,
+          "flows": {
+            "0": {
+              "node": 9,
+              "socket": "in"
+            },
+            "1": {
+              "node": 15,
+              "socket": "in"
+            },
+            "2": {
+              "node": 10,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 7,
           "values": {
             "animation": {
               "type": 4,
@@ -244,42 +379,17 @@
           },
           "flows": {
             "out": {
-              "node": 8,
+              "node": 11,
               "socket": "in"
             },
             "done": {
-              "node": 95,
+              "node": 80,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 1,
-          "configuration": {
-            "pointer": {
-              "value": [
-                "/nodes/[nodeIndex]/translation"
-              ]
-            },
-            "type": {
-              "value": [
-                3
-              ]
-            }
-          },
-          "values": {
-            "nodeIndex": {
-              "type": 1,
-              "value": [
-                3
-              ]
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 2,
-          "configuration": {},
+          "declaration": 5,
           "values": {
             "duration": {
               "type": 2,
@@ -290,86 +400,10 @@
           },
           "flows": {
             "done": {
-              "node": 34,
+              "node": 28,
               "socket": "in"
             }
           }
-        },
-        {
-          "declaration": 3,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "0": {
-              "node": 0,
-              "socket": "in"
-            },
-            "1": {
-              "node": 13,
-              "socket": "in"
-            },
-            "2": {
-              "node": 2,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 4,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "out": {
-              "node": 24,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 6,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 5,
-              "socket": "value"
-            },
-            "b": {
-              "type": 1,
-              "value": [
-                1
-              ]
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 7,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 5,
-              "socket": "value"
-            },
-            "b": {
-              "type": 1,
-              "value": [
-                1
-              ]
-            }
-          },
-          "flows": {}
         },
         {
           "declaration": 8,
@@ -382,29 +416,28 @@
           },
           "values": {
             "0": {
-              "node": 6,
+              "node": 3,
               "socket": "value"
             }
           },
           "flows": {
             "out": {
-              "node": 9,
+              "node": 12,
               "socket": "in"
             }
           }
         },
         {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 7,
+              "node": 4,
               "socket": "value"
             }
           },
           "flows": {
             "false": {
-              "node": 10,
+              "node": 13,
               "socket": "in"
             }
           }
@@ -423,10 +456,9 @@
               ]
             }
           },
-          "values": {},
           "flows": {
             "out": {
-              "node": 11,
+              "node": 14,
               "socket": "in"
             }
           }
@@ -447,25 +479,7 @@
                 -1000
               ]
             }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 7,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 5,
-              "socket": "value"
-            },
-            "b": {
-              "type": 1,
-              "value": [
-                2
-              ]
-            }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 8,
@@ -478,33 +492,32 @@
           },
           "values": {
             "0": {
-              "node": 6,
+              "node": 3,
               "socket": "value"
             }
           },
           "flows": {
             "out": {
-              "node": 14,
+              "node": 16,
               "socket": "in"
             }
           }
         },
         {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 12,
+              "node": 5,
               "socket": "value"
             }
           },
           "flows": {
             "true": {
-              "node": 17,
+              "node": 19,
               "socket": "in"
             },
             "false": {
-              "node": 15,
+              "node": 17,
               "socket": "in"
             }
           }
@@ -523,10 +536,9 @@
               ]
             }
           },
-          "values": {},
           "flows": {
             "out": {
-              "node": 16,
+              "node": 18,
               "socket": "in"
             }
           }
@@ -547,8 +559,7 @@
                 -1000
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 11,
@@ -582,7 +593,7 @@
           },
           "flows": {
             "out": {
-              "node": 18,
+              "node": 20,
               "socket": "in"
             }
           }
@@ -601,10 +612,9 @@
               ]
             }
           },
-          "values": {},
           "flows": {
             "out": {
-              "node": 19,
+              "node": 21,
               "socket": "in"
             }
           }
@@ -625,105 +635,22 @@
                 true
               ]
             }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 12,
-          "configuration": {
-            "event": {
-              "value": [
-                2
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                1
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 9,
-          "configuration": {},
-          "values": {
-            "condition": {
-              "node": 21,
-              "socket": "value"
-            }
-          },
-          "flows": {
-            "false": {
-              "node": 23,
-              "socket": "in"
-            }
           }
         },
         {
-          "declaration": 10,
-          "configuration": {
-            "message": {
-              "value": [
-                "ERROR! <animation/start - [out] fired right after [in]>: Correct flow order not triggered! This should not happened!"
-              ]
-            },
-            "severity": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 2,
-          "configuration": {},
+          "declaration": 12,
           "values": {
-            "duration": {
-              "type": 2,
-              "value": [
-                3
-              ]
-            }
-          },
-          "flows": {
-            "out": {
-              "node": 3,
-              "socket": "in"
-            },
-            "done": {
-              "node": 44,
-              "socket": "in"
+            "a": {
+              "node": 0,
+              "socket": "value"
             }
           }
         },
         {
           "declaration": 13,
-          "configuration": {},
           "values": {
             "a": {
-              "node": 1,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 14,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 25,
+              "node": 22,
               "socket": "value"
             },
             "b": {
@@ -734,15 +661,13 @@
                 0.8017837
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
-          "declaration": 15,
-          "configuration": {},
+          "declaration": 14,
           "values": {
             "a": {
-              "node": 26,
+              "node": 23,
               "socket": "value"
             },
             "b": {
@@ -751,26 +676,22 @@
                 0.7
               ]
             }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 16,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 1,
-              "socket": "value"
-            }
-          },
-          "flows": {}
+          }
         },
         {
           "declaration": 15,
-          "configuration": {},
           "values": {
             "a": {
-              "node": 28,
+              "node": 0,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 14,
+          "values": {
+            "a": {
+              "node": 25,
               "socket": "value"
             },
             "b": {
@@ -779,40 +700,73 @@
                 1.57082868
               ]
             }
-          },
-          "flows": {}
+          }
         },
         {
-          "declaration": 17,
-          "configuration": {},
+          "declaration": 16,
           "values": {
             "a": {
-              "node": 29,
+              "node": 26,
               "socket": "value"
             },
             "b": {
-              "node": 27,
+              "node": 24,
               "socket": "value"
             }
+          }
+        },
+        {
+          "declaration": 11,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                3
+              ]
+            }
           },
-          "flows": {}
+          "values": {
+            "value": {
+              "type": 3,
+              "value": [
+                0,
+                0,
+                0
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                13
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 29,
+              "socket": "in"
+            }
+          }
         },
         {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 30,
+              "node": 27,
               "socket": "value"
             }
           },
           "flows": {
             "true": {
-              "node": 32,
+              "node": 30,
               "socket": "in"
             },
             "false": {
-              "node": 35,
+              "node": 34,
               "socket": "in"
             }
           }
@@ -849,116 +803,66 @@
           },
           "flows": {
             "out": {
-              "node": 33,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 11,
-          "configuration": {
-            "pointer": {
-              "value": [
-                "/nodes/[nodeIndex]/translation"
-              ]
-            },
-            "type": {
-              "value": [
-                3
-              ]
-            }
-          },
-          "values": {
-            "value": {
-              "type": 3,
-              "value": [
-                0,
-                0,
-                0
-              ]
-            },
-            "nodeIndex": {
-              "type": 1,
-              "value": [
-                13
-              ]
-            }
-          },
-          "flows": {
-            "out": {
-              "node": 37,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 11,
-          "configuration": {
-            "pointer": {
-              "value": [
-                "/nodes/[nodeIndex]/translation"
-              ]
-            },
-            "type": {
-              "value": [
-                3
-              ]
-            }
-          },
-          "values": {
-            "value": {
-              "type": 3,
-              "value": [
-                0,
-                0,
-                0
-              ]
-            },
-            "nodeIndex": {
-              "type": 1,
-              "value": [
-                13
-              ]
-            }
-          },
-          "flows": {
-            "out": {
               "node": 31,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 10,
+          "declaration": 11,
           "configuration": {
-            "message": {
+            "pointer": {
               "value": [
-                "<animation/start - Position at 50%>: Value is {0}, should be {1} (Proximity range: 0,3)"
+                "/nodes/[nodeIndex]/translation"
               ]
             },
-            "severity": {
+            "type": {
               "value": [
-                0
+                3
               ]
             }
           },
           "values": {
-            "0": {
-              "node": 1,
-              "socket": "value"
-            },
-            "1": {
+            "value": {
               "type": 3,
               "value": [
-                -0.5,
-                1,
-                1.5
+                0,
+                0,
+                0
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                13
               ]
             }
           },
           "flows": {
             "out": {
-              "node": 38,
+              "node": 32,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 8,
+          "configuration": {
+            "variables": {
+              "value": [
+                2
+              ]
+            }
+          },
+          "values": {
+            "2": {
+              "node": 27,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 33,
               "socket": "in"
             }
           }
@@ -977,32 +881,44 @@
               ]
             }
           },
-          "values": {},
           "flows": {
             "out": {
-              "node": 35,
+              "node": 34,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 8,
+          "declaration": 10,
           "configuration": {
-            "variables": {
+            "message": {
               "value": [
-                2
+                "<animation/start - Position at 50%>: Value is {0}, should be {1} (Proximity range: 0.3)"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
               ]
             }
           },
           "values": {
-            "2": {
-              "node": 30,
+            "0": {
+              "node": 0,
               "socket": "value"
+            },
+            "1": {
+              "type": 3,
+              "value": [
+                -0.5,
+                1,
+                1.5
+              ]
             }
           },
           "flows": {
             "out": {
-              "node": 36,
+              "node": 35,
               "socket": "in"
             }
           }
@@ -1018,48 +934,53 @@
           },
           "values": {
             "3": {
-              "node": 1,
+              "node": 0,
               "socket": "value"
             }
-          },
-          "flows": {}
+          }
         },
         {
-          "declaration": 12,
-          "configuration": {
-            "event": {
-              "value": [
-                1
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 5,
+          "declaration": 2,
           "configuration": {
             "variable": {
               "value": [
                 2
               ]
             }
-          },
-          "values": {},
-          "flows": {}
+          }
+        },
+        {
+          "declaration": 6,
+          "flows": {
+            "001": {
+              "node": 38,
+              "socket": "in"
+            },
+            "002": {
+              "node": 40,
+              "socket": "in"
+            },
+            "003": {
+              "node": 67,
+              "socket": "in"
+            },
+            "004": {
+              "node": 77,
+              "socket": "in"
+            }
+          }
         },
         {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 40,
+              "node": 6,
               "socket": "value"
             }
           },
           "flows": {
             "false": {
-              "node": 42,
+              "node": 39,
               "socket": "in"
             }
           }
@@ -1069,7 +990,7 @@
           "configuration": {
             "message": {
               "value": [
-                "ERROR! <animation/start - Position at 50%>: Test Failed"
+                "ERROR! <animation/start - [out] fired right after [in]>: Correct flow order not triggered! This should not happened!"
               ]
             },
             "severity": {
@@ -1077,9 +998,7 @@
                 0
               ]
             }
-          },
-          "values": {},
-          "flows": {}
+          }
         },
         {
           "declaration": 11,
@@ -1119,24 +1038,539 @@
           }
         },
         {
-          "declaration": 3,
-          "configuration": {},
-          "values": {},
+          "declaration": 9,
+          "values": {
+            "condition": {
+              "node": 36,
+              "socket": "value"
+            }
+          },
           "flows": {
-            "001": {
-              "node": 22,
+            "false": {
+              "node": 42,
               "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 10,
+          "configuration": {
+            "message": {
+              "value": [
+                "ERROR! <animation/start - Position at 50%>: Test Failed"
+              ]
             },
-            "002": {
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                1
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                2
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 16,
+          "values": {
+            "a": {
               "node": 43,
-              "socket": "in"
+              "socket": "value"
             },
-            "003": {
+            "b": {
+              "node": 44,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                4
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 16,
+          "values": {
+            "a": {
+              "node": 45,
+              "socket": "value"
+            },
+            "b": {
+              "node": 46,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                5
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 16,
+          "values": {
+            "a": {
+              "node": 47,
+              "socket": "value"
+            },
+            "b": {
+              "node": 48,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                7
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 16,
+          "values": {
+            "a": {
+              "node": 49,
+              "socket": "value"
+            },
+            "b": {
+              "node": 50,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                8
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 16,
+          "values": {
+            "a": {
+              "node": 51,
+              "socket": "value"
+            },
+            "b": {
+              "node": 52,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                9
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 16,
+          "values": {
+            "a": {
+              "node": 53,
+              "socket": "value"
+            },
+            "b": {
+              "node": 54,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                10
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 16,
+          "values": {
+            "a": {
+              "node": 55,
+              "socket": "value"
+            },
+            "b": {
+              "node": 56,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                11
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 16,
+          "values": {
+            "a": {
+              "node": 57,
+              "socket": "value"
+            },
+            "b": {
+              "node": 58,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                12
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 16,
+          "values": {
+            "a": {
+              "node": 59,
+              "socket": "value"
+            },
+            "b": {
+              "node": 60,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                13
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 16,
+          "values": {
+            "a": {
+              "node": 61,
+              "socket": "value"
+            },
+            "b": {
+              "node": 62,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                14
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 16,
+          "values": {
+            "a": {
+              "node": 63,
+              "socket": "value"
+            },
+            "b": {
+              "node": 64,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                4
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 11,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                3
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 3,
+              "value": [
+                0,
+                0,
+                0
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                19
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 68,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 9,
+          "values": {
+            "condition": {
+              "node": 66,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "false": {
+              "node": 69,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 10,
+          "configuration": {
+            "message": {
+              "value": [
+                "ERROR! <animation/start - Flow [done]>: Flow not triggered! This should not happened!"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 12,
+          "values": {
+            "a": {
+              "node": 0,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 13,
+          "values": {
+            "a": {
+              "node": 70,
+              "socket": "value"
+            },
+            "b": {
+              "type": 3,
+              "value": [
+                -0.267261237,
+                0.5345225,
+                0.8017837
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 14,
+          "values": {
+            "a": {
+              "node": 71,
+              "socket": "value"
+            },
+            "b": {
+              "type": 2,
+              "value": [
+                0.99
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 15,
+          "values": {
+            "a": {
+              "node": 0,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 14,
+          "values": {
+            "a": {
+              "node": 73,
+              "socket": "value"
+            },
+            "b": {
+              "type": 2,
+              "value": [
+                3.73165751
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 16,
+          "values": {
+            "a": {
+              "node": 74,
+              "socket": "value"
+            },
+            "b": {
+              "node": 72,
+              "socket": "value"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                5
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 11,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                3
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 3,
+              "value": [
+                0,
+                0,
+                0
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                25
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 78,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 9,
+          "values": {
+            "condition": {
               "node": 76,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "false": {
+              "node": 79,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 10,
+          "configuration": {
+            "message": {
+              "value": [
+                "ERROR! <animation/start - Position at 100%>: Test Failed"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 6,
+          "flows": {
+            "s000": {
+              "node": 81,
               "socket": "in"
             },
-            "004": {
-              "node": 94,
+            "s001": {
+              "node": 85,
               "socket": "in"
             }
           }
@@ -1173,7 +1607,7 @@
           },
           "flows": {
             "out": {
-              "node": 46,
+              "node": 82,
               "socket": "in"
             }
           }
@@ -1210,7 +1644,7 @@
           },
           "flows": {
             "out": {
-              "node": 47,
+              "node": 83,
               "socket": "in"
             }
           }
@@ -1229,10 +1663,9 @@
               ]
             }
           },
-          "values": {},
           "flows": {
             "out": {
-              "node": 48,
+              "node": 84,
               "socket": "in"
             }
           }
@@ -1253,382 +1686,7 @@
                 true
               ]
             }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                1
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                2
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 17,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 49,
-              "socket": "value"
-            },
-            "b": {
-              "node": 50,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                4
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 17,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 51,
-              "socket": "value"
-            },
-            "b": {
-              "node": 52,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                5
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 17,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 53,
-              "socket": "value"
-            },
-            "b": {
-              "node": 54,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                7
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 17,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 55,
-              "socket": "value"
-            },
-            "b": {
-              "node": 56,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                8
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 17,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 57,
-              "socket": "value"
-            },
-            "b": {
-              "node": 58,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                9
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 17,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 59,
-              "socket": "value"
-            },
-            "b": {
-              "node": 60,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                10
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 17,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 61,
-              "socket": "value"
-            },
-            "b": {
-              "node": 62,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                11
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 17,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 63,
-              "socket": "value"
-            },
-            "b": {
-              "node": 64,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                12
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 17,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 65,
-              "socket": "value"
-            },
-            "b": {
-              "node": 66,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                13
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 17,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 67,
-              "socket": "value"
-            },
-            "b": {
-              "node": 68,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                14
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 17,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 69,
-              "socket": "value"
-            },
-            "b": {
-              "node": 70,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 9,
-          "configuration": {},
-          "values": {
-            "condition": {
-              "node": 71,
-              "socket": "value"
-            }
-          },
-          "flows": {
-            "true": {
-              "node": 39,
-              "socket": "in"
-            },
-            "false": {
-              "node": 20,
-              "socket": "in"
-            }
           }
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                4
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 9,
-          "configuration": {},
-          "values": {
-            "condition": {
-              "node": 73,
-              "socket": "value"
-            }
-          },
-          "flows": {
-            "false": {
-              "node": 75,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
-          "configuration": {
-            "message": {
-              "value": [
-                "ERROR! <animation/start - Flow [done]>: Flow not triggered! This should not happened!"
-              ]
-            },
-            "severity": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
         },
         {
           "declaration": 11,
@@ -1656,123 +1714,32 @@
             "nodeIndex": {
               "type": 1,
               "value": [
-                19
+                25
               ]
             }
           },
           "flows": {
             "out": {
-              "node": 74,
+              "node": 86,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 13,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 1,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 14,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 77,
-              "socket": "value"
-            },
-            "b": {
-              "type": 3,
-              "value": [
-                -0.267261237,
-                0.5345225,
-                0.8017837
-              ]
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 15,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 78,
-              "socket": "value"
-            },
-            "b": {
-              "type": 2,
-              "value": [
-                0.99
-              ]
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 16,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 1,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 15,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 80,
-              "socket": "value"
-            },
-            "b": {
-              "type": 2,
-              "value": [
-                3.73165751
-              ]
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 17,
-          "configuration": {},
-          "values": {
-            "a": {
-              "node": 81,
-              "socket": "value"
-            },
-            "b": {
-              "node": 79,
-              "socket": "value"
-            }
-          },
-          "flows": {}
-        },
-        {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 82,
+              "node": 75,
               "socket": "value"
             }
           },
           "flows": {
             "true": {
-              "node": 84,
+              "node": 87,
               "socket": "in"
             },
             "false": {
-              "node": 87,
+              "node": 91,
               "socket": "in"
             }
           }
@@ -1809,7 +1776,7 @@
           },
           "flows": {
             "out": {
-              "node": 85,
+              "node": 88,
               "socket": "in"
             }
           }
@@ -1852,68 +1819,18 @@
           }
         },
         {
-          "declaration": 11,
+          "declaration": 8,
           "configuration": {
-            "pointer": {
+            "variables": {
               "value": [
-                "/nodes/[nodeIndex]/translation"
-              ]
-            },
-            "type": {
-              "value": [
-                3
+                5
               ]
             }
           },
           "values": {
-            "value": {
-              "type": 3,
-              "value": [
-                0,
-                0,
-                0
-              ]
-            },
-            "nodeIndex": {
-              "type": 1,
-              "value": [
-                25
-              ]
-            }
-          },
-          "flows": {
-            "out": {
-              "node": 83,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
-          "configuration": {
-            "message": {
-              "value": [
-                "<animation/start - Position at 100%>: Value is {0}, should be {1} (Proximity range: 0,01)"
-              ]
-            },
-            "severity": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {
-            "0": {
-              "node": 1,
+            "5": {
+              "node": 75,
               "socket": "value"
-            },
-            "1": {
-              "type": 3,
-              "value": [
-                -1,
-                2,
-                3
-              ]
             }
           },
           "flows": {
@@ -1937,32 +1854,44 @@
               ]
             }
           },
-          "values": {},
           "flows": {
             "out": {
-              "node": 87,
+              "node": 91,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 8,
+          "declaration": 10,
           "configuration": {
-            "variables": {
+            "message": {
               "value": [
-                5
+                "<animation/start - Position at 100%>: Value is {0}, should be {1} (Proximity range: 0.01)"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
               ]
             }
           },
           "values": {
-            "5": {
-              "node": 82,
+            "0": {
+              "node": 0,
               "socket": "value"
+            },
+            "1": {
+              "type": 3,
+              "value": [
+                -1,
+                2,
+                3
+              ]
             }
           },
           "flows": {
             "out": {
-              "node": 88,
+              "node": 92,
               "socket": "in"
             }
           }
@@ -1978,123 +1907,45 @@
           },
           "values": {
             "6": {
-              "node": 1,
+              "node": 0,
               "socket": "value"
             }
-          },
-          "flows": {}
+          }
         },
         {
-          "declaration": 5,
+          "declaration": 1,
+          "flows": {
+            "out": {
+              "node": 95,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
           "configuration": {
             "variable": {
               "value": [
-                5
+                7
               ]
             }
-          },
-          "values": {},
-          "flows": {}
+          }
         },
         {
-          "declaration": 9,
-          "configuration": {},
-          "values": {
-            "condition": {
-              "node": 91,
-              "socket": "value"
-            }
-          },
+          "declaration": 6,
           "flows": {
-            "false": {
-              "node": 93,
+            "001": {
+              "node": 100,
+              "socket": "in"
+            },
+            "000": {
+              "node": 96,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 10,
-          "configuration": {
-            "message": {
-              "value": [
-                "ERROR! <animation/start - Position at 100%>: Test Failed"
-              ]
-            },
-            "severity": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 11,
-          "configuration": {
-            "pointer": {
-              "value": [
-                "/nodes/[nodeIndex]/translation"
-              ]
-            },
-            "type": {
-              "value": [
-                3
-              ]
-            }
-          },
-          "values": {
-            "value": {
-              "type": 3,
-              "value": [
-                0,
-                0,
-                0
-              ]
-            },
-            "nodeIndex": {
-              "type": 1,
-              "value": [
-                25
-              ]
-            }
-          },
-          "flows": {
-            "out": {
-              "node": 92,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 3,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "s000": {
-              "node": 45,
-              "socket": "in"
-            },
-            "s001": {
-              "node": 86,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 4,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "out": {
-              "node": 104,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 0,
-          "configuration": {},
+          "declaration": 7,
           "values": {
             "animation": {
               "type": 4,
@@ -2123,7 +1974,7 @@
           },
           "flows": {
             "err": {
-              "node": 98,
+              "node": 97,
               "socket": "in"
             }
           }
@@ -2160,7 +2011,7 @@
           },
           "flows": {
             "out": {
-              "node": 99,
+              "node": 98,
               "socket": "in"
             }
           }
@@ -2179,10 +2030,9 @@
               ]
             }
           },
-          "values": {},
           "flows": {
             "out": {
-              "node": 100,
+              "node": 99,
               "socket": "in"
             }
           }
@@ -2203,33 +2053,19 @@
                 true
               ]
             }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                7
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
+          }
         },
         {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 101,
+              "node": 94,
               "socket": "value"
             }
           },
           "flows": {
             "false": {
-              "node": 103,
+              "node": 101,
               "socket": "in"
             }
           }
@@ -2247,39 +2083,42 @@
                 0
               ]
             }
-          },
-          "values": {},
-          "flows": {}
+          }
         },
         {
-          "declaration": 3,
-          "configuration": {},
-          "values": {},
+          "declaration": 1,
+          "flows": {
+            "out": {
+              "node": 104,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                8
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 6,
           "flows": {
             "001": {
-              "node": 102,
+              "node": 109,
               "socket": "in"
             },
             "000": {
-              "node": 97,
+              "node": 105,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 4,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "out": {
-              "node": 113,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 0,
-          "configuration": {},
+          "declaration": 7,
           "values": {
             "animation": {
               "type": 4,
@@ -2308,7 +2147,7 @@
           },
           "flows": {
             "err": {
-              "node": 107,
+              "node": 106,
               "socket": "in"
             }
           }
@@ -2345,7 +2184,7 @@
           },
           "flows": {
             "out": {
-              "node": 108,
+              "node": 107,
               "socket": "in"
             }
           }
@@ -2364,10 +2203,9 @@
               ]
             }
           },
-          "values": {},
           "flows": {
             "out": {
-              "node": 109,
+              "node": 108,
               "socket": "in"
             }
           }
@@ -2388,33 +2226,19 @@
                 true
               ]
             }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                8
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
+          }
         },
         {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 110,
+              "node": 103,
               "socket": "value"
             }
           },
           "flows": {
             "false": {
-              "node": 112,
+              "node": 110,
               "socket": "in"
             }
           }
@@ -2432,178 +2256,51 @@
                 0
               ]
             }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 3,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "001": {
-              "node": 111,
-              "socket": "in"
-            },
-            "000": {
-              "node": 106,
-              "socket": "in"
-            }
           }
         },
         {
-          "declaration": 4,
-          "configuration": {},
-          "values": {},
+          "declaration": 1,
           "flows": {
             "out": {
-              "node": 123,
+              "node": 113,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 18,
-          "configuration": {},
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 0,
-          "configuration": {},
-          "values": {
-            "animation": {
-              "type": 4,
-              "value": [
-                "/animations/0"
-              ]
-            },
-            "speed": {
-              "node": 115,
-              "socket": "value"
-            },
-            "startTime": {
-              "type": 2,
-              "value": [
-                0
-              ]
-            },
-            "endTime": {
-              "type": 2,
-              "value": [
-                2
-              ]
-            }
-          },
-          "flows": {
-            "err": {
-              "node": 117,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 11,
-          "configuration": {
-            "pointer": {
-              "value": [
-                "/nodes/[nodeIndex]/translation"
-              ]
-            },
-            "type": {
-              "value": [
-                3
-              ]
-            }
-          },
-          "values": {
-            "value": {
-              "type": 3,
-              "value": [
-                0,
-                0,
-                0.8
-              ]
-            },
-            "nodeIndex": {
-              "type": 1,
-              "value": [
-                42
-              ]
-            }
-          },
-          "flows": {
-            "out": {
-              "node": 118,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
-          "configuration": {
-            "message": {
-              "value": [
-                "<animation/start - [err] flow (speed NaN)>: Flow triggered"
-              ]
-            },
-            "severity": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {
-            "out": {
-              "node": 119,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 8,
-          "configuration": {
-            "variables": {
-              "value": [
-                9
-              ]
-            }
-          },
-          "values": {
-            "9": {
-              "type": 0,
-              "value": [
-                true
-              ]
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
+          "declaration": 2,
           "configuration": {
             "variable": {
               "value": [
                 9
               ]
             }
-          },
-          "values": {},
-          "flows": {}
+          }
+        },
+        {
+          "declaration": 6,
+          "flows": {
+            "001": {
+              "node": 114,
+              "socket": "in"
+            },
+            "000": {
+              "node": 152,
+              "socket": "in"
+            }
+          }
         },
         {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 120,
+              "node": 112,
               "socket": "value"
             }
           },
           "flows": {
             "false": {
-              "node": 122,
+              "node": 115,
               "socket": "in"
             }
           }
@@ -2621,178 +2318,51 @@
                 0
               ]
             }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 3,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "001": {
-              "node": 121,
-              "socket": "in"
-            },
-            "000": {
-              "node": 116,
-              "socket": "in"
-            }
           }
         },
         {
-          "declaration": 4,
-          "configuration": {},
-          "values": {},
+          "declaration": 1,
           "flows": {
             "out": {
-              "node": 133,
+              "node": 118,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 19,
-          "configuration": {},
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 0,
-          "configuration": {},
-          "values": {
-            "animation": {
-              "type": 4,
-              "value": [
-                "/animations/0"
-              ]
-            },
-            "speed": {
-              "node": 125,
-              "socket": "value"
-            },
-            "startTime": {
-              "type": 2,
-              "value": [
-                0
-              ]
-            },
-            "endTime": {
-              "type": 2,
-              "value": [
-                2
-              ]
-            }
-          },
-          "flows": {
-            "err": {
-              "node": 127,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 11,
-          "configuration": {
-            "pointer": {
-              "value": [
-                "/nodes/[nodeIndex]/translation"
-              ]
-            },
-            "type": {
-              "value": [
-                3
-              ]
-            }
-          },
-          "values": {
-            "value": {
-              "type": 3,
-              "value": [
-                0,
-                0,
-                0.8
-              ]
-            },
-            "nodeIndex": {
-              "type": 1,
-              "value": [
-                48
-              ]
-            }
-          },
-          "flows": {
-            "out": {
-              "node": 128,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
-          "configuration": {
-            "message": {
-              "value": [
-                "<animation/start - [err] flow (speed +Inf)>: Flow triggered"
-              ]
-            },
-            "severity": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {
-            "out": {
-              "node": 129,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 8,
-          "configuration": {
-            "variables": {
-              "value": [
-                10
-              ]
-            }
-          },
-          "values": {
-            "10": {
-              "type": 0,
-              "value": [
-                true
-              ]
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
+          "declaration": 2,
           "configuration": {
             "variable": {
               "value": [
                 10
               ]
             }
-          },
-          "values": {},
-          "flows": {}
+          }
+        },
+        {
+          "declaration": 6,
+          "flows": {
+            "001": {
+              "node": 119,
+              "socket": "in"
+            },
+            "000": {
+              "node": 157,
+              "socket": "in"
+            }
+          }
         },
         {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 130,
+              "node": 117,
               "socket": "value"
             }
           },
           "flows": {
             "false": {
-              "node": 132,
+              "node": 120,
               "socket": "in"
             }
           }
@@ -2810,178 +2380,51 @@
                 0
               ]
             }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 3,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "001": {
-              "node": 131,
-              "socket": "in"
-            },
-            "000": {
-              "node": 126,
-              "socket": "in"
-            }
           }
         },
         {
-          "declaration": 4,
-          "configuration": {},
-          "values": {},
+          "declaration": 1,
           "flows": {
             "out": {
-              "node": 143,
+              "node": 123,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 18,
-          "configuration": {},
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 0,
-          "configuration": {},
-          "values": {
-            "animation": {
-              "type": 4,
-              "value": [
-                "/animations/0"
-              ]
-            },
-            "speed": {
-              "type": 2,
-              "value": [
-                1
-              ]
-            },
-            "startTime": {
-              "node": 135,
-              "socket": "value"
-            },
-            "endTime": {
-              "type": 2,
-              "value": [
-                2
-              ]
-            }
-          },
-          "flows": {
-            "err": {
-              "node": 137,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 11,
-          "configuration": {
-            "pointer": {
-              "value": [
-                "/nodes/[nodeIndex]/translation"
-              ]
-            },
-            "type": {
-              "value": [
-                3
-              ]
-            }
-          },
-          "values": {
-            "value": {
-              "type": 3,
-              "value": [
-                0,
-                0,
-                0.8
-              ]
-            },
-            "nodeIndex": {
-              "type": 1,
-              "value": [
-                54
-              ]
-            }
-          },
-          "flows": {
-            "out": {
-              "node": 138,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
-          "configuration": {
-            "message": {
-              "value": [
-                "<animation/start - [err] flow (startTime NaN)>: Flow triggered"
-              ]
-            },
-            "severity": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {
-            "out": {
-              "node": 139,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 8,
-          "configuration": {
-            "variables": {
-              "value": [
-                11
-              ]
-            }
-          },
-          "values": {
-            "11": {
-              "type": 0,
-              "value": [
-                true
-              ]
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
+          "declaration": 2,
           "configuration": {
             "variable": {
               "value": [
                 11
               ]
             }
-          },
-          "values": {},
-          "flows": {}
+          }
+        },
+        {
+          "declaration": 6,
+          "flows": {
+            "001": {
+              "node": 124,
+              "socket": "in"
+            },
+            "000": {
+              "node": 162,
+              "socket": "in"
+            }
+          }
         },
         {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 140,
+              "node": 122,
               "socket": "value"
             }
           },
           "flows": {
             "false": {
-              "node": 142,
+              "node": 125,
               "socket": "in"
             }
           }
@@ -2999,178 +2442,51 @@
                 0
               ]
             }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 3,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "001": {
-              "node": 141,
-              "socket": "in"
-            },
-            "000": {
-              "node": 136,
-              "socket": "in"
-            }
           }
         },
         {
-          "declaration": 4,
-          "configuration": {},
-          "values": {},
+          "declaration": 1,
           "flows": {
             "out": {
-              "node": 153,
+              "node": 128,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 19,
-          "configuration": {},
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 0,
-          "configuration": {},
-          "values": {
-            "animation": {
-              "type": 4,
-              "value": [
-                "/animations/0"
-              ]
-            },
-            "speed": {
-              "type": 2,
-              "value": [
-                1
-              ]
-            },
-            "startTime": {
-              "node": 145,
-              "socket": "value"
-            },
-            "endTime": {
-              "type": 2,
-              "value": [
-                2
-              ]
-            }
-          },
-          "flows": {
-            "err": {
-              "node": 147,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 11,
-          "configuration": {
-            "pointer": {
-              "value": [
-                "/nodes/[nodeIndex]/translation"
-              ]
-            },
-            "type": {
-              "value": [
-                3
-              ]
-            }
-          },
-          "values": {
-            "value": {
-              "type": 3,
-              "value": [
-                0,
-                0,
-                0.8
-              ]
-            },
-            "nodeIndex": {
-              "type": 1,
-              "value": [
-                60
-              ]
-            }
-          },
-          "flows": {
-            "out": {
-              "node": 148,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
-          "configuration": {
-            "message": {
-              "value": [
-                "<animation/start - [err] flow (startTime +Inf)>: Flow triggered"
-              ]
-            },
-            "severity": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {
-            "out": {
-              "node": 149,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 8,
-          "configuration": {
-            "variables": {
-              "value": [
-                12
-              ]
-            }
-          },
-          "values": {
-            "12": {
-              "type": 0,
-              "value": [
-                true
-              ]
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
+          "declaration": 2,
           "configuration": {
             "variable": {
               "value": [
                 12
               ]
             }
-          },
-          "values": {},
-          "flows": {}
+          }
+        },
+        {
+          "declaration": 6,
+          "flows": {
+            "001": {
+              "node": 129,
+              "socket": "in"
+            },
+            "000": {
+              "node": 167,
+              "socket": "in"
+            }
+          }
         },
         {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 150,
+              "node": 127,
               "socket": "value"
             }
           },
           "flows": {
             "false": {
-              "node": 152,
+              "node": 130,
               "socket": "in"
             }
           }
@@ -3188,178 +2504,51 @@
                 0
               ]
             }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 3,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "001": {
-              "node": 151,
-              "socket": "in"
-            },
-            "000": {
-              "node": 146,
-              "socket": "in"
-            }
           }
         },
         {
-          "declaration": 4,
-          "configuration": {},
-          "values": {},
+          "declaration": 1,
           "flows": {
             "out": {
-              "node": 163,
+              "node": 133,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 18,
-          "configuration": {},
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 0,
-          "configuration": {},
-          "values": {
-            "animation": {
-              "type": 4,
-              "value": [
-                "/animations/0"
-              ]
-            },
-            "speed": {
-              "type": 2,
-              "value": [
-                1
-              ]
-            },
-            "startTime": {
-              "type": 2,
-              "value": [
-                0
-              ]
-            },
-            "endTime": {
-              "node": 155,
-              "socket": "value"
-            }
-          },
-          "flows": {
-            "err": {
-              "node": 157,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 11,
-          "configuration": {
-            "pointer": {
-              "value": [
-                "/nodes/[nodeIndex]/translation"
-              ]
-            },
-            "type": {
-              "value": [
-                3
-              ]
-            }
-          },
-          "values": {
-            "value": {
-              "type": 3,
-              "value": [
-                0,
-                0,
-                0.8
-              ]
-            },
-            "nodeIndex": {
-              "type": 1,
-              "value": [
-                66
-              ]
-            }
-          },
-          "flows": {
-            "out": {
-              "node": 158,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 10,
-          "configuration": {
-            "message": {
-              "value": [
-                "<animation/start - [err] flow (endTime NaN)>: Flow triggered"
-              ]
-            },
-            "severity": {
-              "value": [
-                0
-              ]
-            }
-          },
-          "values": {},
-          "flows": {
-            "out": {
-              "node": 159,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 8,
-          "configuration": {
-            "variables": {
-              "value": [
-                13
-              ]
-            }
-          },
-          "values": {
-            "13": {
-              "type": 0,
-              "value": [
-                true
-              ]
-            }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
+          "declaration": 2,
           "configuration": {
             "variable": {
               "value": [
                 13
               ]
             }
-          },
-          "values": {},
-          "flows": {}
+          }
+        },
+        {
+          "declaration": 6,
+          "flows": {
+            "001": {
+              "node": 134,
+              "socket": "in"
+            },
+            "000": {
+              "node": 172,
+              "socket": "in"
+            }
+          }
         },
         {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 160,
+              "node": 132,
               "socket": "value"
             }
           },
           "flows": {
             "false": {
-              "node": 162,
+              "node": 135,
               "socket": "in"
             }
           }
@@ -3377,39 +2566,42 @@
                 0
               ]
             }
-          },
-          "values": {},
-          "flows": {}
+          }
         },
         {
-          "declaration": 3,
-          "configuration": {},
-          "values": {},
+          "declaration": 1,
+          "flows": {
+            "out": {
+              "node": 138,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 2,
+          "configuration": {
+            "variable": {
+              "value": [
+                14
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 6,
           "flows": {
             "001": {
-              "node": 161,
+              "node": 143,
               "socket": "in"
             },
             "000": {
-              "node": 156,
+              "node": 139,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 4,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "out": {
-              "node": 172,
-              "socket": "in"
-            }
-          }
-        },
-        {
-          "declaration": 0,
-          "configuration": {},
+          "declaration": 7,
           "values": {
             "animation": {
               "type": 4,
@@ -3438,7 +2630,7 @@
           },
           "flows": {
             "err": {
-              "node": 166,
+              "node": 140,
               "socket": "in"
             }
           }
@@ -3475,7 +2667,7 @@
           },
           "flows": {
             "out": {
-              "node": 167,
+              "node": 141,
               "socket": "in"
             }
           }
@@ -3494,10 +2686,9 @@
               ]
             }
           },
-          "values": {},
           "flows": {
             "out": {
-              "node": 168,
+              "node": 142,
               "socket": "in"
             }
           }
@@ -3518,33 +2709,19 @@
                 true
               ]
             }
-          },
-          "flows": {}
-        },
-        {
-          "declaration": 5,
-          "configuration": {
-            "variable": {
-              "value": [
-                14
-              ]
-            }
-          },
-          "values": {},
-          "flows": {}
+          }
         },
         {
           "declaration": 9,
-          "configuration": {},
           "values": {
             "condition": {
-              "node": 169,
+              "node": 137,
               "socket": "value"
             }
           },
           "flows": {
             "false": {
-              "node": 171,
+              "node": 144,
               "socket": "in"
             }
           }
@@ -3562,38 +2739,19 @@
                 0
               ]
             }
-          },
-          "values": {},
-          "flows": {}
-        },
-        {
-          "declaration": 3,
-          "configuration": {},
-          "values": {},
-          "flows": {
-            "001": {
-              "node": 170,
-              "socket": "in"
-            },
-            "000": {
-              "node": 165,
-              "socket": "in"
-            }
           }
         },
         {
-          "declaration": 4,
-          "configuration": {},
-          "values": {},
+          "declaration": 1,
           "flows": {
             "out": {
-              "node": 174,
+              "node": 146,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 12,
+          "declaration": 17,
           "configuration": {
             "event": {
               "value": [
@@ -3611,14 +2769,13 @@
           },
           "flows": {
             "out": {
-              "node": 175,
+              "node": 147,
               "socket": "in"
             }
           }
         },
         {
-          "declaration": 2,
-          "configuration": {},
+          "declaration": 5,
           "values": {
             "duration": {
               "type": 2,
@@ -3629,8 +2786,607 @@
           },
           "flows": {
             "done": {
-              "node": 72,
+              "node": 148,
               "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 9,
+          "values": {
+            "condition": {
+              "node": 65,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "true": {
+              "node": 150,
+              "socket": "in"
+            },
+            "false": {
+              "node": 149,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 17,
+          "configuration": {
+            "event": {
+              "value": [
+                2
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 17,
+          "configuration": {
+            "event": {
+              "value": [
+                1
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 18
+        },
+        {
+          "declaration": 7,
+          "values": {
+            "animation": {
+              "type": 4,
+              "value": [
+                "/animations/0"
+              ]
+            },
+            "speed": {
+              "node": 151,
+              "socket": "value"
+            },
+            "startTime": {
+              "type": 2,
+              "value": [
+                0
+              ]
+            },
+            "endTime": {
+              "type": 2,
+              "value": [
+                2
+              ]
+            }
+          },
+          "flows": {
+            "err": {
+              "node": 153,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 11,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                3
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 3,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                42
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 154,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 10,
+          "configuration": {
+            "message": {
+              "value": [
+                "<animation/start - [err] flow (speed NaN)>: Flow triggered"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 155,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 8,
+          "configuration": {
+            "variables": {
+              "value": [
+                9
+              ]
+            }
+          },
+          "values": {
+            "9": {
+              "type": 0,
+              "value": [
+                true
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 19
+        },
+        {
+          "declaration": 7,
+          "values": {
+            "animation": {
+              "type": 4,
+              "value": [
+                "/animations/0"
+              ]
+            },
+            "speed": {
+              "node": 156,
+              "socket": "value"
+            },
+            "startTime": {
+              "type": 2,
+              "value": [
+                0
+              ]
+            },
+            "endTime": {
+              "type": 2,
+              "value": [
+                2
+              ]
+            }
+          },
+          "flows": {
+            "err": {
+              "node": 158,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 11,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                3
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 3,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                48
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 159,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 10,
+          "configuration": {
+            "message": {
+              "value": [
+                "<animation/start - [err] flow (speed +Inf)>: Flow triggered"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 160,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 8,
+          "configuration": {
+            "variables": {
+              "value": [
+                10
+              ]
+            }
+          },
+          "values": {
+            "10": {
+              "type": 0,
+              "value": [
+                true
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 18
+        },
+        {
+          "declaration": 7,
+          "values": {
+            "animation": {
+              "type": 4,
+              "value": [
+                "/animations/0"
+              ]
+            },
+            "speed": {
+              "type": 2,
+              "value": [
+                1
+              ]
+            },
+            "startTime": {
+              "node": 161,
+              "socket": "value"
+            },
+            "endTime": {
+              "type": 2,
+              "value": [
+                2
+              ]
+            }
+          },
+          "flows": {
+            "err": {
+              "node": 163,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 11,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                3
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 3,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                54
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 164,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 10,
+          "configuration": {
+            "message": {
+              "value": [
+                "<animation/start - [err] flow (startTime NaN)>: Flow triggered"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 165,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 8,
+          "configuration": {
+            "variables": {
+              "value": [
+                11
+              ]
+            }
+          },
+          "values": {
+            "11": {
+              "type": 0,
+              "value": [
+                true
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 19
+        },
+        {
+          "declaration": 7,
+          "values": {
+            "animation": {
+              "type": 4,
+              "value": [
+                "/animations/0"
+              ]
+            },
+            "speed": {
+              "type": 2,
+              "value": [
+                1
+              ]
+            },
+            "startTime": {
+              "node": 166,
+              "socket": "value"
+            },
+            "endTime": {
+              "type": 2,
+              "value": [
+                2
+              ]
+            }
+          },
+          "flows": {
+            "err": {
+              "node": 168,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 11,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                3
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 3,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                60
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 169,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 10,
+          "configuration": {
+            "message": {
+              "value": [
+                "<animation/start - [err] flow (startTime +Inf)>: Flow triggered"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 170,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 8,
+          "configuration": {
+            "variables": {
+              "value": [
+                12
+              ]
+            }
+          },
+          "values": {
+            "12": {
+              "type": 0,
+              "value": [
+                true
+              ]
+            }
+          }
+        },
+        {
+          "declaration": 18
+        },
+        {
+          "declaration": 7,
+          "values": {
+            "animation": {
+              "type": 4,
+              "value": [
+                "/animations/0"
+              ]
+            },
+            "speed": {
+              "type": 2,
+              "value": [
+                1
+              ]
+            },
+            "startTime": {
+              "type": 2,
+              "value": [
+                0
+              ]
+            },
+            "endTime": {
+              "node": 171,
+              "socket": "value"
+            }
+          },
+          "flows": {
+            "err": {
+              "node": 173,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 11,
+          "configuration": {
+            "pointer": {
+              "value": [
+                "/nodes/[nodeIndex]/translation"
+              ]
+            },
+            "type": {
+              "value": [
+                3
+              ]
+            }
+          },
+          "values": {
+            "value": {
+              "type": 3,
+              "value": [
+                0,
+                0,
+                0.8
+              ]
+            },
+            "nodeIndex": {
+              "type": 1,
+              "value": [
+                66
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 174,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 10,
+          "configuration": {
+            "message": {
+              "value": [
+                "<animation/start - [err] flow (endTime NaN)>: Flow triggered"
+              ]
+            },
+            "severity": {
+              "value": [
+                0
+              ]
+            }
+          },
+          "flows": {
+            "out": {
+              "node": 175,
+              "socket": "in"
+            }
+          }
+        },
+        {
+          "declaration": 8,
+          "configuration": {
+            "variables": {
+              "value": [
+                13
+              ]
+            }
+          },
+          "values": {
+            "13": {
+              "type": 0,
+              "value": [
+                true
+              ]
             }
           }
         }

@@ -27,8 +27,8 @@ public static class Module
 
     public static class Events
     {
-        public const int _eventWithoutParametersb6d646f8_2845_4396_bf78_97c3d53c1870 = 0;
-        public const int _eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc = 1;
+        public const int _eventWithoutParametersc4e07561_c3c3_45c9_9e77_6f018199c43d = 0;
+        public const int _eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8 = 1;
         public const int test_onStart = 2;
         public const int test_onSuccess = 3;
         public const int test_onFailed = 4;
@@ -50,8 +50,8 @@ public static class Module
         rt.DeclareVar("bool", false, "TestResult_event/send and receive_Rcv Parameter Bool");
         rt.DeclareVar("bool", false, "TestResult_HasPassed_event/send and receive_Rcv Parameter Float");
         rt.DeclareVar("float", -0.0142, "TestResult_event/send and receive_Rcv Parameter Float");
-        rt.DeclareEvent("_eventWithoutParametersb6d646f8-2845-4396-bf78-97c3d53c1870", (bool?)null, (int?)null, (double?)null, (double?)null);
-        rt.DeclareEvent("_eventWithParameters40f08b1d-312c-4968-bed1-f3e2ab96dcbc", (bool?)false, (int?)1, (double?)1.0, (double?)null);
+        rt.DeclareEvent("_eventWithoutParametersc4e07561-c3c3-45c9-9e77-6f018199c43d", (bool?)null, (int?)null, (double?)null, (double?)null);
+        rt.DeclareEvent("_eventWithParametersd3cacc96-a187-4d39-8e70-60056ba442f8", (bool?)false, (int?)1, (double?)1.0, (double?)null);
         rt.DeclareEvent("test/onStart", (bool?)null, (int?)null, (double?)null, (double?)1.5);
         rt.DeclareEvent("test/onSuccess", (bool?)null, (int?)null, (double?)null, (double?)null);
         rt.DeclareEvent("test/onFailed", (bool?)null, (int?)null, (double?)null, (double?)null);
@@ -59,35 +59,35 @@ public static class Module
         var delay1 = new DelayState();
         var delay2 = new DelayState();
         var delay3 = new DelayState();
-        void proc17()
+        void proc46()
         {
-            rt.Log("<event/send and receive - Default Event Value (Int)>: Value is {0}, should be {1} ", new object[] { rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).IntParameter, 1 });
-            V.TestResult_event_send_and_receive_Default_Event_Value__Int_ = rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).IntParameter;
+            rt.Log("<event/send and receive - Default Event Value (Int)>: Value is {0}, should be {1} ", new object[] { rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).IntParameter, 1 });
+            V.TestResult_event_send_and_receive_Default_Event_Value__Int_ = rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).IntParameter;
         }
-        void proc29()
+        void proc52()
         {
-            rt.Log("<event/send and receive - Default Event Value (Bool)>: Value is {0}, should be {1} ", new object[] { rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).BoolParameter, false });
-            V.TestResult_event_send_and_receive_Default_Event_Value__Bool_ = rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).BoolParameter;
+            rt.Log("<event/send and receive - Default Event Value (Bool)>: Value is {0}, should be {1} ", new object[] { rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).BoolParameter, false });
+            V.TestResult_event_send_and_receive_Default_Event_Value__Bool_ = rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).BoolParameter;
         }
-        void proc55()
+        void proc58()
         {
-            rt.Log("<event/send and receive - Default Event Value (Float)>: Value is {0}, should be {1} ", new object[] { rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).FloatParameter, 1.0 });
-            V.TestResult_event_send_and_receive_Default_Event_Value__Float_ = rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).FloatParameter;
+            rt.Log("<event/send and receive - Default Event Value (Float)>: Value is {0}, should be {1} ", new object[] { rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).FloatParameter, 1.0 });
+            V.TestResult_event_send_and_receive_Default_Event_Value__Float_ = rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).FloatParameter;
         }
-        void proc79()
+        void proc94()
         {
-            rt.Log("<event/send and receive - Rcv Parameter Int>: Value is {0}, should be {1} ", new object[] { rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).IntParameter, 2 });
-            V.TestResult_event_send_and_receive_Rcv_Parameter_Int = rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).IntParameter;
+            rt.Log("<event/send and receive - Rcv Parameter Int>: Value is {0}, should be {1} ", new object[] { rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).IntParameter, 2 });
+            V.TestResult_event_send_and_receive_Rcv_Parameter_Int = rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).IntParameter;
         }
-        void proc93()
+        void proc102()
         {
-            rt.Log("<event/send and receive - Rcv Parameter Bool>: Value is {0}, should be {1} ", new object[] { rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).BoolParameter, true });
-            V.TestResult_event_send_and_receive_Rcv_Parameter_Bool = rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).BoolParameter;
+            rt.Log("<event/send and receive - Rcv Parameter Bool>: Value is {0}, should be {1} ", new object[] { rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).BoolParameter, true });
+            V.TestResult_event_send_and_receive_Rcv_Parameter_Bool = rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).BoolParameter;
         }
-        void proc106()
+        void proc110()
         {
-            rt.Log("<event/send and receive - Rcv Parameter Float>: Value is {0}, should be {1} ", new object[] { rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).FloatParameter, 2.0 });
-            V.TestResult_event_send_and_receive_Rcv_Parameter_Float = rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).FloatParameter;
+            rt.Log("<event/send and receive - Rcv Parameter Float>: Value is {0}, should be {1} ", new object[] { rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).FloatParameter, 2.0 });
+            V.TestResult_event_send_and_receive_Rcv_Parameter_Float = rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).FloatParameter;
         }
         void OnStart0()
         {
@@ -115,45 +115,45 @@ public static class Module
             }
             if (rt.SetDelay(delay1, 1.0, Cont1))
             {
-                rt.Send(Events._eventWithoutParametersb6d646f8_2845_4396_bf78_97c3d53c1870);
-                if (rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).IntParameter == 1)
+                rt.Send(Events._eventWithoutParametersc4e07561_c3c3_45c9_9e77_6f018199c43d);
+                if (rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).IntParameter == 1)
                 {
                     if (rt.PtrSet("/nodes/17/translation", "float3", new double[] { 0.0, 0.0, 0.8 }))
                     {
-                        V.TestResult_HasPassed_event_send_and_receive_Default_Event_Value__Int_ = rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).IntParameter == 1;
+                        V.TestResult_HasPassed_event_send_and_receive_Default_Event_Value__Int_ = rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).IntParameter == 1;
                         rt.Log("<event/send and receive - Default Event Value (Int)>: Test Successful");
-                        proc17();
+                        proc46();
                     }
                 }
                 else
                 {
-                    proc17();
+                    proc46();
                 }
-                if (rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).BoolParameter == false)
+                if (rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).BoolParameter == false)
                 {
                     if (rt.PtrSet("/nodes/23/translation", "float3", new double[] { 0.0, 0.0, 0.8 }))
                     {
-                        V.TestResult_HasPassed_event_send_and_receive_Default_Event_Value__Bool_ = rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).BoolParameter == false;
+                        V.TestResult_HasPassed_event_send_and_receive_Default_Event_Value__Bool_ = rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).BoolParameter == false;
                         rt.Log("<event/send and receive - Default Event Value (Bool)>: Test Successful");
-                        proc29();
+                        proc52();
                     }
                 }
                 else
                 {
-                    proc29();
+                    proc52();
                 }
-                if (rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).FloatParameter == 1.0)
+                if (rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).FloatParameter == 1.0)
                 {
                     if (rt.PtrSet("/nodes/29/translation", "float3", new double[] { 0.0, 0.0, 0.8 }))
                     {
-                        V.TestResult_HasPassed_event_send_and_receive_Default_Event_Value__Float_ = rt.EventPayloadOf(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc).FloatParameter == 1.0;
+                        V.TestResult_HasPassed_event_send_and_receive_Default_Event_Value__Float_ = rt.EventPayloadOf(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8).FloatParameter == 1.0;
                         rt.Log("<event/send and receive - Default Event Value (Float)>: Test Successful");
-                        proc55();
+                        proc58();
                     }
                 }
                 else
                 {
-                    proc55();
+                    proc58();
                 }
             }
         }
@@ -169,7 +169,7 @@ public static class Module
                 }
             }
         }
-        rt.OnReceive(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc, OnReceive1);
+        rt.OnReceive(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8, OnReceive1);
         void OnReceive2(EventPayload payload)
         {
             if (rt.PtrSet("/nodes/11/translation", "float3", new double[] { 0.0, 0.0, 0.8 }))
@@ -190,13 +190,13 @@ public static class Module
                         {
                             V.TestResult_HasPassed_event_send_and_receive_Rcv_Parameter_Int = payload.IntParameter == 2;
                             rt.Log("<event/send and receive - Rcv Parameter Int>: Test Successful");
-                            proc79();
+                            proc94();
                         }
                     }
                 }
                 else
                 {
-                    proc79();
+                    proc94();
                 }
             }
             if (rt.PtrSet("/nodes/42/translation", "float3", new double[] { 0.0, 0.0, 0.0 }))
@@ -209,13 +209,13 @@ public static class Module
                         {
                             V.TestResult_HasPassed_event_send_and_receive_Rcv_Parameter_Bool = payload.BoolParameter == true;
                             rt.Log("<event/send and receive - Rcv Parameter Bool>: Test Successful");
-                            proc93();
+                            proc102();
                         }
                     }
                 }
                 else
                 {
-                    proc93();
+                    proc102();
                 }
             }
             if (rt.PtrSet("/nodes/48/translation", "float3", new double[] { 0.0, 0.0, 0.0 }))
@@ -228,17 +228,17 @@ public static class Module
                         {
                             V.TestResult_HasPassed_event_send_and_receive_Rcv_Parameter_Float = payload.FloatParameter == 2.0;
                             rt.Log("<event/send and receive - Rcv Parameter Float>: Test Successful");
-                            proc106();
+                            proc110();
                         }
                     }
                 }
                 else
                 {
-                    proc106();
+                    proc110();
                 }
             }
         }
-        rt.OnReceive(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc, OnReceive2);
+        rt.OnReceive(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8, OnReceive2);
         void OnStart3()
         {
             void Cont1()
@@ -274,7 +274,7 @@ public static class Module
             }
             if (rt.SetDelay(delay2, 1.0, Cont1))
             {
-                rt.Send(Events._eventWithParameters40f08b1d_312c_4968_bed1_f3e2ab96dcbc, new EventPayload(true, 2, 2.0, 0.0));
+                rt.Send(Events._eventWithParametersd3cacc96_a187_4d39_8e70_60056ba442f8, new EventPayload(true, 2, 2.0, 0.0));
             }
         }
         rt.OnStart(OnStart3);

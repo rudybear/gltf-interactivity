@@ -352,412 +352,412 @@ public static class Module
         rt.DeclareEvent("test/onSuccess", (bool?)null, (int?)null, (double?)null, (double?)null);
         rt.DeclareEvent("test/onFailed", (bool?)null, (int?)null, (double?)null, (double?)null);
         var V = new Vars(rt);
-        void proc7()
+        void proc11()
         {
             rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/color>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/extensions/KHR_lights_punctual/lights/0/color", "float3").Value, new double[] { 1.0, 0.0, 0.0 } });
             V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__color = (double[])rt.PtrGet("/extensions/KHR_lights_punctual/lights/0/color", "float3").Value;
         }
-        void proc23()
+        void proc26()
         {
             rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/intensity>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/1/intensity", "float").Value, 4.0 });
             V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__intensity = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/1/intensity", "float").Value;
         }
-        void proc39()
+        void proc204()
         {
             rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/range>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/2/range", "float").Value, 9.0 });
             V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__range = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/2/range", "float").Value;
         }
-        void proc218()
+        void proc219()
         {
             rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/spot/innerConeAngle>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/3/spot/innerConeAngle", "float").Value, 2.0 });
             V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__spot_innerConeAngle = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/3/spot/innerConeAngle", "float").Value;
         }
-        void proc233()
+        void proc234()
         {
             rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/spot/outerConeAngle>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/4/spot/outerConeAngle", "float").Value, 5.0 });
             V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__spot_outerConeAngle = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/4/spot/outerConeAngle", "float").Value;
         }
-        void proc248()
+        void proc249()
         {
             rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/color>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/color", "float3", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/5" }).Value, new double[] { 1.0, 0.0, 0.0 } });
             V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____color = (double[])rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/color", "float3", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/5" }).Value;
         }
-        void proc263()
+        void proc264()
         {
             rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/intensity>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/intensity", "float", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/6" }).Value, 4.0 });
             V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____intensity = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/intensity", "float", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/6" }).Value;
         }
-        void proc278()
+        void proc279()
         {
             rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/range>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/range", "float", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/7" }).Value, 9.0 });
             V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____range = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/range", "float", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/7" }).Value;
         }
-        void proc293()
+        void proc294()
         {
             rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/spot/innerConeAngle>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/spot/innerConeAngle", "float", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/8" }).Value, 2.0 });
             V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____spot_innerConeAngle = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/spot/innerConeAngle", "float", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/8" }).Value;
         }
-        void proc308()
+        void proc309()
         {
             rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/spot/outerConeAngle>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/spot/outerConeAngle", "float", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/9" }).Value, 5.0 });
             V.TestResult_pointer_set_and_get__extensions_KHR_lights_punctual_lights____spot_outerConeAngle = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/spot/outerConeAngle", "float", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/9" }).Value;
         }
-        void proc323()
+        void proc324()
         {
             rt.Log("<pointer/set and get - /alphaCutoff>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/6/alphaCutoff", "float").Value, 0.5 });
             V.TestResult_pointer_set_and_get__alphaCutoff = (double)rt.PtrGet("/materials/6/alphaCutoff", "float").Value;
         }
-        void proc338()
+        void proc339()
         {
             rt.Log("<pointer/set and get - /emissiveFactor>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/6/emissiveFactor", "float3").Value, new double[] { 1.0, 0.0, 0.0 } });
             V.TestResult_pointer_set_and_get__emissiveFactor = (double[])rt.PtrGet("/materials/6/emissiveFactor", "float3").Value;
         }
-        void proc353()
+        void proc354()
         {
             rt.Log("<pointer/set and get - /normalTexture/scale>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/6/normalTexture/scale", "float").Value, 0.5 });
             V.TestResult_pointer_set_and_get__normalTexture_scale = (double)rt.PtrGet("/materials/6/normalTexture/scale", "float").Value;
         }
-        void proc368()
+        void proc369()
         {
             rt.Log("<pointer/set and get - /occlusionTexture/strength>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/6/occlusionTexture/strength", "float").Value, 0.5 });
             V.TestResult_pointer_set_and_get__occlusionTexture_strength = (double)rt.PtrGet("/materials/6/occlusionTexture/strength", "float").Value;
         }
-        void proc383()
+        void proc384()
         {
             rt.Log("<pointer/set and get - /normalTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get__normalTexture_texture_offset = (double[])rt.PtrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc400()
+        void proc401()
         {
-            rt.Log("<pointer/set and get - /normalTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - /normalTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get__normalTexture_texture_rotation = (double)rt.PtrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc415()
+        void proc416()
         {
             rt.Log("<pointer/set and get - /normalTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get__normalTexture_texture_scale = (double[])rt.PtrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc430()
+        void proc431()
         {
             rt.Log("<pointer/set and get - /occlusionTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get__occlusionTexture_texture_offset = (double[])rt.PtrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc447()
+        void proc448()
         {
-            rt.Log("<pointer/set and get - /occlusionTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - /occlusionTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get__occlusionTexture_texture_rotation = (double)rt.PtrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc462()
+        void proc463()
         {
             rt.Log("<pointer/set and get - /occlusionTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get__occlusionTexture_texture_scale = (double[])rt.PtrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc477()
+        void proc478()
         {
             rt.Log("<pointer/set and get - /emissiveTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get__emissiveTexture_texture_offset = (double[])rt.PtrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc494()
+        void proc495()
         {
-            rt.Log("<pointer/set and get - /emissiveTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - /emissiveTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get__emissiveTexture_texture_rotation = (double)rt.PtrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc509()
+        void proc510()
         {
             rt.Log("<pointer/set and get - /emissiveTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get__emissiveTexture_texture_scale = (double[])rt.PtrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc524()
+        void proc525()
         {
             rt.Log("<pointer/set and get - /baseColorFactor>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorFactor", "float4").Value, new double[] { 0.0, 0.0, 1.0, 1.0 } });
             V.TestResult_pointer_set_and_get__baseColorFactor = (double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorFactor", "float4").Value;
         }
-        void proc539()
+        void proc540()
         {
             rt.Log("<pointer/set and get - /metallicFactor>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicFactor", "float").Value, 0.5 });
             V.TestResult_pointer_set_and_get__metallicFactor = (double)rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicFactor", "float").Value;
         }
-        void proc554()
+        void proc555()
         {
             rt.Log("<pointer/set and get - /roughnessFactor>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/7/pbrMetallicRoughness/roughnessFactor", "float").Value, 0.5 });
             V.TestResult_pointer_set_and_get__roughnessFactor = (double)rt.PtrGet("/materials/7/pbrMetallicRoughness/roughnessFactor", "float").Value;
         }
-        void proc569()
+        void proc570()
         {
             rt.Log("<pointer/set and get - /baseColorTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get__baseColorTexture_texture_offset = (double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc586()
+        void proc587()
         {
-            rt.Log("<pointer/set and get - /baseColorTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - /baseColorTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get__baseColorTexture_texture_rotation = (double)rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc601()
+        void proc602()
         {
             rt.Log("<pointer/set and get - /baseColorTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get__baseColorTexture_texture_scale = (double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc616()
+        void proc617()
         {
             rt.Log("<pointer/set and get - /metallicRoughnessTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get__metallicRoughnessTexture_texture_offset = (double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc633()
+        void proc634()
         {
-            rt.Log("<pointer/set and get - /metallicRoughnessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - /metallicRoughnessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get__metallicRoughnessTexture_texture_rotation = (double)rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc648()
+        void proc649()
         {
             rt.Log("<pointer/set and get - /metallicRoughnessTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get__metallicRoughnessTexture_texture_scale = (double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc663()
+        void proc664()
         {
             rt.Log("<pointer/set and get - KHR_materials_anisotropy/anisotropyStrength>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyStrength", "float").Value, 2.0 });
             V.TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyStrength = (double)rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyStrength", "float").Value;
         }
-        void proc680()
+        void proc681()
         {
-            rt.Log("<pointer/set and get - KHR_materials_anisotropy/anisotropyRotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyRotation", "float").Value, 0.5235988 });
+            rt.Log("<pointer/set and get - KHR_materials_anisotropy/anisotropyRotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyRotation", "float").Value, 0.5235988 });
             V.TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyRotation = (double)rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyRotation", "float").Value;
         }
-        void proc695()
+        void proc696()
         {
             rt.Log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_offset = (double[])rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc712()
+        void proc713()
         {
-            rt.Log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_rotation = (double)rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc727()
+        void proc728()
         {
             rt.Log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_scale = (double[])rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc742()
+        void proc743()
         {
             rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_offset = (double[])rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc759()
+        void proc760()
         {
-            rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_rotation = (double)rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc774()
+        void proc775()
         {
             rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_scale = (double[])rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc789()
+        void proc790()
         {
             rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_offset = (double[])rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc806()
+        void proc807()
         {
-            rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_rotation = (double)rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc821()
+        void proc822()
         {
             rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_scale = (double[])rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc836()
+        void proc837()
         {
             rt.Log("<pointer/set and get - KHR_materials_dispersion/dispersion>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/10/extensions/KHR_materials_dispersion/dispersion", "float").Value, 2.0 });
             V.TestResult_pointer_set_and_get_KHR_materials_dispersion_dispersion = (double)rt.PtrGet("/materials/10/extensions/KHR_materials_dispersion/dispersion", "float").Value;
         }
-        void proc851()
+        void proc852()
         {
             rt.Log("<pointer/set and get - KHR_materials_emissive_strength/emissiveStrength>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/11/extensions/KHR_materials_emissive_strength/emissiveStrength", "float").Value, 2.0 });
             V.TestResult_pointer_set_and_get_KHR_materials_emissive_strength_emissiveStrength = (double)rt.PtrGet("/materials/11/extensions/KHR_materials_emissive_strength/emissiveStrength", "float").Value;
         }
-        void proc866()
+        void proc867()
         {
             rt.Log("<pointer/set and get - KHR_materials_ior/ior>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/12/extensions/KHR_materials_ior/ior", "float").Value, 3.0 });
             V.TestResult_pointer_set_and_get_KHR_materials_ior_ior = (double)rt.PtrGet("/materials/12/extensions/KHR_materials_ior/ior", "float").Value;
         }
-        void proc881()
+        void proc882()
         {
             rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceFactor>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceFactor", "float").Value, 1.2 });
             V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceFactor = (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceFactor", "float").Value;
         }
-        void proc896()
+        void proc897()
         {
             rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceIor>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceIor", "float").Value, 2.3 });
             V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceIor = (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceIor", "float").Value;
         }
-        void proc911()
+        void proc912()
         {
             rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessMinimum>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMinimum", "float").Value, 0.5 });
             V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMinimum = (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMinimum", "float").Value;
         }
-        void proc926()
+        void proc927()
         {
             rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessMaximum>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMaximum", "float").Value, 1.2 });
             V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMaximum = (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMaximum", "float").Value;
         }
-        void proc941()
+        void proc942()
         {
             rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_offset = (double[])rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc958()
+        void proc959()
         {
-            rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_rotation = (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc973()
+        void proc974()
         {
             rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_scale = (double[])rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc988()
+        void proc989()
         {
             rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_offset = (double[])rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc1005()
+        void proc1006()
         {
-            rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_rotation = (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc1020()
+        void proc1021()
         {
             rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_scale = (double[])rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc1035()
+        void proc1036()
         {
             rt.Log("<pointer/set and get - KHR_materials_sheen/sheenColorFactor>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorFactor", "float3").Value, new double[] { 0.0, 0.0, 1.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenColorFactor = (double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorFactor", "float3").Value;
         }
-        void proc1050()
+        void proc1051()
         {
             rt.Log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessFactor>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessFactor", "float").Value, 2.3 });
             V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessFactor = (double)rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessFactor", "float").Value;
         }
-        void proc1065()
+        void proc1066()
         {
             rt.Log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_offset = (double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc1082()
+        void proc1083()
         {
-            rt.Log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_rotation = (double)rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc1097()
+        void proc1098()
         {
             rt.Log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_scale = (double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc1112()
+        void proc1113()
         {
             rt.Log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_offset = (double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc1129()
+        void proc1130()
         {
-            rt.Log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_rotation = (double)rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc1144()
+        void proc1145()
         {
             rt.Log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_scale = (double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc1159()
+        void proc1160()
         {
             rt.Log("<pointer/set and get - KHR_materials_specular/specularFactor>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularFactor", "float").Value, 1.2 });
             V.TestResult_pointer_set_and_get_KHR_materials_specular_specularFactor = (double)rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularFactor", "float").Value;
         }
-        void proc1174()
+        void proc1175()
         {
             rt.Log("<pointer/set and get - KHR_materials_specular/specularColorFactor>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorFactor", "float3").Value, new double[] { 1.0, 0.0, 0.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_specular_specularColorFactor = (double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorFactor", "float3").Value;
         }
-        void proc1189()
+        void proc1190()
         {
             rt.Log("<pointer/set and get - KHR_materials_specular/specularTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_offset = (double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc1206()
+        void proc1207()
         {
-            rt.Log("<pointer/set and get - KHR_materials_specular/specularTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - KHR_materials_specular/specularTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_rotation = (double)rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc1221()
+        void proc1222()
         {
             rt.Log("<pointer/set and get - KHR_materials_specular/specularTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_scale = (double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc1236()
+        void proc1237()
         {
             rt.Log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_offset = (double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc1253()
+        void proc1254()
         {
-            rt.Log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_rotation = (double)rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc1268()
+        void proc1269()
         {
             rt.Log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_scale = (double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc1283()
+        void proc1284()
         {
             rt.Log("<pointer/set and get - KHR_materials_transmission/transmissionFactor>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionFactor", "float").Value, 1.2 });
             V.TestResult_pointer_set_and_get_KHR_materials_transmission_transmissionFactor = (double)rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionFactor", "float").Value;
         }
-        void proc1298()
+        void proc1299()
         {
             rt.Log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_offset = (double[])rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc1315()
+        void proc1316()
         {
-            rt.Log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_rotation = (double)rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc1330()
+        void proc1331()
         {
             rt.Log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_scale = (double[])rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/scale", "float2").Value;
         }
-        void proc1345()
+        void proc1346()
         {
             rt.Log("<pointer/set and get - KHR_materials_volume/thicknessFactor>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessFactor", "float").Value, 1.2 });
             V.TestResult_pointer_set_and_get_KHR_materials_volume_thicknessFactor = (double)rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessFactor", "float").Value;
         }
-        void proc1360()
+        void proc1361()
         {
             rt.Log("<pointer/set and get - KHR_materials_volume/attenuationDistance>: Value is {0}, should be {1} ", new object[] { (double)rt.PtrGet("/materials/17/extensions/KHR_materials_volume/attenuationDistance", "float").Value, 2.2 });
             V.TestResult_pointer_set_and_get_KHR_materials_volume_attenuationDistance = (double)rt.PtrGet("/materials/17/extensions/KHR_materials_volume/attenuationDistance", "float").Value;
         }
-        void proc1375()
+        void proc1376()
         {
             rt.Log("<pointer/set and get - KHR_materials_volume/attenuationColor>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/17/extensions/KHR_materials_volume/attenuationColor", "float3").Value, new double[] { 1.0, 0.0, 0.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_volume_attenuationColor = (double[])rt.PtrGet("/materials/17/extensions/KHR_materials_volume/attenuationColor", "float3").Value;
         }
-        void proc1390()
+        void proc1391()
         {
             rt.Log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture offset>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_offset = (double[])rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/offset", "float2").Value;
         }
-        void proc1407()
+        void proc1408()
         {
-            rt.Log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0,0001)", new object[] { (double)rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
+            rt.Log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture rotation>: Value is {0}, should be {1} (Proximity range: 0.0001)", new object[] { (double)rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/rotation", "float").Value, 0.7853982 });
             V.TestResult_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_rotation = (double)rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/rotation", "float").Value;
         }
-        void proc1422()
+        void proc1423()
         {
             rt.Log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture scale>: Value is {0}, should be {1} ", new object[] { (double[])rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 } });
             V.TestResult_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_scale = (double[])rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/scale", "float2").Value;
@@ -772,17 +772,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__color = M.Eq((double[])rt.PtrGet("/extensions/KHR_lights_punctual/lights/0/color", "float3").Value, new double[] { 1.0, 0.0, 0.0 });
                         rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/color>: Test Successful");
-                        proc7();
+                        proc11();
                     }
                 }
                 else
                 {
-                    proc7();
+                    proc11();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/0/color with (1.00, 0.00, 0.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/0/color with (1, 0, 0) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__color)
             {
@@ -800,12 +800,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__intensity = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/1/intensity", "float").Value == 4.0;
                         rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/intensity>: Test Successful");
-                        proc23();
+                        proc26();
                     }
                 }
                 else
                 {
-                    proc23();
+                    proc26();
                 }
             }
             else
@@ -828,12 +828,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__range = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/2/range", "float").Value == 9.0;
                         rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/range>: Test Successful");
-                        proc39();
+                        proc204();
                     }
                 }
                 else
                 {
-                    proc39();
+                    proc204();
                 }
             }
             else
@@ -856,12 +856,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__spot_innerConeAngle = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/3/spot/innerConeAngle", "float").Value == 2.0;
                         rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/spot/innerConeAngle>: Test Successful");
-                        proc218();
+                        proc219();
                     }
                 }
                 else
                 {
-                    proc218();
+                    proc219();
                 }
             }
             else
@@ -884,12 +884,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights__lightIndex__spot_outerConeAngle = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/4/spot/outerConeAngle", "float").Value == 5.0;
                         rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[lightIndex]/spot/outerConeAngle>: Test Successful");
-                        proc233();
+                        proc234();
                     }
                 }
                 else
                 {
-                    proc233();
+                    proc234();
                 }
             }
             else
@@ -912,17 +912,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____color = M.Eq((double[])rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/color", "float3", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/5" }).Value, new double[] { 1.0, 0.0, 0.0 });
                         rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/color>: Test Successful");
-                        proc248();
+                        proc249();
                     }
                 }
                 else
                 {
-                    proc248();
+                    proc249();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/5/color with (1.00, 0.00, 0.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /extensions/KHR_lights_punctual/lights/5/color with (1, 0, 0) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____color)
             {
@@ -940,12 +940,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____intensity = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/intensity", "float", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/6" }).Value == 4.0;
                         rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/intensity>: Test Successful");
-                        proc263();
+                        proc264();
                     }
                 }
                 else
                 {
-                    proc263();
+                    proc264();
                 }
             }
             else
@@ -968,12 +968,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____range = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/range", "float", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/7" }).Value == 9.0;
                         rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/range>: Test Successful");
-                        proc278();
+                        proc279();
                     }
                 }
                 else
                 {
-                    proc278();
+                    proc279();
                 }
             }
             else
@@ -996,12 +996,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____spot_innerConeAngle = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/spot/innerConeAngle", "float", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/8" }).Value == 2.0;
                         rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/spot/innerConeAngle>: Test Successful");
-                        proc293();
+                        proc294();
                     }
                 }
                 else
                 {
-                    proc293();
+                    proc294();
                 }
             }
             else
@@ -1024,12 +1024,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__extensions_KHR_lights_punctual_lights____spot_outerConeAngle = (double)rt.PtrGet("/extensions/KHR_lights_punctual/lights/{lightRef}/spot/outerConeAngle", "float", new Dictionary<string, object> { ["lightRef"] = "/extensions/KHR_lights_punctual/lights/9" }).Value == 5.0;
                         rt.Log("<pointer/set and get - /extensions/KHR_lights_punctual/lights/[]/spot/outerConeAngle>: Test Successful");
-                        proc308();
+                        proc309();
                     }
                 }
                 else
                 {
-                    proc308();
+                    proc309();
                 }
             }
             else
@@ -1052,17 +1052,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__alphaCutoff = (double)rt.PtrGet("/materials/6/alphaCutoff", "float").Value == 0.5;
                         rt.Log("<pointer/set and get - /alphaCutoff>: Test Successful");
-                        proc323();
+                        proc324();
                     }
                 }
                 else
                 {
-                    proc323();
+                    proc324();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/alphaCutoff with 0,5 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/alphaCutoff with 0.5 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__alphaCutoff)
             {
@@ -1080,17 +1080,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__emissiveFactor = M.Eq((double[])rt.PtrGet("/materials/6/emissiveFactor", "float3").Value, new double[] { 1.0, 0.0, 0.0 });
                         rt.Log("<pointer/set and get - /emissiveFactor>: Test Successful");
-                        proc338();
+                        proc339();
                     }
                 }
                 else
                 {
-                    proc338();
+                    proc339();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveFactor with (1.00, 0.00, 0.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveFactor with (1, 0, 0) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__emissiveFactor)
             {
@@ -1108,17 +1108,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__normalTexture_scale = (double)rt.PtrGet("/materials/6/normalTexture/scale", "float").Value == 0.5;
                         rt.Log("<pointer/set and get - /normalTexture/scale>: Test Successful");
-                        proc353();
+                        proc354();
                     }
                 }
                 else
                 {
-                    proc353();
+                    proc354();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/scale with 0,5 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/scale with 0.5 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__normalTexture_scale)
             {
@@ -1136,17 +1136,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_strength = (double)rt.PtrGet("/materials/6/occlusionTexture/strength", "float").Value == 0.5;
                         rt.Log("<pointer/set and get - /occlusionTexture/strength>: Test Successful");
-                        proc368();
+                        proc369();
                     }
                 }
                 else
                 {
-                    proc368();
+                    proc369();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/strength with 0,5 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/strength with 0.5 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_strength)
             {
@@ -1164,17 +1164,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - /normalTexture texture offset>: Test Successful");
-                        proc383();
+                        proc384();
                     }
                 }
                 else
                 {
-                    proc383();
+                    proc384();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_offset)
             {
@@ -1192,17 +1192,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - /normalTexture texture rotation>: Test Successful");
-                        proc400();
+                        proc401();
                     }
                 }
                 else
                 {
-                    proc400();
+                    proc401();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_rotation)
             {
@@ -1220,17 +1220,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/6/normalTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - /normalTexture texture scale>: Test Successful");
-                        proc415();
+                        proc416();
                     }
                 }
                 else
                 {
-                    proc415();
+                    proc416();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/normalTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__normalTexture_texture_scale)
             {
@@ -1248,17 +1248,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - /occlusionTexture texture offset>: Test Successful");
-                        proc430();
+                        proc431();
                     }
                 }
                 else
                 {
-                    proc430();
+                    proc431();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_offset)
             {
@@ -1276,17 +1276,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - /occlusionTexture texture rotation>: Test Successful");
-                        proc447();
+                        proc448();
                     }
                 }
                 else
                 {
-                    proc447();
+                    proc448();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_rotation)
             {
@@ -1304,17 +1304,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/6/occlusionTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - /occlusionTexture texture scale>: Test Successful");
-                        proc462();
+                        proc463();
                     }
                 }
                 else
                 {
-                    proc462();
+                    proc463();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/occlusionTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__occlusionTexture_texture_scale)
             {
@@ -1332,17 +1332,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - /emissiveTexture texture offset>: Test Successful");
-                        proc477();
+                        proc478();
                     }
                 }
                 else
                 {
-                    proc477();
+                    proc478();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_offset)
             {
@@ -1360,17 +1360,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - /emissiveTexture texture rotation>: Test Successful");
-                        proc494();
+                        proc495();
                     }
                 }
                 else
                 {
-                    proc494();
+                    proc495();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_rotation)
             {
@@ -1388,17 +1388,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/6/emissiveTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - /emissiveTexture texture scale>: Test Successful");
-                        proc509();
+                        proc510();
                     }
                 }
                 else
                 {
-                    proc509();
+                    proc510();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/6/emissiveTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__emissiveTexture_texture_scale)
             {
@@ -1416,12 +1416,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__baseColorFactor = M.Eq((double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorFactor", "float4").Value, new double[] { 0.0, 0.0, 1.0, 1.0 });
                         rt.Log("<pointer/set and get - /baseColorFactor>: Test Successful");
-                        proc524();
+                        proc525();
                     }
                 }
                 else
                 {
-                    proc524();
+                    proc525();
                 }
             }
             else
@@ -1444,17 +1444,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__metallicFactor = (double)rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicFactor", "float").Value == 0.5;
                         rt.Log("<pointer/set and get - /metallicFactor>: Test Successful");
-                        proc539();
+                        proc540();
                     }
                 }
                 else
                 {
-                    proc539();
+                    proc540();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicFactor with 0,5 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicFactor with 0.5 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__metallicFactor)
             {
@@ -1472,17 +1472,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__roughnessFactor = (double)rt.PtrGet("/materials/7/pbrMetallicRoughness/roughnessFactor", "float").Value == 0.5;
                         rt.Log("<pointer/set and get - /roughnessFactor>: Test Successful");
-                        proc554();
+                        proc555();
                     }
                 }
                 else
                 {
-                    proc554();
+                    proc555();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/roughnessFactor with 0,5 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/roughnessFactor with 0.5 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__roughnessFactor)
             {
@@ -1500,17 +1500,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - /baseColorTexture texture offset>: Test Successful");
-                        proc569();
+                        proc570();
                     }
                 }
                 else
                 {
-                    proc569();
+                    proc570();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_offset)
             {
@@ -1528,17 +1528,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - /baseColorTexture texture rotation>: Test Successful");
-                        proc586();
+                        proc587();
                     }
                 }
                 else
                 {
-                    proc586();
+                    proc587();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_rotation)
             {
@@ -1556,17 +1556,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - /baseColorTexture texture scale>: Test Successful");
-                        proc601();
+                        proc602();
                     }
                 }
                 else
                 {
-                    proc601();
+                    proc602();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__baseColorTexture_texture_scale)
             {
@@ -1584,17 +1584,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - /metallicRoughnessTexture texture offset>: Test Successful");
-                        proc616();
+                        proc617();
                     }
                 }
                 else
                 {
-                    proc616();
+                    proc617();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_offset)
             {
@@ -1612,17 +1612,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - /metallicRoughnessTexture texture rotation>: Test Successful");
-                        proc633();
+                        proc634();
                     }
                 }
                 else
                 {
-                    proc633();
+                    proc634();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_rotation)
             {
@@ -1640,17 +1640,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - /metallicRoughnessTexture texture scale>: Test Successful");
-                        proc648();
+                        proc649();
                     }
                 }
                 else
                 {
-                    proc648();
+                    proc649();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/7/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get__metallicRoughnessTexture_texture_scale)
             {
@@ -1668,12 +1668,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyStrength = (double)rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyStrength", "float").Value == 2.0;
                         rt.Log("<pointer/set and get - KHR_materials_anisotropy/anisotropyStrength>: Test Successful");
-                        proc663();
+                        proc664();
                     }
                 }
                 else
                 {
-                    proc663();
+                    proc664();
                 }
             }
             else
@@ -1696,17 +1696,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyRotation = M.Abs((double)rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyRotation", "float").Value - 0.5235988) < 0.0001;
                         rt.Log("<pointer/set and get - KHR_materials_anisotropy/anisotropyRotation>: Test Successful");
-                        proc680();
+                        proc681();
                     }
                 }
                 else
                 {
-                    proc680();
+                    proc681();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyRotation with 0,5235988 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyRotation with 0.5235988 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyRotation)
             {
@@ -1724,17 +1724,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture offset>: Test Successful");
-                        proc695();
+                        proc696();
                     }
                 }
                 else
                 {
-                    proc695();
+                    proc696();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_offset)
             {
@@ -1752,17 +1752,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture rotation>: Test Successful");
-                        proc712();
+                        proc713();
                     }
                 }
                 else
                 {
-                    proc712();
+                    proc713();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_rotation)
             {
@@ -1780,17 +1780,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_anisotropy/anisotropyTexture texture scale>: Test Successful");
-                        proc727();
+                        proc728();
                     }
                 }
                 else
                 {
-                    proc727();
+                    proc728();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/8/extensions/KHR_materials_anisotropy/anisotropyTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_anisotropy_anisotropyTexture_texture_scale)
             {
@@ -1808,17 +1808,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture offset>: Test Successful");
-                        proc742();
+                        proc743();
                     }
                 }
                 else
                 {
-                    proc742();
+                    proc743();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_offset)
             {
@@ -1836,17 +1836,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture rotation>: Test Successful");
-                        proc759();
+                        proc760();
                     }
                 }
                 else
                 {
-                    proc759();
+                    proc760();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_rotation)
             {
@@ -1864,17 +1864,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatTexture texture scale>: Test Successful");
-                        proc774();
+                        proc775();
                     }
                 }
                 else
                 {
-                    proc774();
+                    proc775();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatTexture_texture_scale)
             {
@@ -1892,17 +1892,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture offset>: Test Successful");
-                        proc789();
+                        proc790();
                     }
                 }
                 else
                 {
-                    proc789();
+                    proc790();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_offset)
             {
@@ -1920,17 +1920,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture rotation>: Test Successful");
-                        proc806();
+                        proc807();
                     }
                 }
                 else
                 {
-                    proc806();
+                    proc807();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_rotation)
             {
@@ -1948,17 +1948,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_clearcoat/clearcoatRoughnessTexture texture scale>: Test Successful");
-                        proc821();
+                        proc822();
                     }
                 }
                 else
                 {
-                    proc821();
+                    proc822();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/9/extensions/KHR_materials_clearcoat/clearcoatRoughnessTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_clearcoat_clearcoatRoughnessTexture_texture_scale)
             {
@@ -1976,12 +1976,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_dispersion_dispersion = (double)rt.PtrGet("/materials/10/extensions/KHR_materials_dispersion/dispersion", "float").Value == 2.0;
                         rt.Log("<pointer/set and get - KHR_materials_dispersion/dispersion>: Test Successful");
-                        proc836();
+                        proc837();
                     }
                 }
                 else
                 {
-                    proc836();
+                    proc837();
                 }
             }
             else
@@ -2004,12 +2004,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_emissive_strength_emissiveStrength = (double)rt.PtrGet("/materials/11/extensions/KHR_materials_emissive_strength/emissiveStrength", "float").Value == 2.0;
                         rt.Log("<pointer/set and get - KHR_materials_emissive_strength/emissiveStrength>: Test Successful");
-                        proc851();
+                        proc852();
                     }
                 }
                 else
                 {
-                    proc851();
+                    proc852();
                 }
             }
             else
@@ -2032,12 +2032,12 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_ior_ior = (double)rt.PtrGet("/materials/12/extensions/KHR_materials_ior/ior", "float").Value == 3.0;
                         rt.Log("<pointer/set and get - KHR_materials_ior/ior>: Test Successful");
-                        proc866();
+                        proc867();
                     }
                 }
                 else
                 {
-                    proc866();
+                    proc867();
                 }
             }
             else
@@ -2060,17 +2060,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceFactor = (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceFactor", "float").Value == 1.2;
                         rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceFactor>: Test Successful");
-                        proc881();
+                        proc882();
                     }
                 }
                 else
                 {
-                    proc881();
+                    proc882();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceFactor with 1,2 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceFactor with 1.2 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceFactor)
             {
@@ -2088,17 +2088,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceIor = (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceIor", "float").Value == 2.3;
                         rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceIor>: Test Successful");
-                        proc896();
+                        proc897();
                     }
                 }
                 else
                 {
-                    proc896();
+                    proc897();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceIor with 2,3 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceIor with 2.3 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceIor)
             {
@@ -2116,17 +2116,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMinimum = (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMinimum", "float").Value == 0.5;
                         rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessMinimum>: Test Successful");
-                        proc911();
+                        proc912();
                     }
                 }
                 else
                 {
-                    proc911();
+                    proc912();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMinimum with 0,5 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMinimum with 0.5 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMinimum)
             {
@@ -2144,17 +2144,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMaximum = (double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMaximum", "float").Value == 1.2;
                         rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessMaximum>: Test Successful");
-                        proc926();
+                        proc927();
                     }
                 }
                 else
                 {
-                    proc926();
+                    proc927();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMaximum with 1,2 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessMaximum with 1.2 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessMaximum)
             {
@@ -2172,17 +2172,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture offset>: Test Successful");
-                        proc941();
+                        proc942();
                     }
                 }
                 else
                 {
-                    proc941();
+                    proc942();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_offset)
             {
@@ -2200,17 +2200,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture rotation>: Test Successful");
-                        proc958();
+                        proc959();
                     }
                 }
                 else
                 {
-                    proc958();
+                    proc959();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_rotation)
             {
@@ -2228,17 +2228,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceTexture texture scale>: Test Successful");
-                        proc973();
+                        proc974();
                     }
                 }
                 else
                 {
-                    proc973();
+                    proc974();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceTexture_texture_scale)
             {
@@ -2256,17 +2256,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture offset>: Test Successful");
-                        proc988();
+                        proc989();
                     }
                 }
                 else
                 {
-                    proc988();
+                    proc989();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_offset)
             {
@@ -2284,17 +2284,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture rotation>: Test Successful");
-                        proc1005();
+                        proc1006();
                     }
                 }
                 else
                 {
-                    proc1005();
+                    proc1006();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_rotation)
             {
@@ -2312,17 +2312,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_iridescence/iridescenceThicknessTexture texture scale>: Test Successful");
-                        proc1020();
+                        proc1021();
                     }
                 }
                 else
                 {
-                    proc1020();
+                    proc1021();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/13/extensions/KHR_materials_iridescence/iridescenceThicknessTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_iridescence_iridescenceThicknessTexture_texture_scale)
             {
@@ -2340,17 +2340,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorFactor = M.Eq((double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorFactor", "float3").Value, new double[] { 0.0, 0.0, 1.0 });
                         rt.Log("<pointer/set and get - KHR_materials_sheen/sheenColorFactor>: Test Successful");
-                        proc1035();
+                        proc1036();
                     }
                 }
                 else
                 {
-                    proc1035();
+                    proc1036();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorFactor with (0.00, 0.00, 1.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorFactor with (0, 0, 1) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorFactor)
             {
@@ -2368,17 +2368,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessFactor = (double)rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessFactor", "float").Value == 2.3;
                         rt.Log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessFactor>: Test Successful");
-                        proc1050();
+                        proc1051();
                     }
                 }
                 else
                 {
-                    proc1050();
+                    proc1051();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessFactor with 2,3 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessFactor with 2.3 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessFactor)
             {
@@ -2396,17 +2396,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture offset>: Test Successful");
-                        proc1065();
+                        proc1066();
                     }
                 }
                 else
                 {
-                    proc1065();
+                    proc1066();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_offset)
             {
@@ -2424,17 +2424,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture rotation>: Test Successful");
-                        proc1082();
+                        proc1083();
                     }
                 }
                 else
                 {
-                    proc1082();
+                    proc1083();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_rotation)
             {
@@ -2452,17 +2452,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_sheen/sheenColorTexture texture scale>: Test Successful");
-                        proc1097();
+                        proc1098();
                     }
                 }
                 else
                 {
-                    proc1097();
+                    proc1098();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenColorTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenColorTexture_texture_scale)
             {
@@ -2480,17 +2480,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture offset>: Test Successful");
-                        proc1112();
+                        proc1113();
                     }
                 }
                 else
                 {
-                    proc1112();
+                    proc1113();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_offset)
             {
@@ -2508,17 +2508,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture rotation>: Test Successful");
-                        proc1129();
+                        proc1130();
                     }
                 }
                 else
                 {
-                    proc1129();
+                    proc1130();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_rotation)
             {
@@ -2536,17 +2536,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_sheen/sheenRoughnessTexture texture scale>: Test Successful");
-                        proc1144();
+                        proc1145();
                     }
                 }
                 else
                 {
-                    proc1144();
+                    proc1145();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/14/extensions/KHR_materials_sheen/sheenRoughnessTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_sheen_sheenRoughnessTexture_texture_scale)
             {
@@ -2564,17 +2564,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularFactor = (double)rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularFactor", "float").Value == 1.2;
                         rt.Log("<pointer/set and get - KHR_materials_specular/specularFactor>: Test Successful");
-                        proc1159();
+                        proc1160();
                     }
                 }
                 else
                 {
-                    proc1159();
+                    proc1160();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularFactor with 1,2 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularFactor with 1.2 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularFactor)
             {
@@ -2592,17 +2592,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorFactor = M.Eq((double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorFactor", "float3").Value, new double[] { 1.0, 0.0, 0.0 });
                         rt.Log("<pointer/set and get - KHR_materials_specular/specularColorFactor>: Test Successful");
-                        proc1174();
+                        proc1175();
                     }
                 }
                 else
                 {
-                    proc1174();
+                    proc1175();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorFactor with (1.00, 0.00, 0.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorFactor with (1, 0, 0) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorFactor)
             {
@@ -2620,17 +2620,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_specular/specularTexture texture offset>: Test Successful");
-                        proc1189();
+                        proc1190();
                     }
                 }
                 else
                 {
-                    proc1189();
+                    proc1190();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_offset)
             {
@@ -2648,17 +2648,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - KHR_materials_specular/specularTexture texture rotation>: Test Successful");
-                        proc1206();
+                        proc1207();
                     }
                 }
                 else
                 {
-                    proc1206();
+                    proc1207();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_rotation)
             {
@@ -2676,17 +2676,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_specular/specularTexture texture scale>: Test Successful");
-                        proc1221();
+                        proc1222();
                     }
                 }
                 else
                 {
-                    proc1221();
+                    proc1222();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularTexture_texture_scale)
             {
@@ -2704,17 +2704,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture offset>: Test Successful");
-                        proc1236();
+                        proc1237();
                     }
                 }
                 else
                 {
-                    proc1236();
+                    proc1237();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_offset)
             {
@@ -2732,17 +2732,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture rotation>: Test Successful");
-                        proc1253();
+                        proc1254();
                     }
                 }
                 else
                 {
-                    proc1253();
+                    proc1254();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_rotation)
             {
@@ -2760,17 +2760,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_specular/specularColorTexture texture scale>: Test Successful");
-                        proc1268();
+                        proc1269();
                     }
                 }
                 else
                 {
-                    proc1268();
+                    proc1269();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/15/extensions/KHR_materials_specular/specularColorTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_specular_specularColorTexture_texture_scale)
             {
@@ -2788,17 +2788,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionFactor = (double)rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionFactor", "float").Value == 1.2;
                         rt.Log("<pointer/set and get - KHR_materials_transmission/transmissionFactor>: Test Successful");
-                        proc1283();
+                        proc1284();
                     }
                 }
                 else
                 {
-                    proc1283();
+                    proc1284();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionFactor with 1,2 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionFactor with 1.2 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionFactor)
             {
@@ -2816,17 +2816,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture offset>: Test Successful");
-                        proc1298();
+                        proc1299();
                     }
                 }
                 else
                 {
-                    proc1298();
+                    proc1299();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_offset)
             {
@@ -2844,17 +2844,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture rotation>: Test Successful");
-                        proc1315();
+                        proc1316();
                     }
                 }
                 else
                 {
-                    proc1315();
+                    proc1316();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_rotation)
             {
@@ -2872,17 +2872,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_transmission/transmissionTexture texture scale>: Test Successful");
-                        proc1330();
+                        proc1331();
                     }
                 }
                 else
                 {
-                    proc1330();
+                    proc1331();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/16/extensions/KHR_materials_transmission/transmissionTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_transmission_transmissionTexture_texture_scale)
             {
@@ -2900,17 +2900,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessFactor = (double)rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessFactor", "float").Value == 1.2;
                         rt.Log("<pointer/set and get - KHR_materials_volume/thicknessFactor>: Test Successful");
-                        proc1345();
+                        proc1346();
                     }
                 }
                 else
                 {
-                    proc1345();
+                    proc1346();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessFactor with 1,2 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessFactor with 1.2 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessFactor)
             {
@@ -2928,17 +2928,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_attenuationDistance = (double)rt.PtrGet("/materials/17/extensions/KHR_materials_volume/attenuationDistance", "float").Value == 2.2;
                         rt.Log("<pointer/set and get - KHR_materials_volume/attenuationDistance>: Test Successful");
-                        proc1360();
+                        proc1361();
                     }
                 }
                 else
                 {
-                    proc1360();
+                    proc1361();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/attenuationDistance with 2,2 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/attenuationDistance with 2.2 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_attenuationDistance)
             {
@@ -2956,17 +2956,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_attenuationColor = M.Eq((double[])rt.PtrGet("/materials/17/extensions/KHR_materials_volume/attenuationColor", "float3").Value, new double[] { 1.0, 0.0, 0.0 });
                         rt.Log("<pointer/set and get - KHR_materials_volume/attenuationColor>: Test Successful");
-                        proc1375();
+                        proc1376();
                     }
                 }
                 else
                 {
-                    proc1375();
+                    proc1376();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/attenuationColor with (1.00, 0.00, 0.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/attenuationColor with (1, 0, 0) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_attenuationColor)
             {
@@ -2984,17 +2984,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_offset = M.Eq((double[])rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/offset", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture offset>: Test Successful");
-                        proc1390();
+                        proc1391();
                     }
                 }
                 else
                 {
-                    proc1390();
+                    proc1391();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/offset with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/offset with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_offset)
             {
@@ -3012,17 +3012,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_rotation = M.Abs((double)rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/rotation", "float").Value - 0.7853982) < 0.0001;
                         rt.Log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture rotation>: Test Successful");
-                        proc1407();
+                        proc1408();
                     }
                 }
                 else
                 {
-                    proc1407();
+                    proc1408();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/rotation with 0,7853982 can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/rotation with 0.7853982 can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_rotation)
             {
@@ -3040,17 +3040,17 @@ public static class Module
                     {
                         V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_scale = M.Eq((double[])rt.PtrGet("/materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/scale", "float2").Value, new double[] { 2.0, 3.0 });
                         rt.Log("<pointer/set and get - KHR_materials_volume/thicknessTexture texture scale>: Test Successful");
-                        proc1422();
+                        proc1423();
                     }
                 }
                 else
                 {
-                    proc1422();
+                    proc1423();
                 }
             }
             else
             {
-                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/scale with (2.00, 3.00) can't be set.");
+                rt.Log("ERROR! Flow-[err] on Set pointer: /materials/17/extensions/KHR_materials_volume/thicknessTexture/extensions/KHR_texture_transform/scale with (2, 3) can't be set.");
             }
             if (!V.TestResult_HasPassed_pointer_set_and_get_KHR_materials_volume_thicknessTexture_texture_scale)
             {

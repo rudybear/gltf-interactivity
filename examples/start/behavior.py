@@ -2,17 +2,17 @@ import gltfi_runtime.m as m
 from types import SimpleNamespace
 
 def build(rt: "gltfi_runtime.Engine") -> None:
-    V = rt.vars({"FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b": rt.with_id("FlowSequenceCount_cd624fe9-1c76-4daf-9ebc-5a4014c8fb9b", rt.int_(0)), "TestResult_animation_start__out__fired_right_after__in_": rt.with_id("TestResult_animation/start_[out] fired right after [in]", rt.bool_(False)), "TestResult_HasPassed_animation_start_Position_at_50_": rt.with_id("TestResult_HasPassed_animation/start_Position at 50%", rt.bool_(False)), "TestResult_animation_start_Position_at_50_": rt.with_id("TestResult_animation/start_Position at 50%", rt.float3(-0.0142, -0.0142, -0.0142)), "TestResult_animation_start_Flow__done_": rt.with_id("TestResult_animation/start_Flow [done]", rt.bool_(False)), "TestResult_HasPassed_animation_start_Position_at_100_": rt.with_id("TestResult_HasPassed_animation/start_Position at 100%", rt.bool_(False)), "TestResult_animation_start_Position_at_100_": rt.with_id("TestResult_animation/start_Position at 100%", rt.float3(-0.0142, -0.0142, -0.0142)), "TestResult_animation_start__err__flow__speed__1_": rt.with_id("TestResult_animation/start_[err] flow (speed -1)", rt.bool_(False)), "TestResult_animation_start__err__flow__speed_0_": rt.with_id("TestResult_animation/start_[err] flow (speed 0)", rt.bool_(False)), "TestResult_animation_start__err__flow__speed_NaN_": rt.with_id("TestResult_animation/start_[err] flow (speed NaN)", rt.bool_(False)), "TestResult_animation_start__err__flow__speed__Inf_": rt.with_id("TestResult_animation/start_[err] flow (speed +Inf)", rt.bool_(False)), "TestResult_animation_start__err__flow__startTime_NaN_": rt.with_id("TestResult_animation/start_[err] flow (startTime NaN)", rt.bool_(False)), "TestResult_animation_start__err__flow__startTime__Inf_": rt.with_id("TestResult_animation/start_[err] flow (startTime +Inf)", rt.bool_(False)), "TestResult_animation_start__err__flow__endTime_NaN_": rt.with_id("TestResult_animation/start_[err] flow (endTime NaN)", rt.bool_(False)), "TestResult_animation_start__err__flow__invalid_ref_": rt.with_id("TestResult_animation/start_[err] flow (invalid ref)", rt.bool_(False))})
+    V = rt.vars({"FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5": rt.with_id("FlowSequenceCount_e0d0c35a-dd7f-45a0-8e0b-e3856b82c2a5", rt.int_(0)), "TestResult_animation_start__out__fired_right_after__in_": rt.with_id("TestResult_animation/start_[out] fired right after [in]", rt.bool_(False)), "TestResult_HasPassed_animation_start_Position_at_50_": rt.with_id("TestResult_HasPassed_animation/start_Position at 50%", rt.bool_(False)), "TestResult_animation_start_Position_at_50_": rt.with_id("TestResult_animation/start_Position at 50%", rt.float3(-0.0142, -0.0142, -0.0142)), "TestResult_animation_start_Flow__done_": rt.with_id("TestResult_animation/start_Flow [done]", rt.bool_(False)), "TestResult_HasPassed_animation_start_Position_at_100_": rt.with_id("TestResult_HasPassed_animation/start_Position at 100%", rt.bool_(False)), "TestResult_animation_start_Position_at_100_": rt.with_id("TestResult_animation/start_Position at 100%", rt.float3(-0.0142, -0.0142, -0.0142)), "TestResult_animation_start__err__flow__speed__1_": rt.with_id("TestResult_animation/start_[err] flow (speed -1)", rt.bool_(False)), "TestResult_animation_start__err__flow__speed_0_": rt.with_id("TestResult_animation/start_[err] flow (speed 0)", rt.bool_(False)), "TestResult_animation_start__err__flow__speed_NaN_": rt.with_id("TestResult_animation/start_[err] flow (speed NaN)", rt.bool_(False)), "TestResult_animation_start__err__flow__speed__Inf_": rt.with_id("TestResult_animation/start_[err] flow (speed +Inf)", rt.bool_(False)), "TestResult_animation_start__err__flow__startTime_NaN_": rt.with_id("TestResult_animation/start_[err] flow (startTime NaN)", rt.bool_(False)), "TestResult_animation_start__err__flow__startTime__Inf_": rt.with_id("TestResult_animation/start_[err] flow (startTime +Inf)", rt.bool_(False)), "TestResult_animation_start__err__flow__endTime_NaN_": rt.with_id("TestResult_animation/start_[err] flow (endTime NaN)", rt.bool_(False)), "TestResult_animation_start__err__flow__invalid_ref_": rt.with_id("TestResult_animation/start_[err] flow (invalid ref)", rt.bool_(False))})
     E = rt.events({"test_onStart": {"externalId": "test/onStart", "expectedDuration": 3.5}, "test_onSuccess": {"externalId": "test/onSuccess"}, "test_onFailed": {"externalId": "test/onFailed"}})
     S = SimpleNamespace()
     S.delay1 = rt.delay_state()
     S.delay2 = rt.delay_state()
     S.delay3 = rt.delay_state()
-    def proc87() -> None:
-        rt.log("<animation/start - Position at 100%>: Value is {0}, should be {1} (Proximity range: 0,01)", [rt.ptr_get("/nodes/3/translation", "float3")["value"], [-1.0, 2.0, 3.0]])
+    def proc91() -> None:
+        rt.log("<animation/start - Position at 100%>: Value is {0}, should be {1} (Proximity range: 0.01)", [rt.ptr_get("/nodes/3/translation", "float3")["value"], [-1.0, 2.0, 3.0]])
         V.TestResult_animation_start_Position_at_100_ = rt.ptr_get("/nodes/3/translation", "float3")["value"]
-    def proc35() -> None:
-        rt.log("<animation/start - Position at 50%>: Value is {0}, should be {1} (Proximity range: 0,3)", [rt.ptr_get("/nodes/3/translation", "float3")["value"], [-0.5, 1.0, 1.5]])
+    def proc34() -> None:
+        rt.log("<animation/start - Position at 50%>: Value is {0}, should be {1} (Proximity range: 0.3)", [rt.ptr_get("/nodes/3/translation", "float3")["value"], [-0.5, 1.0, 1.5]])
         V.TestResult_animation_start_Position_at_50_ = rt.ptr_get("/nodes/3/translation", "float3")["value"]
     def __on_start_0() -> None:
         def cont1() -> None:
@@ -41,22 +41,22 @@ def build(rt: "gltfi_runtime.Engine") -> None:
                                 t2 = rt.ptr_get("/nodes/3/translation", "float3")["value"]
                                 V.TestResult_HasPassed_animation_start_Position_at_100_ = m.length(t2) > 3.73165751 and m.dot(m.normalize(t2)["value"], [-0.267261237, 0.5345225, 0.8017837]) > 0.99
                                 rt.log("<animation/start - Position at 100%>: Test Successful")
-                                proc87()
+                                proc91()
                     else:
-                        proc87()
+                        proc91()
             if rt.anim_start("/animations/0", 0.0, 2.0, 1.0, cont2)["ok"]:
-                V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b = m.addInt(V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b, 1)
-                if not m.eqInt(V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b, 1):
+                V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 = m.addInt(V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5, 1)
+                if not m.eqInt(V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5, 1):
                     rt.log("ERROR! <animation/start - [out] fired right after [in]>: Incorrect flow order triggered! Expected Socket Id: out")
-                    V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b = -1000
-            V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b = m.addInt(V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b, 1)
-            if m.eqInt(V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b, 2):
+                    V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 = -1000
+            V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 = m.addInt(V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5, 1)
+            if m.eqInt(V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5, 2):
                 if rt.ptr_set("/nodes/6/translation", "float3", [0.0, 0.0, 0.8]):
                     rt.log("<animation/start - [out] fired right after [in]>: Correct flow order triggered")
                     V.TestResult_animation_start__out__fired_right_after__in_ = True
             else:
                 rt.log("ERROR! <animation/start - [out] fired right after [in]>: Incorrect flow order triggered! Expected Socket Id: 1")
-                V.FlowSequenceCount_cd624fe9_1c76_4daf_9ebc_5a4014c8fb9b = -1000
+                V.FlowSequenceCount_e0d0c35a_dd7f_45a0_8e0b_e3856b82c2a5 = -1000
             def cont3() -> None:
                 if rt.ptr_set("/nodes/13/translation", "float3", [0.0, 0.0, 0.0]):
                     t3 = rt.ptr_get("/nodes/3/translation", "float3")["value"]
@@ -66,9 +66,9 @@ def build(rt: "gltfi_runtime.Engine") -> None:
                                 t4 = rt.ptr_get("/nodes/3/translation", "float3")["value"]
                                 V.TestResult_HasPassed_animation_start_Position_at_50_ = m.length(t4) > 1.57082868 and m.dot(m.normalize(t4)["value"], [-0.267261237, 0.5345225, 0.8017837]) > 0.7
                                 rt.log("<animation/start - Position at 50%>: Test Successful")
-                                proc35()
+                                proc34()
                     else:
-                        proc35()
+                        proc34()
             rt.set_delay(S.delay1, 1.0, cont3)
     rt.on_start(__on_start_0)
     def __on_start_1() -> None:
