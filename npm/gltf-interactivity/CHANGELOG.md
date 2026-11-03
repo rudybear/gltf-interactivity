@@ -8,7 +8,12 @@ Packaging changes (the 0.2.0 install footprint was dominated by `ts-morph`/`type
 - The CLI prints a friendly "needs the optional peer dependency" message (exit 1, no stack trace) when a parser peer is missing; the TypeScript parser is now loaded lazily.
 - `./runtime` and `./runtime/node` are now thin re-exports of the new regular dependency `@gltfi/runtime` (^0.1.1). The CLI and conformance adapter use it too, so exactly one interpreter implementation is installed. `InteractivityRuntime` from `gltf-interactivity/runtime` is identical to the one from `@gltfi/runtime`.
 - Added classic `main` and top-level `types` fields (keeping `exports`).
-- Parser fixes: see TODO (to be filled in).
+- Front-end fixes (all five languages: TS, Lua, Python, C#, GDScript):
+  - Inequality (`!==`, `~=`, `!=`) is lowered as `math/not(math/eq(a, b))` with the correct operand type. It was lowered as a bool `math/xor`, so `x !== 3` computed `x xor true`. Emitters no longer print bool `math/xor` as an inequality operator (`m.xor(a, b)`).
+  - Pointer templates: `{name}` parameters take a ref and `[name]` an int; a mismatch is now a compile error (GI131 / GL131 / GP131 / GC131 / GG131) with a hint instead of a silent no-write.
+  - `rt.vars(...)` / `rt.events(...)` (and the Lua/Python/C#/GDScript equivalents) may be omitted when empty.
+- GIscript: block-scoped temps (GI190 no longer fires for same-named temps in different blocks); `params.<field>` works in `onSelect` / `onHoverIn` / `onHoverOut` handlers, and using the whole params object is error GI132.
+- Corpus upgrade to Khronos f99d9b6 (158 tests): omitted literal values, invalid configuration, unsupported-extension ops, event value sockets beyond the standard four, exact `-0` and denormal literals in emitters/parsers, variable `name` (reads `name ?? id`, writes `name`). Runtime semantics: see @gltfi/runtime 0.1.1.
 
 ## 0.2.0
 
