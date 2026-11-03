@@ -13,6 +13,7 @@
     "build": "node packages/runtime-lua/scripts/build-lua-sources.mjs && tsc -b",
     "check:registry": "node packages/kernel/scripts/check-registry.mjs",
     "conf:interp": "node packages/conformance/dist/run-interp.js",
+    "conf:invalid": "node packages/conformance/dist/run-invalid.js",
     "conf:compiled": "node packages/conformance/dist/run-compiled.js",
     "conf:lua": "node packages/conformance/dist/run-compiled-lua.js",
     "conf:py": "node packages/conformance/dist/run-compiled-py.js",

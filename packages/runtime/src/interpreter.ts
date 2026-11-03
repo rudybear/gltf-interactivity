@@ -56,8 +56,13 @@ import {
   normalizeConfiguration,
   multiGateAdvance,
   throttleAdvance,
-  waitAllAdvance
+  waitAllAdvance,
+  assertValidExtension,
+  assertValidGraph,
+  markGraphValidated
 } from "@gltfi/kernel";
+export { InteractivityValidationError, isInteractivityValidationError, validateExtension, validateGraphObject } from "@gltfi/kernel";
+export type { ExtensionValidation, GraphValidation, ValidationDiagnostic, ValidationOutcome } from "@gltfi/kernel";
 
 export type NodeRef = { node: number; socket: string };
 
@@ -206,21 +211,11 @@ export function resolveGraph(gltf: any): Graph {
   if (!inter) {
     throw new Error("Missing KHR_interactivity.");
   }
-  const graphs = inter.graphs;
-  if (!Array.isArray(graphs) || graphs.length === 0) {
-    throw new Error("Missing graph.");
-  }
-  const index = inter.graph === undefined ? 0 : inter.graph; // explicit null is invalid, not "absent"
-  if (!Number.isInteger(index) || index < 0 || index >= graphs.length) {
-    throw new Error(
-      `Invalid KHR_interactivity.graph ${JSON.stringify(index)}: must be a non-negative integer less than graphs.length (${graphs.length}).`
-    );
-  }
-  const graph = graphs[index] as Graph;
-  if (!graph) {
-    throw new Error("Missing graph.");
-  }
-  return graph;
+  // Spec "Validation": throws InteractivityValidationError when the extension
+  // object is invalid (also when the selected default graph is invalid, in
+  // which case no graph of the extension may run).
+  const { selectedGraph } = assertValidExtension(inter);
+  return inter.graphs[selectedGraph ?? 0] as Graph;
 }
 
 // Khronos' graph.schema.json has no required properties and every array has
@@ -2630,9 +2625,17 @@ export function createRuntime(
     // Initial host-fed active camera (otherwise the activeCamera pointers
     // read NaN until the host calls InteractivityRuntime.setActiveCamera).
     activeCamera?: ActiveCamera | null;
+    // Validate `inputGraph` per the spec's Validation section and throw
+    // InteractivityValidationError if invalid (default true).
+    validate?: boolean;
   } = {}
 ): RuntimeGraph {
-  const graph = normalizeGraph(inputGraph);
+  if (options.validate !== false) {
+    assertValidGraph(inputGraph);
+  }
+  // The normalized copy carries `[]` for absent arrays (illegal on the wire),
+  // so mark it as validated for downstream consumers (e.g. importGraph).
+  const graph = markGraphValidated(normalizeGraph(inputGraph));
   const variables = graph.variables.map((variable) => {
     const signature = graph.types[variable.type]?.signature ?? "float";
     if (!Array.isArray(variable.value)) {

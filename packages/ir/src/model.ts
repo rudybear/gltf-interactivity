@@ -250,6 +250,12 @@ export type Diagnostic = {
   //     @gltfi/parse-ts, which has a ts-morph Node (and hence exact
   //     line/column/character-offset span) for every GI0xx/GI1xx diagnostic.
   nodeIndex?: number;
+  // Populated by the spec Validation algorithm (@gltfi/kernel validate.ts):
+  // the spec section the rule comes from, a JSON-ish location, and what the
+  // spec mandates on failure.
+  section?: string;
+  path?: string;
+  outcome?: "rejectGraph" | "rejectExtension";
   line?: number;
   column?: number;
   span?: { start: number; end: number };

@@ -51,7 +51,8 @@ import {
   resolveOverload,
   toValue,
   type ResolvedOverload,
-  type TypeSig
+  type TypeSig,
+  assertValidGraph
 } from "@gltfi/kernel";
 import { NameAllocator } from "./names.js";
 import type {
@@ -84,7 +85,8 @@ import { parsePointerTemplate, pointerTemplateParams } from "./pointer.js";
 // ---------------------------------------------------------------------------
 
 export type GraphValueRef = { node: number; socket?: string };
-export type GraphValueLiteral = { type: number; value: Array<number | boolean | string> };
+// `value` may be omitted: the spec then defines the type-default (NaN for float types).
+export type GraphValueLiteral = { type: number; value?: Array<number | boolean | string> };
 export type GraphNodeValue = GraphValueRef | GraphValueLiteral;
 export type GraphFlowRef = { node: number; socket: string };
 
@@ -109,6 +111,10 @@ export type ImportOptions = {
   // Accepted for forward compatibility (e.g. future diagnostics that cross-
   // check pointer targets against real glTF structure); unused today.
   gltf?: unknown;
+  // Validate the graph against the spec's Validation section first and throw
+  // an InteractivityValidationError (nothing is imported) when it is invalid.
+  // Default true. Set false only for deliberately sloppy in-progress graphs.
+  validate?: boolean;
 };
 
 export type ImportResult = { module: IRModule; diagnostics: Diagnostic[] };
@@ -160,7 +166,9 @@ const STATE_PREFIX: Record<StateKind, string> = {
 type SiteCtx = { counts: Map<string, number>; tempsBuilt: Map<string, TempId>; lets: IRStmt[] };
 
 export function importGraph(graph: Graph, opts: ImportOptions = {}): ImportResult {
-  void opts;
+  if (opts.validate !== false) {
+    assertValidGraph(graph);
+  }
   return new Importer(graph).run();
 }
 

@@ -6,7 +6,13 @@
 // well-formed KHR_interactivity graph must satisfy (independent of whether
 // it came from @gltfi/ir's exportGraph or anywhere else); normalizeGraph +
 // equivalentGraphs do a best-effort parallel walk comparing two graphs.
-import { defaultValue, getOpSpec, type ValueType } from "@gltfi/kernel";
+import {
+  defaultValue,
+  validateExtension as kernelValidateExtension,
+  validateGraphObject,
+  type ExtensionValidation,
+  type ValueType
+} from "@gltfi/kernel";
 import { formatPointerTemplate, parsePointerTemplate, type Diagnostic } from "@gltfi/ir";
 
 // Re-exported so downstream consumers of validateGraph's diagnostics (e.g.
@@ -14,6 +20,8 @@ import { formatPointerTemplate, parsePointerTemplate, type Diagnostic } from "@g
 // structured `nodeIndex`/`line`/`column`/`span` source-position fields —
 // straight from @gltfi/verify instead of reaching into @gltfi/ir directly.
 export type { Diagnostic } from "@gltfi/ir";
+export { InteractivityValidationError, isInteractivityValidationError, assertValidExtension, assertValidGraph } from "@gltfi/kernel";
+export type { ExtensionValidation, GraphValidation, ValidationDiagnostic, ValidationOutcome } from "@gltfi/kernel";
 
 // Structurally compatible with @gltfi/ir's Graph/GraphNode/GraphJson types
 // (and hence with @gltfi/runtime's Graph) — kept as a local, minimal shape
@@ -39,104 +47,22 @@ export type ValidateResult = { ok: boolean; diagnostics: Diagnostic[] };
 
 const HANDLER_OPS = new Set(["event/onStart", "event/onTick", "event/receive", "event/onSelect", "event/onHoverIn", "event/onHoverOut"]);
 
+// One implementation: delegates to @gltfi/kernel's spec Validation algorithm
+// (validate.ts), which is also what the runtimes run at load time. Each
+// diagnostic additionally carries the spec `section`, the JSON `path` and the
+// spec `outcome` ("rejectGraph" | "rejectExtension").
 export function validateGraph(graph: VGraph): ValidateResult {
-  const diagnostics: Diagnostic[] = [];
-  const err = (code: string, message: string, nodeIndex?: number) => diagnostics.push({ severity: "error", code, message, nodeIndex });
-
-  // Declarations: op strings must be non-empty and unique (spec forbids
-  // duplicate declarations for the same op — see the design doc's "IR ->
-  // graph" section).
-  const seenOps = new Map<string, number>();
-  graph.declarations.forEach((d, i) => {
-    if (!d.op) {
-      err("GV001", `declaration ${i} has an empty op string`);
-      return;
-    }
-    const prior = seenOps.get(d.op);
-    if (prior !== undefined) {
-      err("GV002", `declaration ${i} duplicates declaration ${prior}'s op "${d.op}"`);
-    }
-    seenOps.set(d.op, i);
-  });
-
-  const typeCount = graph.types.length;
-  (graph.variables ?? []).forEach((v, i) => {
-    if (v.type < 0 || v.type >= typeCount) {
-      err("GV010", `variable ${i} has out-of-range type index ${v.type}`);
-    }
-  });
-  (graph.events ?? []).forEach((e, i) => {
-    for (const [key, val] of Object.entries(e.values ?? {})) {
-      if (val.type < 0 || val.type >= typeCount) {
-        err("GV011", `event ${i} value "${key}" has out-of-range type index ${val.type}`);
-      }
-    }
-  });
-
-  graph.nodes.forEach((node, nodeIndex) => {
-    if (node.declaration < 0 || node.declaration >= graph.declarations.length) {
-      err("GV020", `node ${nodeIndex} has out-of-range declaration index ${node.declaration}`, nodeIndex);
-      return;
-    }
-    const op = graph.declarations[node.declaration].op;
-    const spec = getOpSpec(op);
-
-    for (const [socket, v] of Object.entries(node.values ?? {})) {
-      if ("node" in v) {
-        if (v.node < 0 || v.node >= graph.nodes.length) {
-          err("GV021", `node ${nodeIndex} value "${socket}" references out-of-range node ${v.node}`, nodeIndex);
-        } else if (v.node >= nodeIndex) {
-          // Hard spec requirement, not just an @gltfi/ir export choice — see
-          // the design doc's "Why structuring always works": value edges
-          // must strictly decrease in index (0 exceptions across the
-          // 145-graph conformance corpus).
-          err("GV022", `node ${nodeIndex} value "${socket}" references node ${v.node}, which is not strictly before it (value edges must be backward-only)`, nodeIndex);
-        }
-      } else {
-        if (v.type < 0 || v.type >= typeCount) {
-          err("GV023", `node ${nodeIndex} value "${socket}" literal has out-of-range type index ${v.type}`, nodeIndex);
-        }
-        if (v.value !== undefined && !Array.isArray(v.value)) {
-          err("GV024", `node ${nodeIndex} value "${socket}" literal's value is not an array`, nodeIndex);
-        }
-      }
-    }
-
-    for (const [socket, f] of Object.entries(node.flows ?? {})) {
-      if (f.node < 0 || f.node >= graph.nodes.length) {
-        err("GV025", `node ${nodeIndex} flow "${socket}" references out-of-range node ${f.node}`, nodeIndex);
-      }
-      if (typeof f.socket !== "string" || f.socket.length === 0) {
-        err("GV026", `node ${nodeIndex} flow "${socket}" has an invalid target socket`, nodeIndex);
-      }
-    }
-
-    if (spec?.config) {
-      for (const field of spec.config) {
-        const entry = node.configuration?.[field.name];
-        if (!entry) {
-          if (field.required) {
-            err("GV027", `node ${nodeIndex} ("${op}") missing required config field "${field.name}"`, nodeIndex);
-          }
-          continue;
-        }
-        if (!Array.isArray(entry.value)) {
-          err("GV028", `node ${nodeIndex} ("${op}") config field "${field.name}" is not an array`, nodeIndex);
-          continue;
-        }
-        if ((field.type === "int" || field.type === "bool" || field.type === "string") && entry.value.length !== 1) {
-          err("GV029", `node ${nodeIndex} ("${op}") config field "${field.name}" (${field.type}) should have exactly one value`, nodeIndex);
-        }
-      }
-    }
-
-    if (HANDLER_OPS.has(op) && Object.keys(node.values ?? {}).length > 0) {
-      err("GV030", `node ${nodeIndex} ("${op}") is a handler root and should have no value inputs`, nodeIndex);
-    }
-  });
-
-  return { ok: diagnostics.every((d) => d.severity !== "error"), diagnostics };
+  const r = validateGraphObject(graph as unknown);
+  return { ok: r.ok, diagnostics: r.diagnostics };
 }
+
+// Extension-level validation (graphs array, default-graph selection, every
+// graph, and "default graph invalid => extension rejected"). `ext` is the
+// `extensions.KHR_interactivity` object.
+export function validateExtension(ext: unknown): ExtensionValidation {
+  return kernelValidateExtension(ext);
+}
+
 
 // ---------------------------------------------------------------------------
 // normalizeGraph / equivalentGraphs

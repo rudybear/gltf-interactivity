@@ -3,7 +3,7 @@
 // fork's runtime/index.ts; adjusted to import the core's own Graph type
 // instead of a host-app-specific KHR_interactivity parser type.
 import { advanceTime, createRuntime, executeFlow, normalizeGraph, type Graph, type RuntimeGraph, type Value } from "./interpreter.js";
-import type { ActiveCameraProjection } from "@gltfi/kernel";
+import { assertValidExtension, assertValidGraph, type ActiveCameraProjection } from "@gltfi/kernel";
 
 export type InteractivityEvent =
   | { type: "pointermove"; x: number; y: number }
@@ -39,7 +39,12 @@ export type SceneAdapter = {
 // so this package doesn't grow a dependency on the compiled-engine runtime
 // just for a type — TypeScript's structural typing makes the two
 // interchangeable for any caller that imports the "real" EngineLike instead.
-export type SentEvent = { eventIndex: number; externalId?: string; payload: [boolean, number, number, number] };
+export type SentEvent = { eventIndex: number; externalId?: string; // Slots 0-3 are the four standard payload fields; slots 4+ carry the custom
+  // value sockets of the event definition (same shape as @gltfi/runtime-lib's
+  // EventPayload). This interpreter currently reports exactly the four
+  // standard slots; custom sockets are available via RuntimeGraph.eventPayloads.
+  payload: [boolean, number, number, number, ...unknown[]];
+};
 
 export type EngineLike = {
   start(): void;
@@ -71,12 +76,28 @@ export class InteractivityRuntime {
   private eventNodes: Map<string, number[]> = new Map();
   private dirty = false;
 
-  constructor(graph: Partial<Graph>, gltf: unknown, binary?: Uint8Array | ArrayBuffer | null) {
+  // `options.validate: false` skips the load-time spec validation (hosts that
+  // deliberately run in-progress graphs); default is to reject invalid input.
+  constructor(graph: Partial<Graph>, gltf: unknown, binary?: Uint8Array | ArrayBuffer | null, options: { validate?: boolean } = {}) {
     if (!graph) {
       throw new Error("Missing KHR_interactivity graph.");
     }
+    // Reject invalid input per the spec's Validation section (throws
+    // InteractivityValidationError). Done on the RAW graph, before
+    // normalizeGraph blanks unsupported ops; when `graph` is one of the
+    // gltf's own KHR_interactivity graphs the whole extension is validated
+    // too (an invalid sibling/default selection rejects the extension).
+    const ext = (gltf as { extensions?: { KHR_interactivity?: { graphs?: unknown } } } | null | undefined)?.extensions?.KHR_interactivity;
+    if (options.validate === false) {
+      // trusted / unvalidated input
+    } else if (ext && Array.isArray(ext.graphs) && ext.graphs.includes(graph)) {
+      assertValidExtension(ext);
+    } else {
+      assertValidGraph(graph);
+    }
     this.graph = normalizeGraph(graph);
     this.runtime = createRuntime(this.graph, gltf, {
+      validate: false,
       onPointerSet: (pointer, value) => {
         this.adapter?.applyPointer(pointer, value);
         this.dirty = true;

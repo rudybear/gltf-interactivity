@@ -35,8 +35,6 @@ describe("boolean pointer-value contract (F4)", () => {
     const INT = 1;
     const graph: Graph = {
       types: [{ signature: "bool" }, { signature: "int" }],
-      variables: [],
-      events: [],
       declarations: [{ op: "event/onStart" }, { op: "pointer/set" }],
       nodes: [
         { declaration: 0, flows: { out: { node: 1, socket: "in" } } },
@@ -59,7 +57,7 @@ describe("boolean pointer-value contract (F4)", () => {
     };
     const scene = { nodes: [{}] };
     const { adapter, calls } = capturingAdapter();
-    const runtime = new InteractivityRuntime(graph, scene);
+    const runtime = new InteractivityRuntime(graph, scene, undefined, { validate: false }); // deliberately type-mismatched (invalid per spec) graph
     runtime.bindAdapter(adapter);
 
     runtime.start();
@@ -75,8 +73,6 @@ describe("boolean pointer-value contract (F4)", () => {
     const INT = 1;
     const graph: Graph = {
       types: [{ signature: "bool" }, { signature: "int" }],
-      variables: [],
-      events: [],
       declarations: [{ op: "event/onStart" }, { op: "pointer/set" }],
       nodes: [
         { declaration: 0, flows: { out: { node: 1, socket: "in" } } },
@@ -95,7 +91,7 @@ describe("boolean pointer-value contract (F4)", () => {
     };
     const scene = { nodes: [{}] };
     const { adapter, calls } = capturingAdapter();
-    const runtime = new InteractivityRuntime(graph, scene);
+    const runtime = new InteractivityRuntime(graph, scene, undefined, { validate: false }); // deliberately type-mismatched (invalid per spec) graph
     runtime.bindAdapter(adapter);
 
     runtime.start();
@@ -110,8 +106,6 @@ describe("boolean pointer-value contract (F4)", () => {
     const INT = 1;
     const graph: Graph = {
       types: [{ signature: "bool" }, { signature: "int" }],
-      variables: [],
-      events: [],
       declarations: [{ op: "event/onStart" }, { op: "pointer/set" }],
       nodes: [
         { declaration: 0, flows: { out: { node: 1, socket: "in" } } },
@@ -130,7 +124,7 @@ describe("boolean pointer-value contract (F4)", () => {
     };
     const scene = { nodes: [{}] };
     const { adapter, calls } = capturingAdapter();
-    const runtime = new InteractivityRuntime(graph, scene);
+    const runtime = new InteractivityRuntime(graph, scene, undefined, { validate: false }); // deliberately type-mismatched (invalid per spec) graph
     runtime.bindAdapter(adapter);
 
     runtime.start();

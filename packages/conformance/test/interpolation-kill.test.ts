@@ -77,7 +77,6 @@ const GRAPH: IrGraph = {
     { id: "v0", type: FLOAT, value: [0] },
     { id: "v1", type: FLOAT, value: [0] }
   ],
-  events: [],
   declarations: [
     { op: "event/onStart" },
     { op: "flow/sequence" },
@@ -403,7 +402,9 @@ class GdSession {
 }
 
 describe("interpolation-kill (task #10): cross-engine parity across interpreter + all 4 compiled backends", () => {
-  const { module, diagnostics } = importGraph(GRAPH);
+  // GRAPH is hand-authored (duplicate declarations, partial config): import it unvalidated; the interpreter below is fed the
+  // exporter's (valid) output instead.
+  const { module, diagnostics } = importGraph(GRAPH, { validate: false });
 
   it("fixture sanity: the hand-authored graph imports and type-checks cleanly", () => {
     expect(diagnostics.filter((d) => d.severity === "error")).toEqual([]);

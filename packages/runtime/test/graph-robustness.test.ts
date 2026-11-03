@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { InteractivityRuntime, type SceneAdapter } from "../src/host.js";
-import { createRuntime, normalizeGraph, resolveGraph } from "../src/interpreter.js";
+import { createRuntime, InteractivityValidationError, normalizeGraph, resolveGraph } from "../src/interpreter.js";
 
 function spyAdapter() {
   const calls: Array<{ pointer: string; value: unknown }> = [];
@@ -81,8 +81,8 @@ describe("graphs with omitted arrays", () => {
 });
 
 describe("resolveGraph", () => {
-  const g0 = { nodes: [{ declaration: 0 }] };
-  const g1 = { nodes: [{ declaration: 1 }] };
+  const g0 = { declarations: [{ op: "event/onStart" }], nodes: [{ declaration: 0 }] };
+  const g1 = { declarations: [{ op: "event/onTick" }], nodes: [{ declaration: 0 }] };
   const gltfWith = (extra: object) => ({ extensions: { KHR_interactivity: { graphs: [g0, g1], ...extra } } });
 
   it("defaults to graph 0", () => {
@@ -93,12 +93,22 @@ describe("resolveGraph", () => {
     expect(resolveGraph(gltfWith({ graph: 0 }))).toBe(g0);
   });
   it.each([2, -1, 0.5, "1", null, NaN])("rejects invalid graph index %j", (graph) => {
-    expect(() => resolveGraph(gltfWith({ graph }))).toThrow(/Invalid KHR_interactivity\.graph/);
+    // Spec "Extension Object Validation": an invalid default-graph index
+    // rejects the whole extension with a typed, diagnosable error.
+    let thrown: unknown;
+    try {
+      resolveGraph(gltfWith({ graph }));
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(InteractivityValidationError);
+    expect((thrown as InteractivityValidationError).scope).toBe("extension");
+    expect((thrown as InteractivityValidationError).diagnostics[0].section).toBe("Validation › Extension Object Validation");
   });
   it("still reports missing extension / graphs", () => {
     expect(() => resolveGraph({})).toThrow("Missing KHR_interactivity.");
-    expect(() => resolveGraph({ extensions: { KHR_interactivity: {} } })).toThrow("Missing graph.");
-    expect(() => resolveGraph({ extensions: { KHR_interactivity: { graphs: [] } } })).toThrow("Missing graph.");
+    expect(() => resolveGraph({ extensions: { KHR_interactivity: {} } })).toThrow(InteractivityValidationError);
+    expect(() => resolveGraph({ extensions: { KHR_interactivity: { graphs: [] } } })).toThrow(InteractivityValidationError);
   });
   it("does not mutate its input", () => {
     const gltf = deepFreeze(gltfWith({ graph: 1 }));

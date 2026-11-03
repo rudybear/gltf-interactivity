@@ -105,7 +105,14 @@ export function normalizeConfiguration(op: string, configuration: RawConfigurati
     if (spec.extension !== undefined && isValidConfigValue(field, configuration?.[field.name]?.value)) {
       continue;
     }
-    out[field.name] = defaultEntry(field);
+    // A configuration `value` array must be non-empty (spec Validation), so a
+    // default of "no entries" (switch `cases`) is represented by omission;
+    // every reader already treats an absent int[] field as empty.
+    if (Array.isArray(field.default) && field.default.length === 0) {
+      delete out[field.name];
+    } else {
+      out[field.name] = defaultEntry(field);
+    }
   }
-  return out;
+  return Object.keys(out).length > 0 ? out : undefined;
 }
