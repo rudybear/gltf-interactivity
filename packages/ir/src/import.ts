@@ -45,6 +45,8 @@
 import {
   defaultValue,
   getOpSpec,
+  isSupportedDeclaration,
+  normalizeConfiguration,
   parseScalar,
   resolveOverload,
   toValue,
@@ -72,6 +74,7 @@ import type {
   StateRef,
   TempId
 } from "./model.js";
+import { eventExtraValues } from "./model.js";
 import { parsePointerTemplate, pointerTemplateParams } from "./pointer.js";
 
 // ---------------------------------------------------------------------------
@@ -94,9 +97,11 @@ export type GraphNode = {
 
 export type Graph = {
   types: Array<{ signature: string }>;
-  variables?: Array<{ id?: string; type: number; value: Array<number | boolean | string> }>;
-  events?: Array<{ id?: string; values?: Record<string, { type: number; value: Array<number | boolean | string> }> }>;
-  declarations: Array<{ op: string }>;
+  // `name` is the spec's optional user-facing variable name; `id` is the legacy
+  // (pre-final-draft) spelling of the same thing, still accepted on input.
+  variables?: Array<{ id?: string; name?: string; type: number; value?: Array<number | boolean | string> }>;
+  events?: Array<{ id?: string; name?: string; values?: Record<string, { type: number; value?: Array<number | boolean | string> }> }>;
+  declarations: Array<{ op: string; extension?: string; outputValueSockets?: Record<string, { type: number }> }>;
   nodes: GraphNode[];
 };
 
@@ -191,8 +196,32 @@ class Importer {
   // check.ts's soft warning for a `param` found inside a proc).
   private currentHandlerRootNode: number | null = null;
 
+  // Nodes whose declaration is unsupported (unknown op, or a known op name
+  // declared under an unsupported extension). Spec "Declarations": such nodes
+  // are no-ops -- flow nodes never activate their flows, value nodes output
+  // the type-default of each declared output socket.
+  private readonly unsupportedNodes = new Set<number>();
+
   constructor(graph: Graph) {
-    this.graph = graph;
+    const unsupportedDecls = new Set<number>();
+    (graph.declarations ?? []).forEach((decl, idx) => {
+      if (!isSupportedDeclaration(decl.op, decl.extension)) {
+        unsupportedDecls.add(idx);
+      }
+    });
+    // Spec "Configuration": an invalid configuration means the op's default
+    // configuration. Resolve it once here (shared kernel rule, same as the
+    // interpreter's normalizeGraph) so every raising rule sees valid config.
+    const nodes = (graph.nodes ?? []).map((node, idx) => {
+      if (unsupportedDecls.has(node.declaration)) {
+        this.unsupportedNodes.add(idx);
+        return node;
+      }
+      const op = graph.declarations[node.declaration]?.op ?? "";
+      const configuration = normalizeConfiguration(op, node.configuration);
+      return configuration === node.configuration ? node : { ...node, configuration: configuration as GraphNode["configuration"] };
+    });
+    this.graph = { ...graph, nodes };
   }
 
   run(): ImportResult {
@@ -230,10 +259,15 @@ class Importer {
     for (let i = 0; i < (this.graph.variables ?? []).length; i += 1) {
       const v = this.graph.variables![i];
       const sig = this.typeSigAt(v.type);
-      const initial = toValue(sig, v.value ?? []);
-      const preferred = v.id && v.id.length > 0 ? v.id : `var${i}`;
+      // Omitted `value` => the type-default (spec "Variables").
+      const initial = toValue(sig, v.value);
+      // The spec's optional user-facing variable `name` (legacy spelling:
+      // `id`) becomes the IR variable's preferred display name and is kept
+      // in extras.id (the IR's carrier for it) so it round-trips.
+      const label = v.name ?? v.id;
+      const preferred = label && label.length > 0 ? label : `var${i}`;
       const name = names.alloc(preferred);
-      this.variables.push({ name, type: sig, initial, extras: v.id ? { id: v.id } : undefined });
+      this.variables.push({ name, type: sig, initial, extras: label ? { id: label } : undefined });
       this.variableTypes.push(sig);
     }
   }
@@ -275,12 +309,25 @@ class Importer {
   }
 
   private computeNodeOutputTypes(nodeId: number): Record<string, IRType> {
+    if (this.unsupportedNodes.has(nodeId)) {
+      const out: Record<string, IRType> = {};
+      const decl = this.graph.declarations[this.node(nodeId).declaration];
+      for (const [name, sock] of Object.entries(decl?.outputValueSockets ?? {})) {
+        out[name] = this.typeSigAt(sock.type);
+      }
+      return out;
+    }
     const op = this.opOf(nodeId);
     if (op in HANDLER_OPS) {
       const spec = getOpSpec(op);
       const out: Record<string, IRType> = {};
       for (const o of spec?.overloads[0]?.outputs ?? []) {
         out[o.name] = this.toIRType(o.type as TypeSig);
+      }
+      if (op === "event/receive") {
+        for (const extra of eventExtraValues(this.events[this.toIndex(this.configValue(nodeId, "event"))])) {
+          out[extra.name] = extra.type;
+        }
       }
       return out;
     }
@@ -476,6 +523,11 @@ class Importer {
       let config: Record<string, unknown> | undefined;
       if (kind === "receive") {
         eventRef = this.toIndex(this.configValue(idx, "event"));
+        // Custom value sockets of the event definition beyond the four
+        // standard payload fields are additional handler params.
+        for (const extra of eventExtraValues(this.events[eventRef])) {
+          params.push({ name: extra.name, type: extra.type });
+        }
       } else if (kind === "onSelect") {
         config = {
           nodeIndex: this.toIndex(this.configValue(idx, "nodeIndex") ?? -1),
@@ -553,6 +605,9 @@ class Importer {
   }
 
   private buildInline(nodeId: number): IRStmt {
+    if (this.unsupportedNodes.has(nodeId)) {
+      return { k: "seq", stmts: [] };
+    }
     const op = this.opOf(nodeId);
     if (op === "flow/branch") {
       return this.raiseBranch(nodeId);
@@ -674,10 +729,27 @@ class Importer {
       { key: "boolParameter", type: "bool" },
       { key: "intParameter", type: "int" },
       { key: "floatParameter", type: "float" },
-      { key: "expectedDuration", type: "float" }
+      { key: "expectedDuration", type: "float" },
+      // Custom value sockets of the event definition (payload slots 4+).
+      ...eventExtraValues(this.events[eventId]).map((v) => ({ key: v.name, type: v.type }))
     ];
     const { lets, values } = this.materializeSite(nodeId, roots);
-    const args = roots.map((r) => values[r.key]);
+    // A payload socket the send node does not wire: the four standard fields
+    // keep their historic zero (false/0/0/0) -- NOT the NaN float type-default
+    // -- since hosts/judges read them as plain numbers; a custom socket takes
+    // the event definition's initial value / type-default (spec "Receive":
+    // unset output values hold the initial or type-default value).
+    const extras = eventExtraValues(this.events[eventId]);
+    const args = roots.map((r) => {
+      if (this.node(nodeId).values?.[r.key]) {
+        return values[r.key];
+      }
+      const extra = extras.find((v) => v.name === r.key);
+      if (extra) {
+        return { k: "const" as const, type: extra.type, data: [...extra.default.data] };
+      }
+      return { k: "const" as const, type: r.type, data: r.type === "bool" ? [false] : [0] };
+    });
     const stmts: IRStmt[] = [...lets, { k: "emitEvent", eventId, args }, this.continueTo(this.node(nodeId).flows?.out)];
     return { k: "seq", stmts };
   }
@@ -984,6 +1056,10 @@ class Importer {
   }
 
   private buildRawExpr(nodeId: number, socket: string, ctx: SiteCtx | null): IRExpr {
+    if (this.unsupportedNodes.has(nodeId)) {
+      const type = this.nodeOutputTypes.get(nodeId)?.[socket] ?? "float";
+      return { k: "const", type, data: defaultValue(type).data };
+    }
     const op = this.opOf(nodeId);
     if (op in HANDLER_OPS) {
       // A handler-root node's outputs are, semantically, reads of interpreter-
@@ -1020,8 +1096,13 @@ class Importer {
       if (socket === "event") {
         return { k: "const", type: "ref", data: [this.eventRefLiteral(op, nodeId)] };
       }
-      if (op === "event/receive" && (socket === "boolParameter" || socket === "intParameter" || socket === "floatParameter" || socket === "expectedDuration")) {
-        const eventIndex = this.toIndex(this.configValue(nodeId, "event"));
+      const receiveEventIndex = op === "event/receive" ? this.toIndex(this.configValue(nodeId, "event")) : -1;
+      if (
+        op === "event/receive"
+        && (socket === "boolParameter" || socket === "intParameter" || socket === "floatParameter" || socket === "expectedDuration"
+          || eventExtraValues(this.events[receiveEventIndex]).some((v) => v.name === socket))
+      ) {
+        const eventIndex = receiveEventIndex;
         return {
           k: "intrinsic",
           op: "event/receive#payload",
@@ -1215,7 +1296,7 @@ class Importer {
 
   private opOf(nodeId: number): string {
     const node = this.graph.nodes[nodeId];
-    if (!node) {
+    if (!node || this.unsupportedNodes.has(nodeId)) {
       return "";
     }
     return this.graph.declarations[node.declaration]?.op ?? "";

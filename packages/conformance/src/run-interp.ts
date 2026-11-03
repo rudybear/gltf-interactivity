@@ -2,7 +2,7 @@
 // interp-adapter.ts (see docs/design's M3 refactor: this file used to call
 // @gltfi/runtime/node's evaluateTest directly; it now builds the same
 // RuntimeGraph and drives it through judgeTest via the EngineLike adapter —
-// the "All 145 tests passed." result is unchanged, which is the proof the
+// the "All N tests passed." result is unchanged, which is the proof the
 // refactor didn't alter interpreter behavior).
 import fs from "node:fs";
 import { createRuntimeFromGlbFile } from "@gltfi/runtime/node";

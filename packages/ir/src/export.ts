@@ -34,6 +34,7 @@
 //     `variable/set` graph node (never re-merged with an adjacent one into a
 //     multi-variable node) — always spec-valid, just not maximally compact.
 import { formatValueArray, type TypeSig } from "@gltfi/kernel";
+import { EVENT_STANDARD_VALUES, eventExtraValues } from "./model.js";
 import { formatPointerTemplate, pointerTemplateParams } from "./pointer.js";
 import type {
   Cont,
@@ -53,7 +54,7 @@ import type { GraphFlowRef, GraphNode, GraphNodeValue } from "./import.js";
 
 export type GraphJson = {
   types: Array<{ signature: string }>;
-  variables: Array<{ id?: string; type: number; value: Array<number | boolean | string> }>;
+  variables: Array<{ name?: string; type: number; value: Array<number | boolean | string> }>;
   events: Array<{ id?: string; values?: Record<string, { type: number; value: Array<number | boolean | string> }> }>;
   declarations: Array<{ op: string }>;
   nodes: GraphNode[];
@@ -186,7 +187,9 @@ class Exporter {
     // too) ensures every type referenced anywhere in the graph is in
     // `typeOrder` by the time `types` is finally read.
     const variables = this.module.variables.map((v) => ({
-      id: v.extras && typeof v.extras.id === "string" ? (v.extras.id as string) : undefined,
+      // Spec: the optional user-facing variable name is `name` (IR keeps it
+      // in extras.id; older graphs spelled it `id`, accepted on import only).
+      name: v.extras && typeof v.extras.id === "string" ? (v.extras.id as string) : undefined,
       type: this.typeIndex(v.type),
       // formatValueArray: real JS NaN/Infinity in a literal must become
       // the spec's "NaN"/"Infinity"/"-Infinity" strings before this ever
@@ -576,7 +579,10 @@ class Exporter {
       case "emitEvent": {
         const id = this.allocNode("event/send", { event: this.cfgInt(stmt.eventId) });
         const b = this.nodes.get(id)!;
-        const keys = ["boolParameter", "intParameter", "floatParameter", "expectedDuration"];
+        const keys = [
+          ...EVENT_STANDARD_VALUES,
+          ...eventExtraValues(this.module.events[stmt.eventId]).map((v) => v.name)
+        ];
         stmt.args.forEach((a, i) => {
           b.values[keys[i]] = this.buildValueRef(a, scope);
         });

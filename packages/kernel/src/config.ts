@@ -19,7 +19,8 @@
 // downstream reader just sees a valid configuration and needs no per-op
 // "is this value sane" checks.
 //
-// Ops with a REQUIRED config field (variable/*, pointer/*, event/send, ...)
+// (Extension operations fall back per property instead -- see
+// normalizeConfiguration.) Ops with a REQUIRED config field (variable/*, pointer/*, event/send, ...)
 // have no default configuration; their invalid configs reject the whole graph
 // and are not handled here (normalizeConfiguration returns them untouched).
 // Environment-neutral (no node/DOM imports).
@@ -96,6 +97,14 @@ export function normalizeConfiguration(op: string, configuration: RawConfigurati
   }
   const out: RawConfiguration = { ...(configuration ?? {}) };
   for (const field of spec.config) {
+    // Core rule: the WHOLE configuration falls back. Extension operations
+    // (KHR_node_selectability / KHR_node_hoverability events) are governed by
+    // their own extension specs, which define each property's default
+    // independently (e.g. an omitted `stopPropagation` is false while a given
+    // `nodeIndex` is kept), so only the offending property falls back there.
+    if (spec.extension !== undefined && isValidConfigValue(field, configuration?.[field.name]?.value)) {
+      continue;
+    }
     out[field.name] = defaultEntry(field);
   }
   return out;

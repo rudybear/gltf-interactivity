@@ -39,7 +39,7 @@ import {
 import { ptrGet as resolvePtrGet, ptrInterpPrepare, ptrSet as resolvePtrSet, writePointerRaw, type PointerHost } from "./pointer.js";
 import { kernelValueToRaw, rawToKernelValue, type RawValue } from "./value.js";
 
-export type SentEvent = { eventIndex: number; externalId?: string; payload: [boolean, number, number, number] };
+export type SentEvent = { eventIndex: number; externalId?: string; payload: EventPayload };
 
 // KHR_node_selectability / KHR_node_hoverability payload shapes handed to
 // rt.onSelect/rt.onHoverIn/rt.onHoverOut registrations and read back by
@@ -147,7 +147,27 @@ export type EventDecl = {
   defaultBool?: boolean;
   defaultInt?: number;
   defaultFloat?: number;
+  // Custom value sockets of the event definition beyond the four standard
+  // payload fields (spec "Custom Events": an event defines arbitrary typed
+  // value sockets with optional initial values). Payload slots 4+ hold them
+  // in declaration (object key) order; `initial` is the socket's initial value
+  // or type-default.
+  extras?: Record<string, VarDecl>;
 };
+
+// Event payload tuple: [boolParameter, intParameter, floatParameter,
+// expectedDuration, ...extras in EventDecl.extras order].
+export type EventPayload = [boolean, number, number, number, ...unknown[]];
+
+function defaultEventPayload(decl: EventDecl | undefined): EventPayload {
+  return [
+    decl?.defaultBool ?? false,
+    decl?.defaultInt ?? 0,
+    decl?.defaultFloat ?? 0,
+    decl?.expectedDuration ?? 0,
+    ...Object.values(decl?.extras ?? {}).map((v) => (Array.isArray(v.initial) ? [...v.initial] : v.initial))
+  ];
+}
 
 type FlowCont = () => void;
 
@@ -241,7 +261,7 @@ export interface EngineBuilder {
   delayState(): DelaySlot;
   onStart(fn: () => void): void;
   onTick(fn: (timeSinceStart: number, timeSinceLastTick: number) => void): void;
-  onReceive(eventIndex: number, fn: (payload: [boolean, number, number, number]) => void): void;
+  onReceive(eventIndex: number, fn: (payload: EventPayload) => void): void;
   // KHR_node_selectability/hoverability handler registration — `nodeIndex`
   // is the node this handler's event/onSelect|onHoverIn|onHoverOut node was
   // configured with (config.nodeIndex, default -1 meaning "never matches
@@ -259,7 +279,7 @@ export interface EngineBuilder {
   // payload)`, and `(eventIndex)` alone when every payload value equals the
   // event's own declared default (see emit-ts's emitEvent doc comment) — no
   // second argument at all in that case.
-  send(eventIndex: number, secondArg?: string | [boolean, number, number, number], thirdArg?: [boolean, number, number, number]): void;
+  send(eventIndex: number, secondArg?: string | EventPayload, thirdArg?: EventPayload): void;
   log(template: string, args?: unknown[]): void;
   // `eventRef` is the compile-time-known ref string of the CURRENT handler's
   // own event (e.g. "event:custom:3"), exactly what `param("event")` reads
@@ -275,7 +295,7 @@ export interface EngineBuilder {
   // interpreter.ts's getEventPayload exactly (see import.ts's GI012 branch
   // for why cross-handler event/receive payload reads need this instead of
   // a register). Same tuple shape as onReceive's own payload param.
-  eventPayload(eventIndex: number): [boolean, number, number, number];
+  eventPayload(eventIndex: number): EventPayload;
   // event/onTick's timeSinceStart/timeSinceLastTick, readable from outside
   // the tick handler itself (GI012) — live scheduler state, same values an
   // onTick handler running *this* tick would see via its own params.
@@ -390,7 +410,7 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
     const eventDecls: EventDecl[] = [];
     const onStartHandlers: Array<() => void> = [];
     const onTickHandlers: Array<(timeSinceStart: number, timeSinceLastTick: number) => void> = [];
-    const onReceiveHandlers = new Map<number, Array<(payload: [boolean, number, number, number]) => void>>();
+    const onReceiveHandlers = new Map<number, Array<(payload: EventPayload) => void>>();
     // KHR_node_selectability/hoverability handler registries, keyed by the
     // handler's configured nodeIndex (see EngineBuilder.onSelect's doc
     // comment) — fired by fireSelect/fireHoverIn/fireHoverOut below.
@@ -405,7 +425,7 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
     // `runtime.eventPayloads` (a persistent Map, distinct from the
     // per-dispatch `sentEvents` log above): read by `rt.eventPayload` for
     // order-independent cross-handler event/receive payload reads.
-    const lastPayloadByIndex = new Map<number, [boolean, number, number, number]>();
+    const lastPayloadByIndex = new Map<number, EventPayload>();
     const gltf: unknown = options.gltf ? JSON.parse(JSON.stringify(options.gltf)) : undefined;
     const nodeParents = computeNodeParents(gltf);
     // Chain of glTF node indices from `nodeIndex` up to the scene root
@@ -602,11 +622,11 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
       },
       send(eventIndex, secondArg, thirdArg) {
         const decl = eventDecls[eventIndex];
-        const payload: [boolean, number, number, number] = Array.isArray(secondArg)
+        const payload: EventPayload = Array.isArray(secondArg)
           ? secondArg
           : Array.isArray(thirdArg)
             ? thirdArg
-            : [decl?.defaultBool ?? false, decl?.defaultInt ?? 0, decl?.defaultFloat ?? 0, decl?.expectedDuration ?? 0];
+            : defaultEventPayload(decl);
         const externalId = decl?.externalId;
         sentEvents.push({ eventIndex, externalId, payload });
         lastPayloadByIndex.set(eventIndex, payload);
@@ -647,8 +667,7 @@ export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory 
         if (sent) {
           return sent;
         }
-        const decl = eventDecls[eventIndex];
-        return [decl?.defaultBool ?? false, decl?.defaultInt ?? 0, decl?.defaultFloat ?? 0, decl?.expectedDuration ?? 0];
+        return defaultEventPayload(eventDecls[eventIndex]);
       },
       tickTime() {
         return scheduler.tickCount === 0 ? 0 : scheduler.time;

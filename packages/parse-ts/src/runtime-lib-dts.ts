@@ -25,7 +25,8 @@ declare module "@gltfi/runtime-lib" {
   // assignment (\`V.counter = (V.counter + 1) | 0;\`) needs the property
   // itself to be a plain assignable \`number\`, not a \`{get,set}\` wrapper.
   type VarDecl<T = RawValue> = { type: string; initial: T };
-  type EventDecl = { externalId?: string; defaultBool?: boolean; defaultInt?: number; defaultFloat?: number; expectedDuration?: number };
+  type EventDecl = { externalId?: string; defaultBool?: boolean; defaultInt?: number; defaultFloat?: number; expectedDuration?: number; extras?: Record<string, VarDecl<any>> };
+  type EventPayload = [boolean, number, number, number, ...any[]];
   // Maps a pointer's "type" signature STRING LITERAL (always a literal in
   // emitted code — see emit-ts's pointerCall) to the JS shape ptrGet's
   // \`.value\` actually has at that type — same motivation as VarAccessor<T>
@@ -81,7 +82,7 @@ declare module "@gltfi/runtime-lib" {
     delayState(): any;
     onStart(fn: () => void): void;
     onTick(fn: (timeSinceStart: number, timeSinceLastTick: number) => void): void;
-    onReceive(eventIndex: number, fn: (payload: [boolean, number, number, number]) => void): void;
+    onReceive(eventIndex: number, fn: (payload: EventPayload) => void): void;
     // KHR_node_selectability/hoverability (see emit-ts's emitHandler
     // "onSelect"/"onHoverIn"/"onHoverOut" cases for the exact emitted call
     // shape and params destructure this mirrors).
@@ -100,12 +101,12 @@ declare module "@gltfi/runtime-lib" {
     onHoverOut(nodeIndex: number, fn: (params: { hoveredNode: string; controllerIndex: number }) => void): void;
     // Combined signature — see engine.ts's EngineBuilder.send doc comment
     // for the three call shapes this covers.
-    send(eventIndex: number, secondArg?: string | [boolean, number, number, number], thirdArg?: [boolean, number, number, number]): void;
+    send(eventIndex: number, secondArg?: string | EventPayload, thirdArg?: EventPayload): void;
     log(template: string, args?: unknown[]): void;
     stopPropagation(eventRef: string, stopImmediate: boolean): void;
     eventOut(nodeKey: number, socket: string, value: unknown): void;
     eventOutRead(nodeKey: number, socket: string): unknown;
-    eventPayload(eventIndex: number): [boolean, number, number, number];
+    eventPayload(eventIndex: number): EventPayload;
     tickTime(): number;
     tickDelta(): number;
     random(): number;

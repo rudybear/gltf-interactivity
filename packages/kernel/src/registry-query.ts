@@ -127,5 +127,10 @@ export function isSupportedDeclaration(op: string, extension?: string): boolean 
   if (!spec) {
     return false;
   }
-  return (spec.extension ?? undefined) === (extension ?? undefined);
+  // Lenient on purpose: a KHR_node_selectability/hoverability event declared
+  // WITHOUT its `extension` property (how older authoring tools and this
+  // repo's own tests wrote it) is still the extension op. A declared
+  // `extension` must match the registry's, though: `math/pi` declared by
+  // "EXT_foo" is not core math/pi.
+  return extension === undefined || extension === spec.extension;
 }

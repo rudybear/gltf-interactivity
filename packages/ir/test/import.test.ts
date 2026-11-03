@@ -80,10 +80,10 @@ function resolveGlbPath(entry: IndexEntry): string {
   throw new Error(`Missing GLB for ${entry.name}`);
 }
 
-describe("importGraph - full corpus (145 files)", () => {
+describe("importGraph - full corpus (full corpus)", () => {
   it("imports and checks every corpus GLB without ERROR diagnostics", () => {
     const entries = [...loadIndex("test-index.json"), ...loadIndex("mathtests-index.json")];
-    expect(entries.length).toBe(145);
+    expect(entries.length).toBeGreaterThanOrEqual(158); // pinned corpus f99d9b6 has 158 tests
 
     const failures: string[] = [];
     let graphsWithProcs = 0;

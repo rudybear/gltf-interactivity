@@ -307,7 +307,7 @@ function csFloatLiteral(x: number): string {
   if (x === -Infinity) {
     return "double.NegativeInfinity";
   }
-  const s = String(x);
+  const s = Object.is(x, -0) ? "-0" : String(x); // String(-0) is "0": keep the sign (1 / -0 = -Infinity)
   return /[.eE]/.test(s) ? s : `${s}.0`;
 }
 

@@ -42,6 +42,7 @@ import {
   type TypeSig
 } from "@gltfi/kernel";
 import {
+  eventExtraValues,
   formatPointerTemplate,
   parsePointerTemplate,
   pointerTemplateParams,
@@ -379,7 +380,7 @@ const HOVER_LOCAL_PARAMS: Record<string, IRType> = {
 // Parser
 // ---------------------------------------------------------------------------
 
-type Ctx = { kind: "proc" } | { kind: "handler"; handlerKind: HandlerKind };
+type Ctx = { kind: "proc" } | { kind: "handler"; handlerKind: HandlerKind; eventRef?: number };
 
 class ModuleParser {
   diagnostics: Diagnostic[] = [];
@@ -527,8 +528,13 @@ class ModuleParser {
     });
     handlerDescs.forEach((desc) => {
       this.tempIdCount.clear();
-      const params = HANDLER_PARAMS[desc.kind];
-      const body = this.lowerBlock(desc.bodyStmts, { kind: "handler", handlerKind: desc.kind });
+      // A receive handler also exposes the event definition's custom value
+      // sockets (payload slots 4+) as params.
+      const params =
+        desc.kind === "receive" && desc.eventRef !== undefined
+          ? [...HANDLER_PARAMS.receive, ...eventExtraValues(this.events[desc.eventRef]).map((v) => ({ name: v.name, type: v.type }))]
+          : HANDLER_PARAMS[desc.kind];
+      const body = this.lowerBlock(desc.bodyStmts, { kind: "handler", handlerKind: desc.kind, eventRef: desc.eventRef });
       this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, config: desc.config, params, body });
     });
 
@@ -953,6 +959,18 @@ class ModuleParser {
     return { type: type as IRType, data: nums.length > 0 ? nums : VECTOR_MATRIX_DEFAULTS[type] };
   }
 
+  // Name/type of payload tuple slot `slot` of event `eventIndex`: slots 0..3
+  // are the standard fields, slots 4+ the event's custom value sockets in
+  // IREvent.values order (see @gltfi/ir's eventExtraValues).
+  private payloadSlot(eventIndex: number | undefined, slot: number): { name: string; type: IRType } {
+    const standard = PAYLOAD_FIELDS[slot];
+    if (standard) {
+      return { name: standard, type: standard === "boolParameter" ? "bool" : standard === "intParameter" ? "int" : "float" };
+    }
+    const extra = eventExtraValues(eventIndex === undefined ? undefined : this.events[eventIndex])[slot - PAYLOAD_FIELDS.length];
+    return extra ? { name: extra.name, type: extra.type } : { name: "boolParameter", type: "bool" };
+  }
+
   private parseEvents(match: { call: import("ts-morph").CallExpression; boundName?: string }) {
     const arg = match.call.getArguments()[0];
     if (arg && Node.isArrayLiteralExpression(arg)) {
@@ -989,6 +1007,24 @@ class ModuleParser {
     if (durExpr) {
       values.push({ name: "expectedDuration", type: "float", default: { type: "float", data: [readNumber(durExpr) ?? 0] } });
     }
+    // `extras: { "value": rt.int(0), ... }` -- custom value sockets (payload
+    // slots 4+), declared with the same helpers as variables.
+    const extrasExpr = get("extras");
+    if (extrasExpr && Node.isObjectLiteralExpression(extrasExpr)) {
+      for (const prop of extrasExpr.getProperties()) {
+        if (!Node.isPropertyAssignment(prop)) {
+          fail("GI102", prop, "rt.events `extras` property must be a plain `\"name\": rt.<type>(...)` assignment");
+        }
+        const nameNode = prop.getNameNode();
+        const extraName = Node.isStringLiteral(nameNode) ? nameNode.getLiteralText() : prop.getName();
+        const init = prop.getInitializer();
+        if (!init) {
+          fail("GI102", prop, "rt.events `extras` property missing an initializer");
+        }
+        const decl = this.parseVarDeclShorthand(init);
+        values.push({ name: extraName, type: decl.type, default: { type: decl.type, data: decl.data } } as IREventValue);
+      }
+    }
     return { externalId, values };
   }
 
@@ -1008,7 +1044,8 @@ class ModuleParser {
       { k: "const", type: "bool", data: [Boolean(boolDefault?.default.data[0] ?? false)] },
       { k: "const", type: "int", data: [Math.trunc(Number(intDefault?.default.data[0] ?? 0))] },
       { k: "const", type: "float", data: [Number(floatDefault?.default.data[0] ?? 0)] },
-      { k: "const", type: "float", data: [Number(duration?.default.data[0] ?? 0)] }
+      { k: "const", type: "float", data: [Number(duration?.default.data[0] ?? 0)] },
+      ...eventExtraValues(e).map((v): IRExpr => ({ k: "const", type: v.type, data: [...v.default.data] }) as IRExpr)
     ];
   }
 
@@ -1284,11 +1321,12 @@ class ModuleParser {
         // default, reconstructed by eventDefaultArgs exactly like emit-ts's
         // matchesEventDefaults decided to omit them in the first place).
         const payloadExpr = sendArgs.length >= 3 ? sendArgs[2] : sendArgs.length === 2 ? sendArgs[1] : undefined;
-        const types: IRType[] = ["bool", "int", "float", "float"];
+        const extraValues = eventExtraValues(this.events[eventId]);
+        const types: IRType[] = ["bool", "int", "float", "float", ...extraValues.map((v) => v.type)];
         const args = payloadExpr
           ? (() => {
-              if (!Node.isArrayLiteralExpression(payloadExpr) || payloadExpr.getElements().length !== 4) {
-                fail("GI124", payloadExpr, "rt.send's payload argument must be a 4-element array literal");
+              if (!Node.isArrayLiteralExpression(payloadExpr) || payloadExpr.getElements().length !== types.length) {
+                fail("GI124", payloadExpr, "rt.send's payload argument must be an array literal with 4 standard entries plus one per custom event value");
               }
               return payloadExpr.getElements().map((e, k) => this.lowerExpr(e, types[k], ctx));
             })()
@@ -2035,8 +2073,8 @@ class ModuleParser {
       if (payloadCall) {
         const eventIndex = this.readEventIndex(payloadCall.getArguments()[0]) ?? 0;
         const fieldIdx = readNumber(expr.getArgumentExpressionOrThrow()) ?? 0;
-        const field = PAYLOAD_FIELDS[fieldIdx] ?? "boolParameter";
-        return { k: "intrinsic", op: "event/receive#payload", config: { eventIndex, field }, args: [], type: field === "boolParameter" ? "bool" : field === "intParameter" ? "int" : "float" };
+        const slot = this.payloadSlot(eventIndex, fieldIdx);
+        return { k: "intrinsic", op: "event/receive#payload", config: { eventIndex, field: slot.name }, args: [], type: slot.type };
       }
     }
     // Multi-output `m.<fn>(...)` reads: `.value`/`.isValid` (normalize,
@@ -2120,8 +2158,8 @@ class ModuleParser {
     if (Node.isElementAccessExpression(expr) && Node.isIdentifier(expr.getExpression()) && expr.getExpression().getText() === "payload") {
       if (ctx.kind === "handler" && ctx.handlerKind === "receive") {
         const fieldIdx = readNumber(expr.getArgumentExpressionOrThrow()) ?? 0;
-        const field = PAYLOAD_FIELDS[fieldIdx] ?? "boolParameter";
-        return { k: "param", name: field, type: field === "boolParameter" ? "bool" : field === "intParameter" ? "int" : "float" };
+        const slot = this.payloadSlot(ctx.eventRef, fieldIdx);
+        return { k: "param", name: slot.name, type: slot.type };
       }
     }
 

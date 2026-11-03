@@ -73,7 +73,11 @@ export function canWritePointer(
   // implicit creation).
   for (let k = 1; k < raw.length; k += 1) {
     const prefix = `/${raw.slice(0, k).join("/")}`;
-    if (!resolve(prefix).isValid && !OPTIONAL_PARENT_TOKENS.has(raw[k - 1])) {
+    // `extensions` and the extension objects directly below it may be absent
+    // (e.g. a node without a KHR_node_visibility object still has a
+    // writable `visible` property -- the Object Model defines its default).
+    const optional = OPTIONAL_PARENT_TOKENS.has(raw[k - 1]) || raw[k - 1] === "extensions" || raw[k - 2] === "extensions";
+    if (!resolve(prefix).isValid && !optional) {
       return false;
     }
   }

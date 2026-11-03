@@ -6,7 +6,7 @@
 // well-formed KHR_interactivity graph must satisfy (independent of whether
 // it came from @gltfi/ir's exportGraph or anywhere else); normalizeGraph +
 // equivalentGraphs do a best-effort parallel walk comparing two graphs.
-import { getOpSpec } from "@gltfi/kernel";
+import { defaultValue, getOpSpec, type ValueType } from "@gltfi/kernel";
 import { formatPointerTemplate, parsePointerTemplate, type Diagnostic } from "@gltfi/ir";
 
 // Re-exported so downstream consumers of validateGraph's diagnostics (e.g.
@@ -18,7 +18,9 @@ export type { Diagnostic } from "@gltfi/ir";
 // Structurally compatible with @gltfi/ir's Graph/GraphNode/GraphJson types
 // (and hence with @gltfi/runtime's Graph) — kept as a local, minimal shape
 // so this package doesn't need to pick one specific producer's type.
-export type VGraphValue = { node: number; socket?: string } | { type: number; value: Array<number | boolean | string> };
+// A literal's `value` may be omitted: the spec then defines it as the type-
+// default (NaN for float types, see literalData below).
+export type VGraphValue = { node: number; socket?: string } | { type: number; value?: Array<number | boolean | string> };
 export type VGraphNode = {
   declaration: number;
   configuration?: Record<string, { value: Array<number | boolean | string> }>;
@@ -27,8 +29,8 @@ export type VGraphNode = {
 };
 export type VGraph = {
   types: Array<{ signature: string }>;
-  variables?: Array<{ id?: string; type: number; value: Array<number | boolean | string> }>;
-  events?: Array<{ id?: string; values?: Record<string, { type: number; value: Array<number | boolean | string> }> }>;
+  variables?: Array<{ id?: string; name?: string; type: number; value?: Array<number | boolean | string> }>;
+  events?: Array<{ id?: string; values?: Record<string, { type: number; value?: Array<number | boolean | string> }> }>;
   declarations: Array<{ op: string }>;
   nodes: VGraphNode[];
 };
@@ -94,7 +96,7 @@ export function validateGraph(graph: VGraph): ValidateResult {
         if (v.type < 0 || v.type >= typeCount) {
           err("GV023", `node ${nodeIndex} value "${socket}" literal has out-of-range type index ${v.type}`, nodeIndex);
         }
-        if (!Array.isArray(v.value)) {
+        if (v.value !== undefined && !Array.isArray(v.value)) {
           err("GV024", `node ${nodeIndex} value "${socket}" literal's value is not an array`, nodeIndex);
         }
       }
@@ -173,6 +175,16 @@ function sequenceSocketIndex(key: string): number | null {
 // @gltfi/ir/export.ts's stableDataKey, which this mirrors (a real bug
 // caught during development, in the CSE cache key rather than here, but the
 // same hazard applies to any JSON.stringify over graph literal values).
+// Literal payload of a value entry, resolving an omitted `value` to the type-
+// default (spec: NaN for float types).
+function literalData(graph: VGraph, type: number, value: ReadonlyArray<number | boolean | string> | undefined): ReadonlyArray<number | boolean | string> {
+  if (value !== undefined) {
+    return value;
+  }
+  const signature = graph.types[type]?.signature as ValueType | undefined;
+  return signature ? (defaultValue(signature).data as Array<number | boolean | string>) : [];
+}
+
 function stableDataKey(data: ReadonlyArray<number | boolean | string>): string {
   return JSON.stringify(
     data.map((raw) => {
@@ -280,7 +292,7 @@ function resolvePointerTemplate(node: VGraphNode, pointerStr: string): { resolve
     const entry = node.values?.[seg.name];
     if (seg.k === "int" && entry && !("node" in entry)) {
       inlinedSockets.add(seg.name);
-      return { k: "lit" as const, text: String(Math.trunc(Number(entry.value[0] ?? 0))) };
+      return { k: "lit" as const, text: String(Math.trunc(Number(entry.value?.[0] ?? 0))) };
     }
     return seg;
   });
@@ -293,7 +305,7 @@ function canonicalConfig(graph: VGraph, op: string, node: VGraphNode, resolvedPo
   return JSON.stringify(
     keys.map((k) => {
       if (POINTER_TYPE_OPS.has(op) && k === "type") {
-        const idx = Number(cfg[k].value[0]);
+        const idx = Number(cfg[k].value?.[0]);
         return [k, `sig:${graph.types[idx]?.signature ?? `<invalid:${idx}>`}`];
       }
       if (POINTER_TYPE_OPS.has(op) && k === "pointer" && resolvedPointer !== undefined) {
@@ -305,10 +317,10 @@ function canonicalConfig(graph: VGraph, op: string, node: VGraphNode, resolvedPo
         // this config array — so the declared order of "cases" carries no
         // behavior and two graphs listing the same case values in a
         // different order are execution-equivalent.
-        const sorted = [...cfg[k].value].sort((x, y) => Number(x) - Number(y));
+        const sorted = [...(cfg[k].value ?? [])].sort((x, y) => Number(x) - Number(y));
         return [k, stableDataKey(sorted)];
       }
-      return [k, stableDataKey(cfg[k].value)];
+      return [k, stableDataKey(cfg[k].value ?? [])];
     })
   );
 }
@@ -316,7 +328,7 @@ function canonicalConfig(graph: VGraph, op: string, node: VGraphNode, resolvedPo
 export function normalizeGraph(graph: VGraph): NormalizedGraph {
   const nodes: NormalizedNode[] = graph.nodes.map((node) => {
     const op = graph.declarations[node.declaration]?.op ?? `<invalid:${node.declaration}>`;
-    const pointerCfgValue = POINTER_TYPE_OPS.has(op) ? node.configuration?.pointer?.value[0] : undefined;
+    const pointerCfgValue = POINTER_TYPE_OPS.has(op) ? node.configuration?.pointer?.value?.[0] : undefined;
     const pointerResolution = typeof pointerCfgValue === "string" ? resolvePointerTemplate(node, pointerCfgValue) : undefined;
     const inlinedSockets = pointerResolution?.inlinedSockets ?? new Set<string>();
     const values = Object.entries(node.values ?? {})
@@ -326,8 +338,9 @@ export function normalizeGraph(graph: VGraph): NormalizedGraph {
           return [normSocket(socket), `ref:${v.node}:${normSocket(v.socket ?? "value")}`];
         }
         const signature = graph.types[v.type]?.signature ?? String(v.type);
-        const key = `lit:${literalTypeFamily(signature)}:${stableDataKey(v.value)}`;
-        return [normSocket(socket), isDefaultLiteral(signature, v.value) ? `${key}:default` : key];
+        const data = literalData(graph, v.type, v.value);
+        const key = `lit:${literalTypeFamily(signature)}:${stableDataKey(data)}`;
+        return [normSocket(socket), isDefaultLiteral(signature, data) ? `${key}:default` : key];
       })
       .sort((a, b) => a[0].localeCompare(b[0]));
     const flows = Object.entries(node.flows ?? {})
@@ -601,16 +614,18 @@ function compareVariableDeclarations(a: VGraph, b: VGraph, changes: string[]): v
     }
     if (!va || !vb) continue;
 
-    if (va.id !== vb.id) {
-      changes.push(`variables[${i}]: id ${formatId(va.id)} -> ${formatId(vb.id)}`);
+    if ((va.name ?? va.id) !== (vb.name ?? vb.id)) {
+      changes.push(`variables[${i}]: id ${formatId((va.name ?? va.id))} -> ${formatId((vb.name ?? vb.id))}`);
     }
     const sigA = resolvedTypeSig(a, va.type);
     const sigB = resolvedTypeSig(b, vb.type);
     if (sigA !== sigB) {
       changes.push(`variables[${i}]: type "${sigA}" -> "${sigB}"`);
     }
-    if (!sameValueArray(va.value, vb.value)) {
-      changes.push(`variables[${i}]: initial ${formatValue(va.value)} -> ${formatValue(vb.value)}`);
+    const valueA = literalData(a, va.type, va.value);
+    const valueB = literalData(b, vb.type, vb.value);
+    if (!sameValueArray(valueA, valueB)) {
+      changes.push(`variables[${i}]: initial ${formatValue(valueA)} -> ${formatValue(valueB)}`);
     }
   }
 }
@@ -662,8 +677,10 @@ function compareEventDeclarations(a: VGraph, b: VGraph, changes: string[]): void
       if (sigA !== sigB) {
         changes.push(`events[${i}].values.${key}: type "${sigA}" -> "${sigB}"`);
       }
-      if (!sameValueArray(valA.value, valB.value)) {
-        changes.push(`events[${i}].values.${key}: default ${formatValue(valA.value)} -> ${formatValue(valB.value)}`);
+      const dataA = literalData(a, valA.type, valA.value);
+      const dataB = literalData(b, valB.type, valB.value);
+      if (!sameValueArray(dataA, dataB)) {
+        changes.push(`events[${i}].values.${key}: default ${formatValue(dataA)} -> ${formatValue(dataB)}`);
       }
     }
   }

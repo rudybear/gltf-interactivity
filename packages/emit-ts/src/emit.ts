@@ -36,7 +36,7 @@
 // see emitList/dedupeSiblings).
 //
 // Scope for the M3 conformance corpus (math/, type/, ref/, and everything
-// else in test-index.json/mathtests-index.json — 145/145 via `pnpm
+// else in test-index.json/mathtests-index.json — 158/158 via `pnpm
 // conf:compiled`): onStart/onTick/receive handlers, every stateful/async op,
 // and the full math/type/ref op set. UserInteractions (event/onSelect,
 // event/onHoverIn, event/onHoverOut) is the one op family the official
@@ -52,6 +52,8 @@
 import {
   computeStateSlotDisplayNames,
   computeVariableDisplayNames,
+  eventExtraValues,
+  EVENT_STANDARD_VALUES,
   formatPointerTemplate,
   pointerTemplateParams,
   type IRExpr,
@@ -260,7 +262,7 @@ function floatLiteral(x: number): string {
   if (x === -Infinity) {
     return "-Infinity";
   }
-  return String(x);
+  return Object.is(x, -0) ? "-0" : String(x); // String(-0) is "0": keep the sign (1 / -0 = -Infinity)
 }
 
 function constLiteral(type: IRType, data: Array<number | boolean | string>): string {
@@ -548,6 +550,12 @@ class Emitter {
       if (duration) {
         fields.push(`expectedDuration: ${floatLiteral(Number(duration.default.data[0] ?? 0))}`);
       }
+      // Custom value sockets beyond the four standard ones: payload slots 4+,
+      // declared exactly like variables (`name: rt.int(0)`).
+      const extras = eventExtraValues(e);
+      if (extras.length > 0) {
+        fields.push(`extras: { ${extras.map((v) => `${JSON.stringify(v.name)}: ${varDeclCall(v.type, v.default.data)}`).join(", ")} }`);
+      }
       return `${e.name}: { ${fields.join(", ")} }`;
     });
     this.push(`const E = rt.events({ ${entries.join(", ")} });`);
@@ -558,7 +566,7 @@ class Emitter {
   // emitEvent's "does this send's payload match the declared defaults"
   // check (see that method's doc comment) and by rt.send/rt.eventPayload's
   // own runtime fallback (see engine.ts).
-  private eventDefaultQuad(eventId: number): [boolean, number, number, number] {
+  private eventDefaultQuad(eventId: number): Array<boolean | number | string | Array<number | boolean | string>> {
     const e = this.module.events[eventId];
     const boolDefault = e?.values.find((v) => v.name === "boolParameter");
     const intDefault = e?.values.find((v) => v.name === "intParameter");
@@ -568,7 +576,9 @@ class Emitter {
       Boolean(boolDefault?.default.data[0] ?? false),
       Math.trunc(Number(intDefault?.default.data[0] ?? 0)),
       Number(floatDefault?.default.data[0] ?? 0),
-      Number(duration?.default.data[0] ?? 0)
+      Number(duration?.default.data[0] ?? 0),
+      // Extras: the scalar default (bool/int/float/ref) or the vector data.
+      ...eventExtraValues(e).map((v) => (v.default.data.length === 1 ? v.default.data[0] : [...v.default.data]))
     ];
   }
 
@@ -583,8 +593,12 @@ class Emitter {
       if (a.k !== "const") {
         return false;
       }
+      const def = defaults[i];
+      if (Array.isArray(def) || typeof def === "string") {
+        return JSON.stringify(a.data) === JSON.stringify(Array.isArray(def) ? def : [def]);
+      }
       const value = a.type === "bool" ? Boolean(a.data[0]) : Number(a.data[0]);
-      return value === defaults[i];
+      return Object.is(value, def);
     });
   }
 
@@ -864,8 +878,12 @@ class Emitter {
         return;
       }
       case "emitEvent": {
-        if (stmt.args.length !== 4) {
-          throw new EmitError("emitEvent expects exactly 4 payload args (bool,int,float,duration)", "event/send", this.originNodeId);
+        if (stmt.args.length !== EVENT_STANDARD_VALUES.length + eventExtraValues(this.module.events[stmt.eventId]).length) {
+          throw new EmitError(
+            "emitEvent expects 4 payload args (bool,int,float,duration) plus one per custom event value",
+            "event/send",
+            this.originNodeId
+          );
         }
         // externalId is never passed at the call site — it's fully
         // redundant with the event index/`E.<name>` ref, which the runtime
@@ -1435,6 +1453,8 @@ class Emitter {
       if (name === "intParameter") return "payload[1]";
       if (name === "floatParameter") return "payload[2]";
       if (name === "expectedDuration") return "payload[3]";
+      const extraIndex = eventExtraValues(this.module.events[ctx.eventRef]).findIndex((v) => v.name === name);
+      if (extraIndex >= 0) return `payload[${EVENT_STANDARD_VALUES.length + extraIndex}]`;
     }
     // Destructured to bare locals right at the rt.onSelect/onHoverIn/
     // onHoverOut callback's top (see emitHandler) — same shape as every
@@ -1503,7 +1523,11 @@ class Emitter {
       // eventPayload doc comment and import.ts's GI012 branch.
       const eventIndex = expr.config.eventIndex as number;
       const field = expr.config.field as string;
-      const fieldIndex = { boolParameter: 0, intParameter: 1, floatParameter: 2, expectedDuration: 3 }[field];
+      const standardIndex = (EVENT_STANDARD_VALUES as readonly string[]).indexOf(field);
+      const fieldIndex =
+        standardIndex >= 0
+          ? standardIndex
+          : EVENT_STANDARD_VALUES.length + eventExtraValues(this.module.events[eventIndex]).findIndex((v) => v.name === field);
       return `rt.eventPayload(${this.eventArgCode(eventIndex)})[${fieldIndex}]`;
     }
     if (expr.op === "event/onTick#time") {

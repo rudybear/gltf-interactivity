@@ -89,6 +89,18 @@ export interface IREvent {
   values: IREventValue[];
 }
 
+// The four "standard" custom-event value sockets whose payload slots are
+// fixed (positions 0..3 of every event payload tuple, regardless of which of
+// them the event actually declares). Any other value socket of a custom event
+// ("extra" socket, e.g. `value: int`, `meshRef: ref`) is appended to the
+// tuple after them, in the order of `IREvent.values` (which the importer
+// sorts by socket id). Payload slot of extra k is `EVENT_STANDARD_VALUES.length + k`.
+export const EVENT_STANDARD_VALUES = ["boolParameter", "intParameter", "floatParameter", "expectedDuration"] as const;
+
+export function eventExtraValues(event: IREvent | undefined): IREventValue[] {
+  return (event?.values ?? []).filter((v) => !(EVENT_STANDARD_VALUES as readonly string[]).includes(v.name));
+}
+
 export type StateKind = "doN" | "multiGate" | "waitAll" | "throttle" | "for" | "delay";
 
 export interface IRStateSlot {
