@@ -39,7 +39,11 @@ async function buildJs(dist) {
     minify: false,
     sourcemap: false,
     metafile: true,
-    logLevel: "warning"
+    logLevel: "warning",
+    // Pin esbuild's working dir so the `// packages/...` source-path comments
+    // in the unminified bundle (and so its bytes) don't depend on whether the
+    // build ran from npm/runtime (`npm run build`) or the repo root (pack:npm).
+    absWorkingDir: repo
   };
   const main = await build({
     ...common,
