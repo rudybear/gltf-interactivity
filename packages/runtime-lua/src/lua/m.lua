@@ -132,6 +132,42 @@ m.Tau = function() return 2 * math.pi end
 m.Inf = function() return math.huge end
 m.NaN = function() return 0 / 0 end
 
+-- Math.min / Math.max semantics: any NaN operand -> NaN; min(0,-0) is -0 and
+-- max(-0,0) is +0 (Lua's math.min/max ignore NaN and the zero sign).
+local function jsmin(x, y)
+  if x ~= x or y ~= y then return 0 / 0 end
+  if x == 0 and y == 0 then
+    if 1 / x < 0 then return x end
+    return y
+  end
+  if x < y then return x end
+  return y
+end
+local function jsmax(x, y)
+  if x ~= x or y ~= y then return 0 / 0 end
+  if x == 0 and y == 0 then
+    if 1 / x > 0 then return x end
+    return y
+  end
+  if x > y then return x end
+  return y
+end
+-- Math.round on a non-negative value (half rounds up), always a float result.
+-- floor(x + 0.5) is wrong for 0.49999999999999994 (x + 0.5 rounds up to 1).
+local function jsround_abs(x)
+  local r = math.floor(x) + 0.0
+  if x - r >= 0.5 then r = r + 1 end
+  return r
+end
+-- Math.pow: pow(x, +-0) = 1 (even NaN base), pow(x, NaN) = NaN, and
+-- |x| == 1 with y = +-Infinity is NaN (C pow gives 1 for these).
+local function jspow(x, y)
+  if y == 0 then return 1.0 end
+  if y ~= y then return 0 / 0 end
+  if (x == 1 or x == -1) and (y == math.huge or y == -math.huge) then return 0 / 0 end
+  return x ^ y
+end
+
 -- --- float arith (component-wise F, NaN-propagating) ---
 m.abs = function(a) return map1(a, math.abs) end
 m.absInt = function(a) return i32(math.abs(a)) end
@@ -140,17 +176,26 @@ m.signInt = function(a) return i32(fsign(a)) end
 m.trunc = function(a) return map1(a, ftrunc) end
 m.floor = function(a) return map1(a, math.floor) end
 m.ceil = function(a) return map1(a, math.ceil) end
-m.round = function(a) return map1(a, function(x) return fsign(x) * math.floor(math.abs(x) + 0.5) end) end
+m.round = function(a) return map1(a, function(x)
+  if x ~= x then return x end
+  return fsign(x) * jsround_abs(math.abs(x))
+end) end
 m.fract = function(a) return map1(a, function(x) return x - math.floor(x) end) end
 m.neg = function(a) return map1(a, function(x) return -x end) end
 m.negInt = function(a) return i32(-a) end
-m.saturate = function(a) return map1(a, function(x) return math.min(math.max(x, 0), 1) end) end
+m.saturate = function(a) return map1(a, function(x) return jsmin(jsmax(x, 0), 1) end) end
 m.add = function(a, b) return map2(a, b, function(x, y) return x + y end) end
 m.addInt = function(a, b) return i32(a + b) end
 m.sub = function(a, b) return map2(a, b, function(x, y) return x - y end) end
 m.subInt = function(a, b) return i32(a - b) end
 m.mul = function(a, b) return map2(a, b, function(x, y) return x * y end) end
-m.mulInt = function(a, b) return i32(a * b) end
+-- Math.imul: exact 32x32 -> low-32 product. Force Lua INTEGER operands so the
+-- product wraps in int64 (a float product loses low bits past 2^53).
+m.mulInt = function(a, b)
+  local x = math.tointeger(i32(a)) or 0
+  local y = math.tointeger(i32(b)) or 0
+  return i32(x * y)
+end
 m.div = function(a, b) return map2(a, b, function(x, y) return x / y end) end
 m.divInt = function(a, b) return i32(a / b) end
 -- `+ 0.0` forces both operands to Lua's FLOAT subtype before calling
@@ -164,10 +209,10 @@ m.divInt = function(a, b) return i32(a / b) end
 -- are NOT guaranteed to already be floats).
 m.rem = function(a, b) return map2(a, b, function(x, y) return math.fmod(x + 0.0, y + 0.0) end) end
 m.remInt = function(a, b) return i32(math.fmod(a + 0.0, b + 0.0)) end
-m.min = function(a, b) return map2(a, b, function(x, y) return math.min(x, y) end) end
-m.minInt = function(a, b) return i32(math.min(a, b)) end
-m.max = function(a, b) return map2(a, b, function(x, y) return math.max(x, y) end) end
-m.maxInt = function(a, b) return i32(math.max(a, b)) end
+m.min = function(a, b) return map2(a, b, function(x, y) return jsmin(x, y) end) end
+m.minInt = function(a, b) return i32(jsmin(a, b)) end
+m.max = function(a, b) return map2(a, b, function(x, y) return jsmax(x, y) end) end
+m.maxInt = function(a, b) return i32(jsmax(a, b)) end
 m.clamp = function(a, b, c)
   local av = arr(a)
   local low, high = broadcast(arr(b), arr(c))
@@ -175,11 +220,11 @@ m.clamp = function(a, b, c)
   for i = 1, #av do
     local lo = low[i] or low[1]
     local hi = high[i] or high[1]
-    out[i] = math.max(lo, math.min(hi, av[i]))
+    out[i] = jsmax(lo, jsmin(hi, av[i]))
   end
   return scalarize(out)
 end
-m.clampInt = function(a, b, c) return i32(math.max(b, math.min(c, a))) end
+m.clampInt = function(a, b, c) return i32(jsmax(b, jsmin(c, a))) end
 m.mix = function(a, b, c)
   local av = arr(a)
   local bv = arr(b)
@@ -198,7 +243,7 @@ m.smoothStep = function(a, b, c)
   for i = 1, #cv do
     local avv = av[i] or av[1]
     local bvv = bv[i] or bv[1]
-    local t = math.min(1, math.max(0, (cv[i] - math.min(avv, bvv)) / math.abs(bvv - avv)))
+    local t = jsmin(1, jsmax(0, (cv[i] - jsmin(avv, bvv)) / math.abs(bvv - avv)))
     out[i] = t * t * (3 - 2 * t)
   end
   return scalarize(out)
@@ -225,7 +270,7 @@ m.isInf = function(a)
   local av = arr(a)
   for i = 1, #av do
     local x = av[i]
-    if x == math.huge or x == -math.huge or x ~= x then return true end
+    if x == math.huge or x == -math.huge then return true end
   end
   return false
 end
@@ -261,7 +306,7 @@ end) end
 m.asinh = function(a) return map1(a, function(x) return math.log(x + math.sqrt(x * x + 1)) end) end
 m.acosh = function(a) return map1(a, function(x) return math.log(x + math.sqrt(x * x - 1)) end) end
 m.atanh = function(a) return map1(a, function(x) return 0.5 * math.log((1 + x) / (1 - x)) end) end
-m.pow = function(a, b) return map2(a, b, function(x, y) return x ^ y end) end
+m.pow = function(a, b) return map2(a, b, function(x, y) return jspow(x, y) end) end
 m.exp = function(a) return map1(a, math.exp) end
 m.log = function(a) return map1(a, math.log) end
 m.log2 = function(a) return map1(a, function(x) return math.log(x, 2) end) end

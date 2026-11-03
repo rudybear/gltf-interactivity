@@ -269,21 +269,29 @@ function scheduler_create(effects)
     local keptVariableInterps = {}
     for idx = 1, n do
       local interp = originalVariableInterps[idx]
-      local t = math.min(1, (sched.time - interp.startTime) / interp.duration)
-      local ease = kmath_cubicBezierEase(t, interp.p1, interp.p2)
-      if interp.useSlerp and interp.startValue.type == "float4" and interp.endValue.type == "float4" then
-        local q = kmath_quatSlerp(scheduler_valueToNumberArray(interp.startValue), scheduler_valueToNumberArray(interp.endValue), ease)
-        effects.setVariable(interp.variableIndex, { type = "float4", data = q })
-      else
-        local startArr = scheduler_valueToNumberArray(interp.startValue)
-        local endArr = scheduler_valueToNumberArray(interp.endValue)
-        local out = {}
-        for i2 = 1, #startArr do out[i2] = startArr[i2] + (endArr[i2] - startArr[i2]) * ease end
-        effects.setVariable(interp.variableIndex, { type = interp.endValue.type, data = out })
-      end
-      if t >= 1 then
+      -- Spec variable/interpolate tick: t = elapsed / duration; t <= 0 skips;
+      -- NaN (duration 0 at the start instant) or t >= 1 writes the target
+      -- value, removes the entry and fires `done`.
+      local rawT = (sched.time - interp.startTime) / interp.duration
+      if rawT <= 0 then
+        keptVariableInterps[#keptVariableInterps + 1] = interp
+      elseif rawT ~= rawT or rawT >= 1 then
+        local copy = {}
+        for i2 = 1, #interp.endValue.data do copy[i2] = interp.endValue.data[i2] end
+        effects.setVariable(interp.variableIndex, { type = interp.endValue.type, data = copy })
         if interp.doneCont ~= nil then effects.fireFlow(interp.doneCont) end
       else
+        local ease = kmath_cubicBezierEase(rawT, interp.p1, interp.p2)
+        if interp.useSlerp and interp.startValue.type == "float4" and interp.endValue.type == "float4" then
+          local q = kmath_quatSlerp(scheduler_valueToNumberArray(interp.startValue), scheduler_valueToNumberArray(interp.endValue), ease)
+          effects.setVariable(interp.variableIndex, { type = "float4", data = q })
+        else
+          local startArr = scheduler_valueToNumberArray(interp.startValue)
+          local endArr = scheduler_valueToNumberArray(interp.endValue)
+          local out = {}
+          for i2 = 1, #startArr do out[i2] = startArr[i2] + (endArr[i2] - startArr[i2]) * ease end
+          effects.setVariable(interp.variableIndex, { type = interp.endValue.type, data = out })
+        end
         keptVariableInterps[#keptVariableInterps + 1] = interp
       end
     end

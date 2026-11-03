@@ -82,7 +82,7 @@ function buildScript(code: string, gltf: unknown, glbBin: DataView | null): stri
     "if #GLTF_JSON_TEXT > 0 then GLTF = json_decode(GLTF_JSON_TEXT) end",
     "local GLBBIN = nil",
     "if #GLBBIN_TEXT > 0 then GLBBIN = GLBBIN_TEXT end",
-    "ENGINE = CreateEngine(MODULE_SETUP)({ gltf = GLTF, glbBin = GLBBIN, seed = 123456789.0 })",
+    "ENGINE = CreateEngine(MODULE_SETUP)({ gltf = GLTF, glbBin = GLBBIN, seed = 123456789.0, activeCamera = { position = { 0, 1, 5 }, rotation = { 0, 0, 0, 1 }, projection = { type = \"perspective\", aspectRatio = 16 / 9, yfov = 0.8, znear = 0.1, zfar = 100 } } })",
     "function BRIDGE_START() ENGINE.start() end",
     "function BRIDGE_ADVANCE(dt) ENGINE.advance(dt) end",
     "function BRIDGE_TIME() return ENGINE.time() end",

@@ -282,3 +282,16 @@ animation fixes are ported:
   bufferView), per-document `ConditionalWeakTable` cache of decoded accessors and channel plans, binary-search keyframes
   with last-key fast path, CUBICSPLINE Hermite (rotations re-normalized); `ApplyAnimationAt` also returns `SkippedChannels`.
   Tests: `packages/runtime-cs/test/animation.test.ts` (via the test-only `anim_sample` harness command).
+
+## 11. Port status: Lua (`packages/runtime-lua`) -- DONE
+
+`pnpm conf:lua` 158/158, `pnpm conf:roundtrip-lua` 158/158.
+
+- [x] 1 type defaults NaN (`pointer.lua` `ptr_defaultRaw`)
+- [x] 2 `math/mul` imul (`m.lua` `m.mulInt` forces Lua integers; the double product lost low bits)
+- [x] 3 `math/isInf` NaN clause dropped
+- [x] 4 variable/pointer interpolate validation (X in [0,1], duration >= 0, non-finite target OK) and scheduler tick (`engine.lua` `rt.varInterp`, `scheduler.lua` phase 3)
+- [x] 5 event extras (`engine.lua` `defaultEventPayload`, slots 5+k)
+- [x] 6a-6d pointer writability/type match, `asset/extensions/<n>/enabled`, `meshes/{}/weights` invalid, activeCamera (engine option `activeCamera`; `run-compiled-lua.ts` harness passes the conformance camera)
+- [x] math NaN/-0 semantics: `jsmin`/`jsmax` (min/max/clamp/saturate/smoothStep), `Math.round` half-up on the float magnitude (0.49999999999999994 -> 0, -0.3 -> -0), `jspow` (`pow(1, +-Inf)`, `pow(x, NaN)`)
+- [x] animation: full accessor decode, Hermite CUBICSPLINE, per-document cache (`animation.lua`)
