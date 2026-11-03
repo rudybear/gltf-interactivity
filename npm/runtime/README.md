@@ -30,7 +30,25 @@ runtime.setHover(-1, [NaN, NaN, NaN]); // pointer is over nothing: fires hover-o
 runtime.setSelection(nodeIndex, [x, y, z], [ox, oy, oz]);
 ```
 
-The runtime never mutates the glTF JSON or graph you pass in (it works on its own deep copy), and a graph may omit empty `types` / `variables` / `events` / `declarations` / `nodes` arrays as the schema allows.
+### Invalid graphs
+
+Inputs are validated against the spec's Validation section at load. `resolveGraph`, `createRuntime` and `new InteractivityRuntime(...)` throw an `InteractivityValidationError` if the extension or graph is invalid (an invalid default graph rejects the whole extension, so no graph runs):
+
+```ts
+import { InteractivityValidationError, resolveGraph, InteractivityRuntime } from "@gltfi/runtime";
+
+try {
+  const runtime = new InteractivityRuntime(resolveGraph(gltf), gltf, glbBin);
+} catch (e) {
+  if (e instanceof InteractivityValidationError) {
+    for (const d of e.diagnostics) console.warn(d.code, d.message, d.section, d.path); // e.scope: "graph" | "extension"
+  } else throw e;
+}
+```
+
+To run an unvalidated, in-progress graph anyway, pass `{ validate: false }` (4th constructor argument / `createRuntime` option). `validateExtension(ext)` and `validateGraphObject(graph)` return the diagnostics without throwing.
+
+The runtime never mutates the glTF JSON or graph you pass in (it works on its own deep copy), and a graph must omit empty `types` / `variables` / `events` / `declarations` / `nodes` arrays (the spec forbids `[]`).
 
 Other exports: `createRuntime`, `executeFlow`, `advanceTime` (the bare interpreter core), `compareValues`, `evaluateGraphTests` (Khronos test-asset protocol), `normalizeGraph`, and all public types (`Graph`, `RuntimeGraph`, `Value`, `ValueType`, `TestJson`, ...).
 

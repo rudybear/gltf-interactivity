@@ -62,6 +62,8 @@ import { createRuntime } from "gltf-interactivity/runtime";
 | `./emit/{ts,lua,py,cs,gd}` | IR to source |
 | `./parse/{ts,lua,py,cs,gd}` | source to IR (`ts` needs the `ts-morph` peer, `lua` the `luaparse` peer) |
 
+Validation: `validateGraph(graph)` / `validateExtension(ext)` (`./verify`) implement the spec's Validation section and return diagnostics (`code`, `message`, `section`, `path`, `nodeIndex`, `outcome`). `importGraph` and the runtime entry points (`resolveGraph`, `createRuntime`, `InteractivityRuntime`) run the same validation at load and throw `InteractivityValidationError` (carrying `diagnostics`) for an invalid graph or extension, so nothing is imported, emitted or run from invalid input. Pass `{ validate: false }` to `importGraph` to opt out.
+
 Dependency: `@gltfi/runtime`. Optional peers: `ts-morph`, `luaparse`.
 
 Compiled engines (the output of `decompile`) import their runtime from [`@gltfi/runtime-lib`](https://www.npmjs.com/package/@gltfi/runtime-lib).

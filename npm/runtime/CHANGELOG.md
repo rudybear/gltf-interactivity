@@ -3,6 +3,9 @@
 ## Unreleased
 
 - Inter-asset communication: new `EventBus` (also `isPublicEventId`, `joinEventBus`, `InteractivityRuntime.joinEventBus(bus)`). Runtimes joined to one bus forward custom events with a public id (any id not starting with `_`) to every other joined runtime that has an `event/receive` for the same id and compatible value sockets (same-tick, FIFO, join order, `ref` values forwarded verbatim). Passes the corpus `InterGlb/` tests (`pnpm conf:interglb`). Runtimes that never join a bus are unchanged.
+- **Load-time validation (spec "Validation").** `resolveGraph`, `createRuntime` and `new InteractivityRuntime(graph, gltf, binary?, options?)` now throw `InteractivityValidationError` (exported; `diagnostics[]` each carry `code`, `message`, `section`, `path`, `nodeIndex`, `outcome`) for an invalid graph or extension instead of running it. `resolveGraph` validates the whole extension (empty/missing `graphs`, bad `graph` index, an invalid default graph all reject the extension, so a valid sibling graph does not run either); `InteractivityRuntime` validates the whole extension when `graph` is one of `gltf.extensions.KHR_interactivity.graphs`, otherwise just the graph. Pass `{ validate: false }` (`createRuntime` options / `InteractivityRuntime` 4th argument) to run unvalidated, e.g. in-progress graphs. Also exported: `validateExtension`, `validateGraphObject`. Validation is the same code as `@gltfi/verify`'s `validateGraph` (`@gltfi/kernel` is inlined). The Khronos `invalid/` corpus is rejected 187/187 (`pnpm conf:invalid`).
+- Graphs are now held to the spec: empty arrays instead of omitted ones, duplicate declarations, wrong socket types, missing input sockets, backward flows and the like are rejected. Previously-tolerated hand-written graphs may now throw; `validateGraph` / `error.diagnostics` say why. The default configuration of an operation (e.g. a switch with no cases) no longer materialises an empty `value: []` array.
+- Types: `SentEvent.payload` is `[boolean, number, number, number, ...unknown[]]` (matches `@gltfi/runtime-lib`; slots 4+ are the custom event value sockets, this interpreter currently reports the four standard slots).
 
 ## 0.1.1
 
@@ -11,7 +14,7 @@
 - **Behavior changes (spec alignment):**
   - Float type defaults are NaN (spec "Custom Variable Types"): omitted literal values, unwired float inputs and invalid `pointer/get` results read NaN instead of 0 / identity.
   - Invalid configuration falls back to the operation's default configuration (spec "Configuration"), e.g. `flow/for` `initialIndex: 1.5`, non-integer `switch` cases, `multiGate` `isRandom: "yes"`; a `switch` selection not in `cases` takes `default`.
-  - `pointer/set` / `pointer/interpolate` activate `err` (no write) when the pointer cannot be resolved, the type does not match, or the property is read-only (KHR_interactivity virtual pointers, `.length`, `globalMatrix`). Previously missing objects were created.
+  - **Breaking:** `pointer/set` / `pointer/interpolate` on an unresolvable pointer now take `err` instead of writing (hosts relying on writes creating missing objects must stop). They activate `err` (no write) when the pointer cannot be resolved, the type does not match, or the property is read-only (KHR_interactivity virtual pointers, `.length`, `globalMatrix`). Previously missing objects were created.
   - Operations declared under an unknown `extension` are no-ops whose outputs are type defaults.
   - activeCamera pointers (`/extensions/KHR_interactivity/activeCamera/...`) are implemented: always valid, NaN when no camera data is available.
   - `asset/extensions/<name>/enabled` is invalid for unused/unsupported extensions; `meshes/{}/weights` paths are invalid on read.

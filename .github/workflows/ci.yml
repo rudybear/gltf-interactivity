@@ -27,6 +27,7 @@ jobs:
       - run: pnpm check:registry
       - run: pnpm test
       - run: pnpm conf:interp
+      - run: pnpm conf:invalid
       - run: pnpm conf:compiled
       - run: pnpm conf:interglb
       - run: pnpm conf:lua

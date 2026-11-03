@@ -25,6 +25,7 @@
 import {
   type ActiveCamera,
   applyAnimationAt,
+  assertValidExtension,
   createScheduler,
   EventBus,
   isPublicEventId,
@@ -88,6 +89,10 @@ export type EngineOptions = {
   // @gltfi/kernel's animation.ts's readAccessorElements doc comment).
   glbBin?: ArrayBuffer | Uint8Array | DataView | null;
   seed?: number;
+  // The engine factory validates the document's `KHR_interactivity` extension
+  // (when `gltf` carries one) per the spec's Validation section and throws
+  // InteractivityValidationError if it is invalid. Set false to skip.
+  validate?: boolean;
   // Host-fed active camera behind the `/extensions/KHR_interactivity/
   // activeCamera/*` pointers (mirrors interpreter.ts's
   // createRuntime({activeCamera})); absent => those pointers read NaN.
@@ -417,6 +422,12 @@ function parseAnimationRef(gltf: any, ref: unknown): number | null {
 
 export function createEngine(setup: (rt: EngineBuilder) => void): EngineFactory {
   return (options: EngineOptions = {}): EngineInteractive => {
+    if (options.validate !== false) {
+      const ext = (options.gltf as { extensions?: { KHR_interactivity?: unknown } } | null | undefined)?.extensions?.KHR_interactivity;
+      if (ext !== undefined) {
+        assertValidExtension(ext);
+      }
+    }
     const varTypes: ValueType[] = [];
     const varRaw: RawValue[] = [];
     const eventDecls: EventDecl[] = [];

@@ -11,3 +11,4 @@ export * from "./pointer-path.js";
 export * from "./pointer-write.js";
 export * from "./active-camera.js";
 export * from "./event-bus.js";
+export * from "./validate.js";

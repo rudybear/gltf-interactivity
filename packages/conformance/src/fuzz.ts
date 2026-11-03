@@ -35,7 +35,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as esbuild from "esbuild";
-import { getOpSpec, type Value } from "@gltfi/kernel";
+import { getOpSpec, validateGraphObject, type Value } from "@gltfi/kernel";
 import { createRuntime, executeFlow, advanceTime, type Graph, type GraphNode, type NodeValue } from "@gltfi/runtime";
 import { importGraph, checkModule, type Graph as IrGraph } from "@gltfi/ir";
 import { emitModule, EmitError } from "@gltfi/emit-ts";
@@ -439,14 +439,75 @@ export function generateGraph(rng: Rng, minNodes = 5, maxNodes = 30): GeneratedG
 
   const graphVariables = b.variables.map((v) => ({ id: `v${v.index}`, type: TYPE_INDEX[v.sig], value: [defaultLiteral(rng, v.sig)] }));
 
-  const graph: Graph = {
+  // Spec "JSON Syntax": empty arrays are omitted (and rejected at load), so a
+  // generator that wants the interpreter to run its graphs must emit valid
+  // ones. Verified explicitly: an invalid generated graph is a generator bug.
+  const nodes = topoOrderNodes(b.nodes).map((node) => {
+    const pruned: Record<string, unknown> = { ...node };
+    for (const key of ["configuration", "values", "flows"]) {
+      const v = pruned[key];
+      if (v !== undefined && typeof v === "object" && v !== null && Object.keys(v).length === 0) {
+        delete pruned[key];
+      }
+    }
+    return pruned as unknown as GraphNode;
+  });
+  const graph = {
     types: TYPES,
-    variables: graphVariables,
-    events: [],
+    ...(graphVariables.length > 0 ? { variables: graphVariables } : {}),
     declarations: b.declarations,
-    nodes: b.nodes
-  };
+    nodes
+  } as unknown as Graph;
+  const validation = validateGraphObject(graph);
+  if (!validation.ok) {
+    throw new Error(`fuzz generator produced an invalid graph: ${JSON.stringify(validation.diagnostics.filter((d) => d.severity === "error").slice(0, 3))}`);
+  }
   return { graph, variableSigs: b.variables.map((v) => v.sig) };
+}
+
+// The generator builds nodes in construction order (the entry/sequence nodes
+// come last), but the spec requires value edges to point strictly backward and
+// flow edges strictly forward. Reorders (stable Kahn) so that both hold and
+// renumbers every `node` reference.
+function topoOrderNodes(nodes: GraphNode[]): GraphNode[] {
+  const n = nodes.length;
+  const out: number[][] = Array.from({ length: n }, () => []);
+  const indeg = new Array<number>(n).fill(0);
+  const edge = (from: number, to: number) => {
+    out[from].push(to);
+    indeg[to] += 1;
+  };
+  nodes.forEach((node, i) => {
+    for (const v of Object.values(node.values ?? {})) {
+      if ("node" in v) edge(v.node, i);
+    }
+    for (const f of Object.values(node.flows ?? {})) {
+      edge(i, f.node);
+    }
+  });
+  const order: number[] = [];
+  const ready = nodes.map((_, i) => i).filter((i) => indeg[i] === 0);
+  while (ready.length > 0) {
+    ready.sort((a, c) => a - c);
+    const next = ready.shift() as number;
+    order.push(next);
+    for (const to of out[next]) {
+      indeg[to] -= 1;
+      if (indeg[to] === 0) ready.push(to);
+    }
+  }
+  if (order.length !== n) {
+    throw new Error("fuzz generator produced a cyclic node graph");
+  }
+  const newIndex = new Map(order.map((old, i) => [old, i]));
+  return order.map((old) => {
+    const node = nodes[old];
+    const values = node.values
+      ? Object.fromEntries(Object.entries(node.values).map(([k, v]) => [k, "node" in v ? { ...v, node: newIndex.get(v.node) as number } : v]))
+      : node.values;
+    const flows = node.flows ? Object.fromEntries(Object.entries(node.flows).map(([k, f]) => [k, { ...f, node: newIndex.get(f.node) as number }])) : node.flows;
+    return { ...node, values, flows } as GraphNode;
+  });
 }
 
 function defaultLiteral(rng: Rng, sig: Sig): number | boolean {

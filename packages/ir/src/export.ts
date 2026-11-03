@@ -33,7 +33,7 @@
 //   - every `variable/set` IRStmt becomes its own single-variable
 //     `variable/set` graph node (never re-merged with an adjacent one into a
 //     multi-variable node) — always spec-valid, just not maximally compact.
-import { formatValueArray, type TypeSig } from "@gltfi/kernel";
+import { formatValueArray, getOpSpec, type TypeSig } from "@gltfi/kernel";
 import { EVENT_STANDARD_VALUES, eventExtraValues } from "./model.js";
 import { formatPointerTemplate, pointerTemplateParams } from "./pointer.js";
 import type {
@@ -52,12 +52,14 @@ import type {
 } from "./model.js";
 import type { GraphFlowRef, GraphNode, GraphNodeValue } from "./import.js";
 
+// Spec "JSON Syntax": an empty array MUST be omitted, so every array is absent
+// (not `[]`) when the graph has no entries of that kind.
 export type GraphJson = {
-  types: Array<{ signature: string }>;
-  variables: Array<{ name?: string; type: number; value: Array<number | boolean | string> }>;
-  events: Array<{ id?: string; values?: Record<string, { type: number; value: Array<number | boolean | string> }> }>;
-  declarations: Array<{ op: string }>;
-  nodes: GraphNode[];
+  types?: Array<{ signature: string }>;
+  variables?: Array<{ name?: string; type: number; value: Array<number | boolean | string> }>;
+  events?: Array<{ id?: string; values?: Record<string, { type: number; value: Array<number | boolean | string> }> }>;
+  declarations?: Array<{ op: string }>;
+  nodes?: GraphNode[];
 };
 
 export type ExportResult = { graph: GraphJson; diagnostics: Diagnostic[]; stats: ExportStats };
@@ -206,13 +208,19 @@ class Exporter {
           : undefined
     }));
 
+    const nonEmpty = <T>(arr: T[]): T[] | undefined => (arr.length > 0 ? arr : undefined);
     const graph: GraphJson = {
-      types: this.typeOrder.map((t) => ({ signature: t })),
-      variables,
-      events,
-      declarations: this.declOrder.map((op) => ({ op })),
-      nodes
+      types: nonEmpty(this.typeOrder.map((t) => ({ signature: t }))),
+      variables: nonEmpty(variables),
+      events: nonEmpty(events),
+      declarations: nonEmpty(this.declOrder.map((op) => ({ op }))),
+      nodes: nonEmpty(nodes)
     };
+    for (const key of Object.keys(graph) as Array<keyof GraphJson>) {
+      if (graph[key] === undefined) {
+        delete graph[key];
+      }
+    }
 
     return {
       graph,
@@ -1070,7 +1078,22 @@ class Exporter {
       values[socket] =
         "node" in v
           ? { node: finalIndex.get(v.node) ?? 0, socket: v.socket === "value" ? undefined : v.socket }
-          : { type: this.typeIndex(v.literalType), value: formatValueArray(v.data) };
+          : { type: this.typeIndex(literalTypeForData(v.literalType, v.data)), value: formatValueArray(v.data) };
+    }
+    // Spec Node validation 9: every input socket of the operation needs a value
+    // source. A node whose fixed-type inputs were never wired (e.g. a flow/for
+    // that exists only as the source of its `index` state) gets the explicit
+    // type-default source `{ type }`.
+    const spec = getOpSpec(b.op);
+    if (spec && spec.overloads.length === 1 && spec.configSockets !== "eventPayload") {
+      const row = spec.overloads[0];
+      if (row.inputs.every((i) => i.type !== "F" && i.type !== "V" && i.type !== "M" && i.type !== "T")) {
+        for (const input of row.inputs) {
+          if (!(input.name in values)) {
+            values[input.name] = { type: this.typeIndex(input.type as IRType) };
+          }
+        }
+      }
     }
     // Drop `socket: undefined` cleanly (matches import.ts's GraphValueRef
     // shape, which treats a missing socket as "value").
@@ -1084,9 +1107,13 @@ class Exporter {
     for (const [socket, f] of Object.entries(b.flows)) {
       flows[socket] = { node: finalIndex.get(f.node) ?? 0, socket: f.socket };
     }
+    // A configuration property's `value` array must be non-empty (spec): an
+    // empty int[] (e.g. a switch with no cases) is the default configuration,
+    // i.e. simply omitted.
+    const config = Object.fromEntries(Object.entries(b.config).filter(([, entry]) => !(Array.isArray((entry as { value?: unknown }).value) && ((entry as { value: unknown[] }).value.length === 0))));
     return {
       declaration: this.declIndex(b.op),
-      configuration: Object.keys(b.config).length > 0 ? b.config : undefined,
+      configuration: Object.keys(config).length > 0 ? (config as typeof b.config) : undefined,
       values: Object.keys(values).length > 0 ? values : undefined,
       flows: Object.keys(flows).length > 0 ? flows : undefined
     };
@@ -1096,6 +1123,21 @@ class Exporter {
 // ---------------------------------------------------------------------------
 // Small shared helpers
 // ---------------------------------------------------------------------------
+
+const FLOAT_LENGTH_TYPES: Record<number, IRType[]> = { 1: ["float"], 2: ["float2"], 3: ["float3"], 4: ["float4", "float2x2"], 9: ["float3x3"], 16: ["float4x4"] };
+const TYPE_LENGTH: Record<string, number> = { bool: 1, int: 1, float: 1, ref: 1, float2: 2, float3: 3, float4: 4, float2x2: 4, float3x3: 9, float4x4: 16 };
+
+// A literal whose element count disagrees with its declared type (e.g. the
+// scalar-typed `c` of math/mix carrying a broadcast float2 value) is invalid
+// JSON; its element count is the only trustworthy signal, so re-type by length.
+function literalTypeForData(type: IRType, data: Array<number | boolean | string>): IRType {
+  const want = TYPE_LENGTH[type];
+  if (want === undefined || want === data.length) {
+    return type;
+  }
+  const candidates = FLOAT_LENGTH_TYPES[data.length];
+  return candidates && type !== "bool" && type !== "ref" ? candidates[0] : type;
+}
 
 const HANDLER_KIND_BY_OP: Record<string, HandlerKind> = {
   "event/onStart": "onStart",

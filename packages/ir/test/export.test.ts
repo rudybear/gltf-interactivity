@@ -494,7 +494,9 @@ describe("exportGraph - proc self-continuation via async done (#20-1 GI210 regre
     // placeholder standing in for a rejected cycle.
     expect(hasFlowCycle(graph)).toBe(true);
 
-    const { module: reimported, diagnostics: importDiags } = importGraph(graph as unknown as Graph);
+    // The exported graph deliberately contains a flow back-edge (the IR can express a self-rescheduling proc); the spec forbids flow
+    // cycles (Node Object Validation 11), so strict load-time validation rejects it. Re-import it unvalidated to test the round trip.
+    const { module: reimported, diagnostics: importDiags } = importGraph(graph as unknown as Graph, { validate: false });
     expect(importDiags.filter((d) => d.severity === "error"), JSON.stringify(importDiags)).toEqual([]);
 
     const { graph: reexported, diagnostics: reexportDiags } = exportGraph(reimported);

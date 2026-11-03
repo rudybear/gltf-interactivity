@@ -47,7 +47,6 @@ describe("variable/set kills an in-flight variable/interpolate (spec variable/se
         { id: "v0", type: FLOAT, value: [0] },
         { id: "v1", type: FLOAT, value: [0] }
       ],
-      events: [],
       declarations: [
         { op: "event/onStart" },
         { op: "flow/sequence" },
@@ -94,7 +93,7 @@ describe("variable/set kills an in-flight variable/interpolate (spec variable/se
       ]
     };
 
-    const runtime = new InteractivityRuntime(graph, {});
+    const runtime = new InteractivityRuntime(graph, {}, undefined, { validate: false }); // hand-authored fixture (duplicate declarations, partial config): runtime semantics only
     runtime.start();
 
     // t=0.3: the delay's "done" flow (variable/set var0=999) fires in the
@@ -129,7 +128,6 @@ describe("variable/interpolate replaces an existing same-variable interpolation 
         { id: "v0", type: FLOAT, value: [0] },
         { id: "v1", type: FLOAT, value: [0] }
       ],
-      events: [],
       declarations: [
         { op: "event/onStart" },
         { op: "flow/sequence" },
@@ -182,7 +180,7 @@ describe("variable/interpolate replaces an existing same-variable interpolation 
       ]
     };
 
-    const runtime = new InteractivityRuntime(graph, {});
+    const runtime = new InteractivityRuntime(graph, {}, undefined, { validate: false }); // hand-authored fixture (duplicate declarations, partial config): runtime semantics only
     runtime.start();
     runtime.tick(1.0);
     runtime.tick(0.1);
@@ -197,7 +195,6 @@ describe("pointer/set kills an in-flight pointer/interpolate for the same effect
     const graph: Graph = {
       types: [{ signature: "float" }, { signature: "float2" }, { signature: "float3" }],
       variables: [{ id: "v0", type: FLOAT, value: [0] }],
-      events: [],
       declarations: [
         { op: "event/onStart" },
         { op: "flow/sequence" },
@@ -246,7 +243,7 @@ describe("pointer/set kills an in-flight pointer/interpolate for the same effect
 
     const gltf = { nodes: [{}] };
     const { adapter, calls } = capturingAdapter();
-    const runtime = new InteractivityRuntime(graph, gltf);
+    const runtime = new InteractivityRuntime(graph, gltf, undefined, { validate: false }); // hand-authored fixture (duplicate declarations, partial config): runtime semantics only
     runtime.bindAdapter(adapter);
     runtime.start();
 
@@ -271,7 +268,6 @@ describe("an interpolation's own per-tick writes never self-kill (regression for
         { id: "v0", type: FLOAT, value: [0] },
         { id: "v1", type: FLOAT, value: [0] }
       ],
-      events: [],
       declarations: [
         { op: "event/onStart" },
         { op: "variable/interpolate" },
@@ -298,7 +294,7 @@ describe("an interpolation's own per-tick writes never self-kill (regression for
       ]
     };
 
-    const runtime = new InteractivityRuntime(graph, {});
+    const runtime = new InteractivityRuntime(graph, {}, undefined, { validate: false }); // hand-authored fixture (duplicate declarations, partial config): runtime semantics only
     runtime.start();
 
     // Four ticks of the scheduler's OWN internal setVariable writes — none
@@ -320,7 +316,6 @@ describe("an interpolation's own per-tick writes never self-kill (regression for
     const graph: Graph = {
       types: [{ signature: "float" }, { signature: "float2" }, { signature: "float3" }],
       variables: [{ id: "v0", type: FLOAT, value: [0] }],
-      events: [],
       declarations: [
         { op: "event/onStart" },
         { op: "pointer/interpolate" },
@@ -349,7 +344,7 @@ describe("an interpolation's own per-tick writes never self-kill (regression for
 
     const gltf = { nodes: [{}] };
     const { adapter, calls } = capturingAdapter();
-    const runtime = new InteractivityRuntime(graph, gltf);
+    const runtime = new InteractivityRuntime(graph, gltf, undefined, { validate: false }); // hand-authored fixture (duplicate declarations, partial config): runtime semantics only
     runtime.bindAdapter(adapter);
     runtime.start();
 

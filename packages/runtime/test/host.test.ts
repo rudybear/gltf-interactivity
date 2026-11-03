@@ -32,7 +32,6 @@ describe("InteractivityRuntime.setSelection bubbling", () => {
         { id: "firedMid", type: BOOL, value: [false] },
         { id: "firedLeaf", type: BOOL, value: [false] }
       ],
-      events: [],
       declarations: [{ op: "event/onSelect" }, { op: "variable/set" }],
       nodes: [
         // 0: onSelect(nodeIndex=0) -> setVar(firedRoot)
@@ -106,7 +105,7 @@ describe("InteractivityRuntime.setHover transitions", () => {
       nodes.push({ declaration: 2, configuration: { variables: { value: [outVar] } }, values: { [String(outVar)]: lit(BOOL, [true]) } });
       nodes[nodes.length - 2].flows = { out: { node: nodes.length - 1, socket: "in" } };
     }
-    return { types: [{ signature: "bool" }], variables, events: [], declarations, nodes };
+    return { types: [{ signature: "bool" }], variables: variables.length > 0 ? variables : undefined, declarations, nodes };
   }
 
   // Returns {in: bool[4], out: bool[4]} indexed by scene node (0..3), read

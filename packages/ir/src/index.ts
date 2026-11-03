@@ -5,3 +5,4 @@ export * from "./check.js";
 export * from "./printer.js";
 export * from "./export.js";
 export * from "./display-names.js";
+export { InteractivityValidationError, isInteractivityValidationError } from "@gltfi/kernel";

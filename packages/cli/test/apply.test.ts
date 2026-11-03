@@ -286,7 +286,6 @@ function minimalVariableGraph(varId: string): unknown {
   return {
     types: [{ signature: "int" }],
     variables: [{ id: varId, type: 0, value: [0] }],
-    events: [],
     declarations: [{ op: "event/onStart" }, { op: "variable/set" }],
     nodes: [
       { declaration: 0, flows: { out: { node: 1, socket: "in" } } },
