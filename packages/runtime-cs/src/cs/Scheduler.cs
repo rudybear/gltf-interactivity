@@ -363,7 +363,25 @@ public sealed class Scheduler
         var kept = new List<VariableInterpEntry>();
         foreach (var interp in original)
         {
-            var t = Math.Min(1.0, (Time - interp.StartTime) / interp.Duration);
+            // Spec variable/interpolate tick: t = elapsed / duration; t <= 0
+            // skips; NaN (duration 0 at the start instant) or t >= 1 writes
+            // the target value, removes the entry and fires done.
+            var rawT = (Time - interp.StartTime) / interp.Duration;
+            if (rawT <= 0)
+            {
+                kept.Add(interp);
+                continue;
+            }
+            if (double.IsNaN(rawT) || rawT >= 1)
+            {
+                _effects.SetVariable(interp.VariableIndex, new KernelValue(interp.EndValue.Type, (object[])interp.EndValue.Data.Clone()));
+                if (interp.DoneCont != null)
+                {
+                    _effects.FireFlow(interp.DoneCont);
+                }
+                continue;
+            }
+            var t = rawT;
             var ease = KMath.CubicBezierEase(t, interp.P1, interp.P2);
             if (interp.UseSlerp && interp.StartValue.Type == "float4" && interp.EndValue.Type == "float4")
             {
@@ -381,17 +399,7 @@ public sealed class Scheduler
                 }
                 _effects.SetVariable(interp.VariableIndex, new KernelValue(interp.EndValue.Type, outData));
             }
-            if (t >= 1)
-            {
-                if (interp.DoneCont != null)
-                {
-                    _effects.FireFlow(interp.DoneCont);
-                }
-            }
-            else
-            {
-                kept.Add(interp);
-            }
+            kept.Add(interp);
         }
         _variableInterps.Clear();
         _variableInterps.AddRange(kept);

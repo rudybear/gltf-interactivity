@@ -98,20 +98,45 @@ public readonly struct ThrottleResult
     }
 }
 
+// Custom event value socket declaration beyond the four standard ones
+// (spec "Custom Events"): name, kernel type string ("int", "float2", ...) and
+// the initial / type-default value, boxed like DeclareVar's `initial`.
+public sealed class EventExtra
+{
+    public readonly string Name;
+    public readonly string Type;
+    public readonly object Initial;
+    public EventExtra(string name, string type, object initial)
+    {
+        Name = name;
+        Type = type;
+        Initial = initial;
+    }
+}
+
 public readonly struct EventPayload
 {
     public readonly bool BoolParameter;
     public readonly int IntParameter;
     public readonly double FloatParameter;
     public readonly double ExpectedDuration;
+    // Custom value sockets (payload slots 4+), in EventExtra declaration order.
+    public readonly object[] Extras;
 
-    public EventPayload(bool boolParameter, int intParameter, double floatParameter, double expectedDuration)
+    public EventPayload(bool boolParameter, int intParameter, double floatParameter, double expectedDuration, params object[] extras)
     {
         BoolParameter = boolParameter;
         IntParameter = intParameter;
         FloatParameter = floatParameter;
         ExpectedDuration = expectedDuration;
+        Extras = extras ?? Array.Empty<object>();
     }
+
+    public bool ExtraBool(int k) => k < Extras.Length && Extras[k] is bool b && b;
+    public int ExtraInt(int k) => k < Extras.Length ? (Extras[k] is int i ? i : unchecked((int)Convert.ToDouble(Extras[k]))) : 0;
+    public double ExtraFloat(int k) => k < Extras.Length ? Convert.ToDouble(Extras[k]) : double.NaN;
+    public string ExtraRef(int k) => k < Extras.Length ? (Extras[k] as string ?? "") : "";
+    public double[] ExtraVec(int k) => k < Extras.Length && Extras[k] is double[] v ? v : Array.Empty<double>();
 }
 
 public readonly struct SentEvent
@@ -176,6 +201,7 @@ internal sealed class EventDecl
     public int? DefaultInt;
     public double? DefaultFloat;
     public double? ExpectedDuration;
+    public EventExtra[] Extras = Array.Empty<EventExtra>();
 }
 
 public sealed class Engine
@@ -201,7 +227,9 @@ public sealed class Engine
     private uint _randomState;
     private readonly PointerHost _pointerHost;
     private readonly Scheduler _scheduler;
-    private Action<string, object>? _onPointerSetHook;
+    // Host callback fired after every pointer write (pointer/set, interpolate
+    // ticks, animation samples); mirrors EngineOptions.onPointerSet in engine.ts.
+    public Action<string, object>? OnPointerSetHook { get; set; }
 
     public Engine(JsonNode? gltf, byte[]? glbBin, double seed = 123456789.0)
     {
@@ -217,7 +245,7 @@ public sealed class Engine
             GetAnimationPlayhead = i => _animationPlayheads.TryGetValue(i, out var v) ? v : (0.0, 0.0),
             ActiveCameraPosition = null,
             ActiveCameraRotation = null,
-            OnPointerSet = (p, v) => _onPointerSetHook?.Invoke(p, v),
+            OnPointerSet = (p, v) => OnPointerSetHook?.Invoke(p, v),
             // Spec pointer/set step 5 (see Pointer.cs's PtrSet): killing any
             // in-flight pointer/interpolate targeting the same effective
             // pointer. PtrInterpPrepare's own scheduled tick writes go
@@ -236,6 +264,21 @@ public sealed class Engine
         });
     }
 
+    // Host-fed active camera (spec "Active Camera State"); without one the
+    // activeCamera pointers read NaN. Mirrors setActiveCamera in engine.ts.
+    public void SetActiveCamera(double[]? position, double[]? rotation, ActiveCameraProjection? projection = null)
+    {
+        _pointerHost.ActiveCameraPosition = position;
+        _pointerHost.ActiveCameraRotation = rotation;
+        _pointerHost.ActiveCameraProjection = projection;
+    }
+
+    // kernel CONFORMANCE_ACTIVE_CAMERA: position [0,1,5], identity rotation,
+    // perspective aspect 16/9, yfov 0.8, znear 0.1, zfar 100.
+    public void SetConformanceActiveCamera() => SetActiveCamera(
+        new[] { 0.0, 1.0, 5.0 }, new[] { 0.0, 0.0, 0.0, 1.0 },
+        new ActiveCameraProjection("perspective", 16.0 / 9.0, 0.8, 0.1, 100.0));
+
     // -- internal effects ----------------------------------------------------
 
     private uint StepRandom()
@@ -247,7 +290,7 @@ public sealed class Engine
     private void ApplyAnimationSample(int animationIndex, double requestedTime)
     {
         var result = Animation.ApplyAnimationAt(_gltf, _glbBin, animationIndex, requestedTime,
-            (pointer, value) => _onPointerSetHook?.Invoke(pointer, value));
+            (pointer, value) => OnPointerSetHook?.Invoke(pointer, value));
         if (result == null)
         {
             return;
@@ -258,7 +301,7 @@ public sealed class Engine
     private void EffectSetPointer(string pointer, object value)
     {
         Pointer.WritePointerRaw(_gltf, pointer, value);
-        _onPointerSetHook?.Invoke(pointer, value);
+        OnPointerSetHook?.Invoke(pointer, value);
     }
 
     private void EffectSetVariable(int variableIndex, KernelValue value)
@@ -329,7 +372,7 @@ public sealed class Engine
         _varRaw.Add(initial);
     }
 
-    public void DeclareEvent(string? externalId, bool? defaultBool, int? defaultInt, double? defaultFloat, double? expectedDuration)
+    public void DeclareEvent(string? externalId, bool? defaultBool, int? defaultInt, double? defaultFloat, double? expectedDuration, params EventExtra[] extras)
     {
         _eventDecls.Add(new EventDecl
         {
@@ -337,7 +380,8 @@ public sealed class Engine
             DefaultBool = defaultBool,
             DefaultInt = defaultInt,
             DefaultFloat = defaultFloat,
-            ExpectedDuration = expectedDuration
+            ExpectedDuration = expectedDuration,
+            Extras = extras ?? Array.Empty<EventExtra>()
         });
     }
 
@@ -388,7 +432,8 @@ public sealed class Engine
     private EventPayload DefaultPayload(int eventIndex)
     {
         var decl = eventIndex < _eventDecls.Count ? _eventDecls[eventIndex] : null;
-        return new EventPayload(decl?.DefaultBool ?? false, decl?.DefaultInt ?? 0, decl?.DefaultFloat ?? 0.0, decl?.ExpectedDuration ?? 0.0);
+        return new EventPayload(decl?.DefaultBool ?? false, decl?.DefaultInt ?? 0, decl?.DefaultFloat ?? 0.0, decl?.ExpectedDuration ?? 0.0,
+            (decl?.Extras ?? Array.Empty<EventExtra>()).Select(x => x.Initial is double[] v ? (object)v.ToArray() : x.Initial).ToArray());
     }
 
     // `payload` omitted (null) sends the event's own declared defaults —
@@ -530,12 +575,35 @@ public sealed class Engine
         };
     }
 
+    // kernel scheduler.ts isValidInterpolation: duration finite and >= 0,
+    // every p1/p2 component finite, X components within [0, 1].
+    private static bool IsValidInterpolation(double duration, double[] p1, double[] p2)
+    {
+        if (double.IsNaN(duration) || double.IsInfinity(duration) || duration < 0)
+        {
+            return false;
+        }
+        foreach (var p in new[] { p1, p2 })
+        {
+            if (!FiniteArr(p))
+            {
+                return false;
+            }
+            var x = p.Length > 0 ? p[0] : 0;
+            if (x < 0 || x > 1)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public bool VarInterp(int varId, object value, double duration, double[] p1, double[] p2, bool useSlerp, Action? done)
     {
         var t = varId < _varTypes.Count ? _varTypes[varId] : "float";
         var endKernel = RawToKernelValue(t, value);
-        var isValid = !double.IsNaN(duration) && !double.IsInfinity(duration) && duration > 0
-            && IsFiniteRaw(value) && FiniteArr(p1) && FiniteArr(p2);
+        // Spec variable/interpolate: a non-finite TARGET value is not an error.
+        var isValid = IsValidInterpolation(duration, p1, p2);
         if (!isValid)
         {
             return false;
@@ -562,16 +630,12 @@ public sealed class Engine
         {
             return false;
         }
-        if (double.IsNaN(duration) || double.IsInfinity(duration) || duration < 0)
+        if (!IsValidInterpolation(duration, p1, p2))
         {
             return false;
         }
         var p10 = p1.Length > 0 ? p1[0] : 0;
         var p20 = p2.Length > 0 ? p2[0] : 0;
-        if (!FiniteArr(p1) || !FiniteArr(p2) || p10 < 0 || p10 > 1 || p20 < 0 || p20 > 1)
-        {
-            return false;
-        }
         double[] target = value switch
         {
             double[] arr => arr,

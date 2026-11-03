@@ -249,14 +249,13 @@ public static class M
         return false;
     }
 
-    // Mirrors m.py's isInf exactly: NaN counts as "inf-like" too (matches
-    // the shared TS/Python oracle's own behavior — not a transcription bug).
-    public static bool IsInf(double a) => double.IsNaN(a) || double.IsInfinity(a);
+    // Spec "Is Infinity": true iff +-Infinity (NaN is NOT infinite).
+    public static bool IsInf(double a) => double.IsInfinity(a);
     public static bool IsInf(double[] a)
     {
         foreach (var x in a)
         {
-            if (double.IsNaN(x) || double.IsInfinity(x))
+            if (double.IsInfinity(x))
             {
                 return true;
             }

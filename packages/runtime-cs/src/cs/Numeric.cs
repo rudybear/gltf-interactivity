@@ -72,8 +72,16 @@ public static class Numeric
         {
             return x;
         }
-        double sign = x >= 0 ? 1.0 : -1.0;
-        return sign * Math.Floor(Math.Abs(x) + 0.5);
+        if (x == 0.0)
+        {
+            return x; // keeps -0
+        }
+        // floor(ax + 0.5) is wrong for 0.49999999999999994 (the sum rounds up
+        // to 1.0); compare the exact fractional part instead (Math.round).
+        double ax = Math.Abs(x);
+        double fl = Math.Floor(ax);
+        double r = (ax - fl >= 0.5) ? fl + 1.0 : fl;
+        return x < 0 ? -r : r;
     }
 
     public static double SafeSqrt(double x) => Math.Sqrt(x);
@@ -105,13 +113,14 @@ public static class Numeric
     // above the fallback, not by inspecting the fallback's result type.
     public static double SafePow(double a, double b)
     {
-        if (double.IsNaN(a) || double.IsNaN(b))
-        {
-            return double.NaN;
-        }
+        // Spec pow table: pow(x, +-0) == 1 for every x including NaN.
         if (b == 0.0)
         {
             return 1.0;
+        }
+        if (double.IsNaN(a) || double.IsNaN(b))
+        {
+            return double.NaN;
         }
         bool aNegZero = a == 0.0 && double.IsNegative(a);
         if (a == 0.0)
@@ -126,7 +135,7 @@ public static class Numeric
         {
             if (b < 0)
             {
-                return 0.0;
+                return (a < 0 && IsOddInt(b)) ? -0.0 : 0.0;
             }
             if (a < 0)
             {

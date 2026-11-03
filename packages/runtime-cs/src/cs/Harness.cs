@@ -228,6 +228,7 @@ internal sealed class Harness
         _glbBin = string.IsNullOrEmpty(binB64) ? null : Convert.FromBase64String(binB64);
         _buildMethod = CompileModule(source);
         _engine = new Engine(_gltf?.DeepClone(), _glbBin, DefaultSeed);
+        _engine.SetConformanceActiveCamera();
         try
         {
             _buildMethod.Invoke(null, new object[] { _engine });
@@ -246,6 +247,7 @@ internal sealed class Harness
             throw new InvalidOperationException("reset called before load");
         }
         _engine = new Engine(_gltf?.DeepClone(), _glbBin, DefaultSeed);
+        _engine.SetConformanceActiveCamera();
         try
         {
             _buildMethod.Invoke(null, new object[] { _engine });

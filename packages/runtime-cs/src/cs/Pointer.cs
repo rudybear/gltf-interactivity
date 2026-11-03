@@ -24,6 +24,9 @@ public sealed class PointerHost
     public Func<int, (double Playhead, double VirtualPlayhead)>? GetAnimationPlayhead;
     public double[]? ActiveCameraPosition;
     public double[]? ActiveCameraRotation;
+    // Null (or a Type that does not match the pointer's kind) => the
+    // projection pointers read NaN (spec "Active Camera State").
+    public ActiveCameraProjection? ActiveCameraProjection;
     public Action<string, object>? OnPointerSet;
     // Spec pointer/set step 5: called by PtrSet (below) after a successful
     // write, with the same fully-resolved pointer string PtrInterpPrepare
@@ -33,6 +36,20 @@ public sealed class PointerHost
     // (read-only), on a failed/rejected PtrSet, or by WritePointerRaw (the
     // scheduler's OWN interpolation-tick writes, which must never self-kill).
     public Action<string>? KillPointerInterp;
+}
+
+// Mirrors kernel/src/active-camera.ts ActiveCameraProjection. Type is
+// "perspective" (aspectRatio, yfov, znear, zfar) or "orthographic" (xmag,
+// ymag, znear, zfar); the four numbers are stored in Values in that order.
+public sealed class ActiveCameraProjection
+{
+    public readonly string Type;
+    public readonly double[] Values;
+    public ActiveCameraProjection(string type, double a, double b, double znear, double zfar)
+    {
+        Type = type;
+        Values = new[] { a, b, znear, zfar };
+    }
 }
 
 public readonly struct PtrResult
@@ -243,20 +260,9 @@ public static class Pointer
             }
             return new PtrResult((double)targetCount, true);
         }
-        if (meshIndex != null)
-        {
-            var mesh = meshesTop != null && meshIndex.Value >= 0 && meshIndex.Value < meshesTop.Count ? meshesTop[meshIndex.Value] as JsonObject : null;
-            if (mesh == null)
-            {
-                return new PtrResult(0.0, false);
-            }
-            var targetCount = GetMeshTargetCount(mesh);
-            if (mesh["weights"] is JsonArray w)
-            {
-                return new PtrResult((double)w.Count, true);
-            }
-            return new PtrResult((double)targetCount, true);
-        }
+        // `/meshes/{}/weights` is not an Object Model pointer for this
+        // extension (only `/nodes/{}/weights`, resolved through the node's
+        // mesh), so `meshes/{}/weights.length` is invalid.
         return new PtrResult(0.0, false);
     }
 
@@ -385,27 +391,8 @@ public static class Pointer
                 }
                 else if (meshIndex != null)
                 {
-                    var mesh = meshesTop != null && meshIndex.Value >= 0 && meshIndex.Value < meshesTop.Count ? meshesTop[meshIndex.Value] as JsonObject : null;
-                    if (mesh == null)
-                    {
-                        return new PtrResult(null, false);
-                    }
-                    var targetCount = GetMeshTargetCount(mesh);
-                    if (mesh["weights"] is JsonArray)
-                    {
-                        current = mesh["weights"];
-                        weightsHandled = true;
-                    }
-                    else if (targetCount > 0)
-                    {
-                        current = JsonUtil.ToArray(Fill(targetCount, 0.5));
-                        weightsHandled = true;
-                    }
-                    else
-                    {
-                        current = JsonUtil.ToArray(new double[] { 0.0 });
-                        weightsHandled = true;
-                    }
+                    // `/meshes/{}/weights/N` is not a pointer of this extension.
+                    return new PtrResult(null, false);
                 }
             }
 
@@ -477,11 +464,13 @@ public static class Pointer
         if (current is JsonArray arr)
         {
             var nums = JsonUtil.ReadNumberArray(arr);
-            return nums != null ? new PtrResult(nums, true) : new PtrResult(null, false);
+            // A non-numeric array still EXISTS (canWritePointer's container
+            // check); callers' ValueMatchesType rejects the JsonNode value.
+            return nums != null ? new PtrResult(nums, true) : new PtrResult(current, true);
         }
-        // JsonObject or anything else: not a leaf value type this runtime
-        // ever reads/writes as a KHR_interactivity value.
-        return new PtrResult(null, false);
+        // JsonObject or anything else: exists, but is not a leaf value type
+        // this runtime ever reads/writes as a KHR_interactivity value.
+        return new PtrResult(current, true);
     }
 
     // ---------------------------------------------------------------------
@@ -848,19 +837,21 @@ public static class Pointer
         return false;
     }
 
+    // Spec "Custom Variable Types": NaN for every float component, false, 0,
+    // empty reference (kernel defaultValue).
     public static object DefaultRaw(string t)
     {
         return t switch
         {
             "bool" => false,
             "int" => 0.0,
-            "float" => 0.0,
-            "float2" => new double[] { 0.0, 0.0 },
-            "float3" => new double[] { 0.0, 0.0, 0.0 },
-            "float4" => new double[] { 0.0, 0.0, 0.0, 0.0 },
-            "float2x2" => new double[] { 1.0, 0.0, 0.0, 1.0 },
-            "float3x3" => new double[] { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0 },
-            "float4x4" => new double[] { 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 },
+            "float" => double.NaN,
+            "float2" => Fill(2, double.NaN),
+            "float3" => Fill(3, double.NaN),
+            "float4" => Fill(4, double.NaN),
+            "float2x2" => Fill(4, double.NaN),
+            "float3x3" => Fill(9, double.NaN),
+            "float4x4" => Fill(16, double.NaN),
             "ref" => "",
             _ => 0.0
         };
@@ -894,23 +885,124 @@ public static class Pointer
     private static readonly System.Text.RegularExpressions.Regex EventRefRe =
         new(@"^/extensions/KHR_interactivity/events/\{[^}]+\}$");
 
+    private const string CameraPrefix = "/extensions/KHR_interactivity/activeCamera/";
+
+    private static readonly System.Text.RegularExpressions.Regex CameraProjRe =
+        new(@"^(perspective|orthographic)/(\w+)$");
+
+    // kernel readActiveCameraPointer: null when `resolved` is not an
+    // activeCamera pointer.
+    private static (string Type, double[] Value)? ReadActiveCameraPointer(PointerHost host, string resolved)
+    {
+        if (!resolved.StartsWith(CameraPrefix))
+        {
+            return null;
+        }
+        var path = resolved[CameraPrefix.Length..];
+        if (path == "position")
+        {
+            return ("float3", host.ActiveCameraPosition != null ? (double[])host.ActiveCameraPosition.Clone() : Fill(3, double.NaN));
+        }
+        if (path == "rotation")
+        {
+            return ("float4", host.ActiveCameraRotation != null ? (double[])host.ActiveCameraRotation.Clone() : Fill(4, double.NaN));
+        }
+        var m = CameraProjRe.Match(path);
+        if (!m.Success)
+        {
+            return null;
+        }
+        var kind = m.Groups[1].Value;
+        var prop = m.Groups[2].Value;
+        var allowed = kind == "perspective" ? new[] { "aspectRatio", "yfov", "znear", "zfar" } : new[] { "xmag", "ymag", "znear", "zfar" };
+        var pi = Array.IndexOf(allowed, prop);
+        if (pi < 0)
+        {
+            return null;
+        }
+        var proj = host.ActiveCameraProjection;
+        if (proj == null || proj.Type != kind)
+        {
+            return ("float", new[] { double.NaN });
+        }
+        return ("float", new[] { proj.Values[pi] });
+    }
+
+    // kernel pointer-write.ts isReadOnlyPointer.
+    private static bool IsReadOnlyPointer(string resolved)
+    {
+        if (resolved.Contains("/extensions/KHR_interactivity/"))
+        {
+            return true;
+        }
+        var tokens = resolved.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var last = tokens.Length > 0 ? tokens[^1] : "";
+        return last.EndsWith(".length") || last == "globalMatrix";
+    }
+
+    // kernel pointer-write.ts propertyAcceptsSignature.
+    private static bool PropertyAcceptsSignature(object? current, string signature)
+    {
+        switch (current)
+        {
+            case bool:
+                return signature == "bool";
+            case double:
+                return signature == "int" || signature == "float";
+            case double[] arr:
+                return arr.Length switch
+                {
+                    2 => signature == "float2",
+                    3 => signature == "float3",
+                    4 => signature == "float4" || signature == "float2x2",
+                    9 => signature == "float3x3",
+                    16 => signature == "float4x4",
+                    _ => false
+                };
+            default:
+                return false;
+        }
+    }
+
+    private static readonly HashSet<string> OptionalParentTokens = new() { "pbrMetallicRoughness", "weights", "translation", "rotation", "scale", "extras" };
+
+    // kernel pointer-write.ts canWritePointer.
+    private static bool CanWritePointer(JsonNode? gltf, string resolved, string signature)
+    {
+        if (IsReadOnlyPointer(resolved))
+        {
+            return false;
+        }
+        var raw = resolved.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        for (var k = 1; k < raw.Length; k++)
+        {
+            var prefix = "/" + string.Join("/", raw, 0, k);
+            var optional = OptionalParentTokens.Contains(raw[k - 1]) || raw[k - 1] == "extensions" || (k >= 2 && raw[k - 2] == "extensions");
+            if (!ResolvePointerValue(gltf, prefix).IsValid && !optional)
+            {
+                return false;
+            }
+        }
+        var current = ResolvePointerValue(gltf, resolved);
+        if (current.IsValid && !PropertyAcceptsSignature(current.Value, signature))
+        {
+            return false;
+        }
+        return true;
+    }
+
     private static PtrResult? ResolveVirtualPointer(PointerHost host, string resolved, string t)
     {
-        if (resolved == "/extensions/KHR_interactivity/activeCamera/position")
+        var cam = ReadActiveCameraPointer(host, resolved);
+        if (cam != null)
         {
-            if (t != "float3")
+            // Always valid (NaN components when no camera / other projection kind).
+            var (camType, camValue) = cam.Value;
+            if (t != camType)
             {
                 return new PtrResult(DefaultRaw(t), false);
             }
-            return new PtrResult(host.ActiveCameraPosition ?? new[] { double.NaN, double.NaN, double.NaN }, true);
-        }
-        if (resolved == "/extensions/KHR_interactivity/activeCamera/rotation")
-        {
-            if (t != "float4")
-            {
-                return new PtrResult(DefaultRaw(t), false);
-            }
-            return new PtrResult(host.ActiveCameraRotation ?? new[] { double.NaN, double.NaN, double.NaN, double.NaN }, true);
+            return new PtrResult(camType == "float" ? camValue[0] : camValue, true);
         }
         if (resolved is "/extensions/KHR_interactivity/asset/majorVersion" or "/extensions/KHR_interactivity/asset/minorVersion")
         {
@@ -942,7 +1034,13 @@ public static class Pointer
                 }
             }
             var enabled = SupportedExtensions.Contains(name) && (name == "KHR_interactivity" || isUsed);
-            return new PtrResult(enabled, true);
+            // Spec "Asset Capabilities": the virtual asset/extensions/<name>
+            // object only exists for used+supported extensions.
+            if (!enabled)
+            {
+                return new PtrResult(DefaultRaw(t), false);
+            }
+            return new PtrResult(true, true);
         }
         m = LimitRe.Match(resolved);
         if (m.Success)
@@ -1086,6 +1184,11 @@ public static class Pointer
         {
             return false;
         }
+        // Spec pointer/set step 4 (kernel pointer-write.ts).
+        if (!CanWritePointer(host.Gltf, resolved, t))
+        {
+            return false;
+        }
         var ok = SetPointerValue(host.Gltf, resolved, value);
         if (ok)
         {
@@ -1142,7 +1245,7 @@ public static class Pointer
             return null;
         }
         var result = ResolvePointerValue(host.Gltf, resolved);
-        if (!result.IsValid || !ValueMatchesType(result.Value, t))
+        if (!result.IsValid || !ValueMatchesType(result.Value, t) || IsReadOnlyPointer(resolved))
         {
             return null;
         }
