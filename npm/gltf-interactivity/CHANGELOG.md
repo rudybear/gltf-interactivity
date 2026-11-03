@@ -9,7 +9,7 @@
   - `resolveGraph`, `createRuntime` and `new InteractivityRuntime` reject invalid input (an invalid default graph or extension object rejects the whole extension, so no graph runs). See `@gltfi/runtime`.
   - `gltf-interactivity/verify`: `validateGraph` delegates to the same implementation (diagnostic codes unchanged where the rule is unchanged; new `section` / `path` / `outcome` fields) and gains `validateExtension(ext)`. Fixed false positives on valid assets (equal-declaration check ignored input sockets; flow `socket` is optional) and the previously missed extension-level rules.
   - New conformance gate `pnpm conf:invalid`: 187/187 cases of the Khronos `invalid/` corpus are rejected on every load path; the 158 valid assets and the 17 Models validate cleanly.
-- `exportGraph` now emits spec-valid JSON: empty `types` / `variables` / `events` / `declarations` / `nodes` arrays and empty configuration arrays (e.g. a switch with no cases) are omitted. (`GraphJson` members are optional accordingly.) Note: a self-rescheduling proc still exports a flow back-edge, which the spec forbids and validation rejects.
+- `exportGraph` now emits spec-valid JSON: empty `types` / `variables` / `events` / `declarations` / `nodes` arrays and empty configuration arrays (e.g. a switch with no cases) are omitted. (`GraphJson` members are optional accordingly.) A self-rescheduling proc (an async `done` continuation that re-enters its own or another in-progress proc) no longer exports a flow back-edge (the spec forbids flow cycles): the re-entry is lowered to a private custom event (`event/send` to a `_gltfi_loop_<proc>_<n>` event whose `event/receive` roots the proc), so every exported graph passes load-time validation.
 
 ## 0.3.0
 
