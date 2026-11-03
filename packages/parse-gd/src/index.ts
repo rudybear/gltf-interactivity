@@ -77,6 +77,7 @@
 //    text alone (not `expected`) decides its IR type.
 import { getOpSpec, isGenericSig, lookupMFunctions, resolveOverload, type FnCandidate, type OpSpec, type TypeSig } from "@gltfi/kernel";
 import {
+  eventExtraValues,
   parsePointerTemplate,
   pointerTemplateParams,
   typeSigToIRType,
@@ -413,7 +414,7 @@ const VECTOR_MATRIX_DEFAULTS: Record<string, number[]> = {
 // Parser
 // ---------------------------------------------------------------------------
 
-type Ctx = { kind: "proc" } | { kind: "handler"; handlerKind: HandlerKind };
+type Ctx = { kind: "proc" } | { kind: "handler"; handlerKind: HandlerKind; eventRef?: number };
 type HandlerDesc = { kind: HandlerKind; eventRef?: number; config?: Record<string, unknown>; funcName: string };
 
 class ModuleParser {
@@ -536,8 +537,14 @@ class ModuleParser {
         this.fail("GG104", `handler registration references undefined function "${desc.funcName}"`);
       }
       this.tempTypeByName = new Map();
-      const body = this.lowerBlock(fn.body, { kind: "handler", handlerKind: desc.kind });
-      this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, config: desc.config, params: HANDLER_PARAMS[desc.kind], body });
+      // A receive handler also exposes the event definition's custom value
+      // sockets (payload slots 4+) as params.
+      const params =
+        desc.kind === "receive" && desc.eventRef !== undefined
+          ? [...HANDLER_PARAMS.receive, ...eventExtraValues(this.events[desc.eventRef]).map((v) => ({ name: v.name, type: v.type }))]
+          : HANDLER_PARAMS[desc.kind];
+      const body = this.lowerBlock(fn.body, { kind: "handler", handlerKind: desc.kind, eventRef: desc.eventRef });
+      this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, config: desc.config, params, body });
     });
 
     return {
@@ -736,7 +743,32 @@ class ModuleParser {
     if (floatExpr) values.push({ name: "floatParameter", type: "float", default: { type: "float", data: [numLit(floatExpr) ?? 0] } });
     const durExpr = field("expectedDuration");
     if (durExpr) values.push({ name: "expectedDuration", type: "float", default: { type: "float", data: [numLit(durExpr) ?? 0] } });
+    // `"extras": [["value", rt.int_var(0)], ...]` -- custom value sockets
+    // (payload slots 4+), declared with the same helpers as variables.
+    const extrasExpr = field("extras");
+    if (extrasExpr) {
+      if (extrasExpr.t !== "array") this.fail("GG102", "rt.events `extras` must be an array of [name, decl] pairs");
+      extrasExpr.items.forEach((pair) => {
+        if (pair.t !== "array" || pair.items.length !== 2) this.fail("GG102", "rt.events `extras` element must be a [name, declCall] pair");
+        const extraName = strLit(pair.items[0]);
+        if (extraName === undefined) this.fail("GG102", "rt.events `extras` pair's first element must be a string literal");
+        const decl = this.parseVarDeclShorthand(pair.items[1]);
+        values.push({ name: extraName, type: decl.type, default: { type: decl.type, data: decl.data } } as IREventValue);
+      });
+    }
     return { externalId, values };
+  }
+
+  // Name/type of payload tuple slot `slot` of event `eventIndex`: slots 0..3
+  // are the standard fields, 4+ the event's custom value sockets in
+  // IREvent.values order (see @gltfi/ir's eventExtraValues).
+  private payloadSlot(eventIndex: number | undefined, slot: number): { name: string; type: IRType } {
+    const standard = PAYLOAD_FIELDS[slot];
+    if (standard) {
+      return { name: standard, type: standard === "boolParameter" ? "bool" : standard === "intParameter" ? "int" : "float" };
+    }
+    const extra = eventExtraValues(eventIndex === undefined ? undefined : this.events[eventIndex])[slot - PAYLOAD_FIELDS.length];
+    return extra ? { name: extra.name, type: extra.type } : { name: "boolParameter", type: "bool" };
   }
 
   // Reconstructs `rt.send`'s 4 fixed payload args (bool,int,float,duration)
@@ -753,7 +785,8 @@ class ModuleParser {
       { k: "const", type: "bool", data: [Boolean(boolDefault?.default.data[0] ?? false)] },
       { k: "const", type: "int", data: [Math.trunc(Number(intDefault?.default.data[0] ?? 0))] },
       { k: "const", type: "float", data: [Number(floatDefault?.default.data[0] ?? 0)] },
-      { k: "const", type: "float", data: [Number(duration?.default.data[0] ?? 0)] }
+      { k: "const", type: "float", data: [Number(duration?.default.data[0] ?? 0)] },
+      ...eventExtraValues(e).map((v): IRExpr => ({ k: "const", type: v.type, data: [...v.default.data] }) as IRExpr)
     ];
   }
 
@@ -1234,10 +1267,10 @@ class ModuleParser {
       return { k: "emitEvent", eventId, args: this.eventDefaultArgs(eventId) };
     }
     const payload = args[1];
-    if (!payload || payload.t !== "array" || payload.items.length !== 4) {
-      this.fail("GG124", "rt.send's payload argument must be a 4-element array literal");
+    const types: IRType[] = ["bool", "int", "float", "float", ...eventExtraValues(this.events[eventId]).map((v) => v.type)];
+    if (!payload || payload.t !== "array" || payload.items.length !== types.length) {
+      this.fail("GG124", "rt.send's payload argument must be an array literal with 4 standard entries plus one per custom event value");
     }
-    const types: IRType[] = ["bool", "int", "float", "float"];
     return { k: "emitEvent", eventId, args: payload.items.map((e, k) => this.lowerExpr(e, types[k], ctx)) };
   }
 
@@ -1429,9 +1462,8 @@ class ModuleParser {
       }
       if (base.t === "call" && base.callee.t === "attr" && identName(base.callee.base) === "rt" && base.callee.name === "event_payload" && expr.index.t === "num") {
         const eventIndex = this.readEventIndex(base.args[0]) ?? 0;
-        const field = PAYLOAD_FIELDS[Math.trunc(expr.index.value)] ?? "boolParameter";
-        const type: IRType = field === "boolParameter" ? "bool" : field === "intParameter" ? "int" : "float";
-        return { k: "intrinsic", op: "event/receive#payload", config: { eventIndex, field }, args: [], type };
+        const slot = this.payloadSlot(eventIndex, Math.trunc(expr.index.value));
+        return { k: "intrinsic", op: "event/receive#payload", config: { eventIndex, field: slot.name }, args: [], type: slot.type };
       }
       if (base.t === "call" && base.callee.t === "attr" && identName(base.callee.base) === "m") {
         const socket = expr.index.t === "str" ? expr.index.value : expr.index.t === "num" ? String(Math.trunc(expr.index.value)) : undefined;
@@ -1439,9 +1471,8 @@ class ModuleParser {
         return this.lowerMCall(base.args, base.callee.name, expected, ctx, socket);
       }
       if (base.t === "ident" && base.name === "payload" && ctx.kind === "handler" && ctx.handlerKind === "receive" && expr.index.t === "num") {
-        const field = PAYLOAD_FIELDS[Math.trunc(expr.index.value)] ?? "boolParameter";
-        const type: IRType = field === "boolParameter" ? "bool" : field === "intParameter" ? "int" : "float";
-        return { k: "param", name: field, type };
+        const slot = this.payloadSlot(ctx.eventRef, Math.trunc(expr.index.value));
+        return { k: "param", name: slot.name, type: slot.type };
       }
       // `params["<key>"]` — no destructuring step in this backend (see
       // emit-gd's header note): the handler's own `params: Dictionary`

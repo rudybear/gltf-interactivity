@@ -84,6 +84,8 @@
 // directly via paramAccess (`selectParams.SelectedNode`, etc.) — no
 // destructuring step needed at all in C#, so parse-cs has nothing to strip.
 import {
+  eventExtraValues,
+  EVENT_STANDARD_VALUES,
   computeStateSlotDisplayNames,
   computeVariableDisplayNames,
   formatPointerTemplate,
@@ -623,7 +625,7 @@ class Emitter {
     this.push("}");
   }
 
-  private eventDefaultQuad(eventId: number): [boolean, number, number, number] {
+  private eventDefaultQuad(eventId: number): Array<boolean | number | string | Array<number | boolean | string>> {
     const e = this.module.events[eventId];
     const boolDefault = e?.values.find((v) => v.name === "boolParameter");
     const intDefault = e?.values.find((v) => v.name === "intParameter");
@@ -633,7 +635,9 @@ class Emitter {
       Boolean(boolDefault?.default.data[0] ?? false),
       Math.trunc(Number(intDefault?.default.data[0] ?? 0)),
       Number(floatDefault?.default.data[0] ?? 0),
-      Number(duration?.default.data[0] ?? 0)
+      Number(duration?.default.data[0] ?? 0),
+      // Extras: the scalar default (bool/int/float/ref) or the vector data.
+      ...eventExtraValues(e).map((v) => (v.default.data.length === 1 ? v.default.data[0] : [...v.default.data]))
     ];
   }
 
@@ -643,8 +647,12 @@ class Emitter {
       if (a.k !== "const") {
         return false;
       }
+      const def = defaults[i];
+      if (Array.isArray(def) || typeof def === "string") {
+        return JSON.stringify(a.data) === JSON.stringify(Array.isArray(def) ? def : [def]);
+      }
       const value = a.type === "bool" ? Boolean(a.data[0]) : Number(a.data[0]);
-      return value === defaults[i];
+      return Object.is(value, def);
     });
   }
 
@@ -680,7 +688,14 @@ class Emitter {
       const intCode = intDefault ? `(int?)${csIntLiteral(Math.trunc(Number(intDefault.default.data[0] ?? 0)))}` : "(int?)null";
       const floatCode = floatDefault ? `(double?)${csFloatLiteral(Number(floatDefault.default.data[0] ?? 0))}` : "(double?)null";
       const durationCode = duration ? `(double?)${csFloatLiteral(Number(duration.default.data[0] ?? 0))}` : "(double?)null";
-      this.push(`rt.DeclareEvent(${externalIdCode}, ${boolCode}, ${intCode}, ${floatCode}, ${durationCode});`);
+      // Custom value sockets beyond the four standard ones (payload slots
+      // 4+): trailing `new EventExtra(name, type, initial)` params, declared
+      // like DeclareVar's (type, initial) pair.
+      const extraCode = eventExtraValues(e).map((v) => {
+        const [typeCode, initialCode] = declareVarArgs(v.type, v.default.data);
+        return `, new EventExtra(${csStringLiteral(v.name)}, ${typeCode}, ${initialCode})`;
+      });
+      this.push(`rt.DeclareEvent(${externalIdCode}, ${boolCode}, ${intCode}, ${floatCode}, ${durationCode}${extraCode.join("")});`);
     });
   }
 
@@ -919,8 +934,12 @@ class Emitter {
         return;
       }
       case "emitEvent": {
-        if (stmt.args.length !== 4) {
-          throw new EmitError("emitEvent expects exactly 4 payload args (bool,int,float,duration)", "event/send", this.originNodeId);
+        if (stmt.args.length !== EVENT_STANDARD_VALUES.length + eventExtraValues(this.module.events[stmt.eventId]).length) {
+          throw new EmitError(
+            "emitEvent expects 4 payload args (bool,int,float,duration) plus one per custom event value",
+            "event/send",
+            this.originNodeId
+          );
         }
         const eventArg = this.eventArgCode(stmt.eventId);
         if (this.matchesEventDefaults(stmt.eventId, stmt.args)) {
@@ -1427,6 +1446,10 @@ class Emitter {
       if (name === "intParameter") return "payload.IntParameter";
       if (name === "floatParameter") return "payload.FloatParameter";
       if (name === "expectedDuration") return "payload.ExpectedDuration";
+      // Custom value socket (payload slot 4+): typed accessor by extra index.
+      const extras = eventExtraValues(this.module.events[ctx.eventRef]);
+      const extraIndex = extras.findIndex((v) => v.name === name);
+      if (extraIndex >= 0) return `payload.Extra${VAR_ACCESSOR[extras[extraIndex].type].suffix}(${extraIndex})`;
     }
     throw new EmitError(`param("${name}") not supported for handler kind "${ctx.kind}"`, "param", this.originNodeId);
   }
@@ -1487,6 +1510,14 @@ class Emitter {
       const propName = { boolParameter: "BoolParameter", intParameter: "IntParameter", floatParameter: "FloatParameter", expectedDuration: "ExpectedDuration" }[
         field
       ];
+      if (propName === undefined) {
+        const extras = eventExtraValues(this.module.events[eventIndex]);
+        const extraIndex = extras.findIndex((v) => v.name === field);
+        if (extraIndex < 0) {
+          throw new EmitError(`event/receive#payload: event ${eventIndex} has no value "${field}"`, expr.op, this.originNodeId);
+        }
+        return `rt.EventPayloadOf(${this.eventArgCode(eventIndex)}).Extra${VAR_ACCESSOR[extras[extraIndex].type].suffix}(${extraIndex})`;
+      }
       return `rt.EventPayloadOf(${this.eventArgCode(eventIndex)}).${propName}`;
     }
     if (expr.op === "event/onTick#time") {

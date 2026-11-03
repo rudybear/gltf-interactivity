@@ -195,6 +195,11 @@ export function readNumberLiteral(node: CsNode | undefined): number | undefined 
   }
   if (isType(node, "UnaryMinusExpression")) {
     const v = readNumberLiteral(unwrap(node.Operand as CsNode));
+    // int32 negate wraps: -(int.MinValue) is int.MinValue again, not +2^31
+    // (emit-cs prints math/neg of it as `unchecked(-int.MinValue)`).
+    if (v === -2147483648 && memberAccessOf(unwrap(node.Operand as CsNode))?.name === "MinValue") {
+      return v;
+    }
     return v === undefined ? undefined : -v;
   }
   const access = memberAccessOf(node);

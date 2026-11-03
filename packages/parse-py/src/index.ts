@@ -67,6 +67,7 @@ import {
   type TypeSig
 } from "@gltfi/kernel";
 import {
+  eventExtraValues,
   formatPointerTemplate,
   parsePointerTemplate,
   pointerTemplateParams,
@@ -353,7 +354,7 @@ function fieldOf(expr: PyNode, field: string): PyNode | undefined {
 // Parser
 // ---------------------------------------------------------------------------
 
-type Ctx = { kind: "proc" } | { kind: "handler"; handlerKind: HandlerKind };
+type Ctx = { kind: "proc" } | { kind: "handler"; handlerKind: HandlerKind; eventRef?: number };
 
 class ModuleParser {
   diagnostics: Diagnostic[] = [];
@@ -439,8 +440,13 @@ class ModuleParser {
       this.procs[idx] = { ...this.procs[idx], body: this.lowerBlock(body, { kind: "proc" }) };
     });
     handlerDescs.forEach((desc) => {
-      const params = HANDLER_PARAMS[desc.kind];
-      const body = this.lowerBlock(desc.bodyStmts, { kind: "handler", handlerKind: desc.kind });
+      // A receive handler also exposes the event definition's custom value
+      // sockets (payload slots 4+) as params.
+      const params =
+        desc.kind === "receive" && desc.eventRef !== undefined
+          ? [...HANDLER_PARAMS.receive, ...eventExtraValues(this.events[desc.eventRef]).map((v) => ({ name: v.name, type: v.type }))]
+          : HANDLER_PARAMS[desc.kind];
+      const body = this.lowerBlock(desc.bodyStmts, { kind: "handler", handlerKind: desc.kind, eventRef: desc.eventRef });
       this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, config: desc.config, params, body });
     });
 
@@ -650,7 +656,37 @@ class ModuleParser {
     if (durExpr) {
       values.push({ name: "expectedDuration", type: "float", default: { type: "float", data: [readNumberLiteral(durExpr) ?? 0] } });
     }
+    // `"extras": {"value": rt.int_(0), ...}` -- custom value sockets (payload
+    // slots 4+), declared with the same helpers as variables.
+    const extrasExpr = dictField(el, "extras");
+    if (extrasExpr) {
+      if (!isType(extrasExpr, "Dict")) {
+        fail("GP102", extrasExpr, "rt.events `extras` must be a dict literal");
+      }
+      const exKeys = nodeList((extrasExpr as PyNode).keys);
+      const exValues = nodeList((extrasExpr as PyNode).values);
+      exKeys.forEach((keyNode, k) => {
+        const extraName = stringLiteralValue(keyNode);
+        if (!extraName) {
+          fail("GP102", keyNode, "rt.events `extras` key must be a string literal");
+        }
+        const decl = this.parseVarDeclShorthand(exValues[k]);
+        values.push({ name: extraName!, type: decl.type, default: { type: decl.type, data: decl.data } } as IREventValue);
+      });
+    }
     return { externalId, values };
+  }
+
+  // Name/type of payload list slot `slot` of event `eventIndex`: slots 0..3
+  // are the standard fields, slots 4+ the event's custom value sockets in
+  // IREvent.values order (see @gltfi/ir's eventExtraValues).
+  private payloadSlot(eventIndex: number | undefined, slot: number): { name: string; type: IRType } {
+    const standard = PAYLOAD_FIELDS[slot];
+    if (standard) {
+      return { name: standard, type: standard === "boolParameter" ? "bool" : standard === "intParameter" ? "int" : "float" };
+    }
+    const extra = eventExtraValues(eventIndex === undefined ? undefined : this.events[eventIndex])[slot - PAYLOAD_FIELDS.length];
+    return extra ? { name: extra.name, type: extra.type } : { name: "boolParameter", type: "bool" };
   }
 
   // `{"Explode": {"externalId": ..., ...}, ...}` — same insertion-order-is-
@@ -687,7 +723,8 @@ class ModuleParser {
       { k: "const", type: "bool", data: [Boolean(boolDefault?.default.data[0] ?? false)] },
       { k: "const", type: "int", data: [Math.trunc(Number(intDefault?.default.data[0] ?? 0))] },
       { k: "const", type: "float", data: [Number(floatDefault?.default.data[0] ?? 0)] },
-      { k: "const", type: "float", data: [Number(duration?.default.data[0] ?? 0)] }
+      { k: "const", type: "float", data: [Number(duration?.default.data[0] ?? 0)] },
+      ...eventExtraValues(e).map((v): IRExpr => ({ k: "const", type: v.type, data: [...v.default.data] }) as IRExpr)
     ];
   }
 
@@ -1107,12 +1144,12 @@ class ModuleParser {
         // `(idx)` alone (1 arg — every value equals the event's own
         // declared default, reconstructed by eventDefaultArgs).
         const payloadExpr = sendArgs.length >= 3 ? sendArgs[2] : sendArgs.length === 2 ? sendArgs[1] : undefined;
-        const types: IRType[] = ["bool", "int", "float", "float"];
+        const types: IRType[] = ["bool", "int", "float", "float", ...eventExtraValues(this.events[eventId]).map((v) => v.type)];
         const args = payloadExpr
           ? (() => {
               const elems = listElements(payloadExpr);
-              if (!elems || elems.length !== 4) {
-                fail("GP124", payloadExpr, "rt.send's payload argument must be a 4-element list literal");
+              if (!elems || elems.length !== types.length) {
+                fail("GP124", payloadExpr, "rt.send's payload argument must be a list literal with 4 standard entries plus one per custom event value");
               }
               return elems.map((e, k) => this.lowerExpr(e, types[k], ctx));
             })()
@@ -1166,10 +1203,14 @@ class ModuleParser {
       }
       // setPointer, new bare-`if` shape (no named result — see emit-py's
       // emitSetPointer doc comment).
-      if (orelse.length === 0 || hasPlainElse) {
+      // An else holding exactly one nested `if` (e.g. a second ptr_set in
+      // the err arm) is byte-identical to `elif`, but a ptr_set test is only
+      // ever its own setPointer's out/err split, so the whole orelse is the
+      // err block either way.
+      {
         const ptrSetIfCall = asAttrCall(test, "rt", "ptr_set");
         if (ptrSetIfCall) {
-          return { stmt: this.buildSetPointerStmt(ptrSetIfCall, nodeList(stmt.body), hasPlainElse ? orelse : undefined, ctx), consumed: 1 };
+          return { stmt: this.buildSetPointerStmt(ptrSetIfCall, nodeList(stmt.body), orelse.length > 0 ? orelse : undefined, ctx), consumed: 1 };
         }
       }
       // waitAll, new bare-`if` shape (no named result — `"completed"` read
@@ -2027,8 +2068,8 @@ class ModuleParser {
       if (payloadCall) {
         const eventIndex = this.readEventIndex(callArgs(payloadCall)[0]) ?? 0;
         const fieldIdx = readNumberLiteral(sliceNode) ?? 0;
-        const field = PAYLOAD_FIELDS[fieldIdx] ?? "boolParameter";
-        return { k: "intrinsic", op: "event/receive#payload", config: { eventIndex, field }, args: [], type: field === "boolParameter" ? "bool" : field === "intParameter" ? "int" : "float" };
+        const slot = this.payloadSlot(eventIndex, fieldIdx);
+        return { k: "intrinsic", op: "event/receive#payload", config: { eventIndex, field: slot.name }, args: [], type: slot.type };
       }
       const mCall = attrCallOf(base);
       if (mCall && mCall.base === "m") {
@@ -2052,8 +2093,8 @@ class ModuleParser {
       }
       if (isType(base, "Name") && base.id === "payload" && ctx.kind === "handler" && ctx.handlerKind === "receive") {
         const fieldIdx = readNumberLiteral(sliceNode) ?? 0;
-        const field = PAYLOAD_FIELDS[fieldIdx] ?? "boolParameter";
-        return { k: "param", name: field, type: field === "boolParameter" ? "bool" : field === "intParameter" ? "int" : "float" };
+        const slot = this.payloadSlot(ctx.eventRef, fieldIdx);
+        return { k: "param", name: slot.name, type: slot.type };
       }
     }
 

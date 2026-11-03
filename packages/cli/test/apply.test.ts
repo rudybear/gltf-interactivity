@@ -355,7 +355,7 @@ describe("gltfi apply: UUID variable id round-trips byte-identically", () => {
 
     const resultJson = JSON.parse(fs.readFileSync(assetPath, "utf8"));
     const resultGraph = resultJson.extensions.KHR_interactivity.graphs[0];
-    expect(resultGraph.variables[0].id).toBe(UUID);
+    expect(resultGraph.variables[0].name).toBe(UUID);
   });
 });
 

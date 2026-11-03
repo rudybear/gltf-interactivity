@@ -79,7 +79,7 @@ describe("variable id round-trip: graph -> emit -> parse -> exportGraph, all fiv
   it("fixture sanity: corpus asset actually has variable ids, and >=1 is non-UUID-like", () => {
     const ids = idsOf(corpusModule);
     expect(ids.some((id) => id !== undefined)).toBe(true);
-    expect(ids[0]).toBe("VarSetTestStatic_boolboolb5e2be06-72dc-4301-8c3f-6be0479ad15a");
+    expect(ids[0]).toBe("VarSetTestSource_bool89b9f3f3-4dde-46d5-96c6-fdde4fe0f3af");
   });
 
   for (const backend of BACKENDS) {
@@ -90,7 +90,7 @@ describe("variable id round-trip: graph -> emit -> parse -> exportGraph, all fiv
         const { module: parsed, diagnostics } = backend.parse(code);
         expect(diagnostics.filter((d) => d.severity === "error"), `${backend.name} parse diagnostics`).toEqual([]);
         const { graph } = exportGraph(parsed);
-        expect(graph.variables?.map((v) => v.id)).toEqual(originalIds);
+        expect(graph.variables?.map((v) => v.name)).toEqual(originalIds);
       });
 
       it("preserves a synthetic UUID-like variable id", () => {
@@ -99,8 +99,8 @@ describe("variable id round-trip: graph -> emit -> parse -> exportGraph, all fiv
         const { module: parsed, diagnostics } = backend.parse(code);
         expect(diagnostics.filter((d) => d.severity === "error"), `${backend.name} parse diagnostics`).toEqual([]);
         const { graph } = exportGraph(parsed);
-        expect(graph.variables?.map((v) => v.id)).toEqual(originalIds);
-        expect(graph.variables?.[0]?.id).toBe("467a7f10-2a70-49b0-ac90-a045449a37e9");
+        expect(graph.variables?.map((v) => v.name)).toEqual(originalIds);
+        expect(graph.variables?.[0]?.name).toBe("467a7f10-2a70-49b0-ac90-a045449a37e9");
       });
     });
   }

@@ -10,9 +10,9 @@
 // (see packages/runtime/src/host.ts's setSelection/setHover).
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
-import { createInteractivityRuntimeFromGlbFile } from "@gltfi/runtime/node";
+import { createInteractivityRuntimeFromGlbFile, createRuntimeFromGlbFile } from "@gltfi/runtime/node";
 import { discoverUserInteractionTests } from "../src/assets.js";
-import { judgeInteractionTest, type TestJson } from "../src/protocol.js";
+import { judgeInteractionTest, worldPositionOfNode, type TestJson } from "../src/protocol.js";
 
 const assets = discoverUserInteractionTests();
 
@@ -29,9 +29,11 @@ describe("UserInteractions/* corpus category (F10)", () => {
     // requiredInteractions array as a pass.
     expect(testJson.tests.some((t) => (t.requiredInteractions?.length ?? 0) > 0)).toBe(true);
 
+    const gltf = createRuntimeFromGlbFile(asset.glbPath).gltf;
     const result = judgeInteractionTest(
       () => createInteractivityRuntimeFromGlbFile(asset.glbPath).asEngineLike(),
-      testJson
+      testJson,
+      { nodeWorldPosition: (nodeIndex) => worldPositionOfNode(gltf, nodeIndex) }
     );
     expect(result.ok, `judgeInteractionTest FAILed on ${asset.name}:\n  - ${result.failures.join("\n  - ")}`).toBe(true);
   });

@@ -64,6 +64,7 @@ import {
   type TypeSig
 } from "@gltfi/kernel";
 import {
+  eventExtraValues,
   formatPointerTemplate,
   parsePointerTemplate,
   pointerTemplateParams,
@@ -233,6 +234,14 @@ const HANDLER_PARAMS: Record<HandlerKind, IRHandlerParam[]> = {
   ]
 };
 
+// `<target>.<Name>` with an arbitrary (not just identifier) target expression.
+function memberAccessOfAny(node: CsNode | undefined): { target: CsNode; name: string } | undefined {
+  if (!isType(node, "SimpleMemberAccessExpression")) return undefined;
+  const nameNode = (node as CsNode).Name as CsNode | undefined;
+  if (!isType(nameNode, "IdentifierName")) return undefined;
+  return { target: (node as CsNode).Expression as CsNode, name: nameNode!.Identifier as string };
+}
+
 const PAYLOAD_FIELDS = ["boolParameter", "intParameter", "floatParameter", "expectedDuration"] as const;
 const PAYLOAD_PROP: Record<string, (typeof PAYLOAD_FIELDS)[number]> = {
   BoolParameter: "boolParameter",
@@ -315,7 +324,7 @@ const CS_TYPE_TO_IR: Record<string, IRType> = {
 // Parser
 // ---------------------------------------------------------------------------
 
-type Ctx = { kind: "proc" } | { kind: "handler"; handlerKind: HandlerKind };
+type Ctx = { kind: "proc" } | { kind: "handler"; handlerKind: HandlerKind; eventRef?: number };
 
 class ModuleParser {
   diagnostics: Diagnostic[] = [];
@@ -397,8 +406,13 @@ class ModuleParser {
       this.procs[idx] = { ...this.procs[idx], body: this.lowerBlock(body, { kind: "proc" }) };
     });
     handlerDescs.forEach((desc) => {
-      const params = HANDLER_PARAMS[desc.kind];
-      const body = this.lowerBlock(desc.bodyStmts, { kind: "handler", handlerKind: desc.kind });
+      // A receive handler also exposes the event definition's custom value
+      // sockets (payload slots 4+) as params.
+      const params =
+        desc.kind === "receive" && desc.eventRef !== undefined
+          ? [...HANDLER_PARAMS.receive, ...eventExtraValues(this.events[desc.eventRef]).map((v) => ({ name: v.name, type: v.type }))]
+          : HANDLER_PARAMS[desc.kind];
+      const body = this.lowerBlock(desc.bodyStmts, { kind: "handler", handlerKind: desc.kind, eventRef: desc.eventRef });
       this.handlers.push({ kind: desc.kind, eventRef: desc.eventRef, config: desc.config, params, body });
     });
 
@@ -521,7 +535,7 @@ class ModuleParser {
       if (!declCall) {
         fail("GC103", stmt, "expected an `rt.DeclareEvent(...)` matching the `Events` class's const declarations, in the same order");
       }
-      const [externalIdExpr, boolExpr, intExpr, floatExpr, durationExpr] = callArgs(declCall);
+      const [externalIdExpr, boolExpr, intExpr, floatExpr, durationExpr, ...extraExprs] = callArgs(declCall);
       const externalId = stringLiteralValue(externalIdExpr);
       const values: IREventValue[] = [];
       const boolLit = this.optionalNullableLiteral(boolExpr);
@@ -539,6 +553,26 @@ class ModuleParser {
       const durationLit = this.optionalNullableLiteral(durationExpr);
       if (durationLit !== undefined) {
         values.push({ name: "expectedDuration", type: "float", default: { type: "float", data: [readNumberLiteral(durationLit) ?? 0] } });
+      }
+      // Trailing `new EventExtra(name, type, initial)` params -- custom value
+      // sockets (payload slots 4+), declared like DeclareVar's (type, initial).
+      for (const extraExpr of extraExprs) {
+        const creation = objectCreationOf(extraExpr);
+        if (!creation || creation.typeName !== "EventExtra" || creation.args.length !== 3) {
+          fail("GC103", extraExpr, "rt.DeclareEvent's custom value arguments must be `new EventExtra(name, type, initial)`");
+        }
+        const [nameArg, typeArg, initArg] = creation.args;
+        const extraName = stringLiteralValue(nameArg);
+        const typeStr = stringLiteralValue(typeArg);
+        const extraType = typeStr ? CS_TYPE_TO_IR[typeStr] : undefined;
+        if (!extraName || !extraType) {
+          fail("GC103", extraExpr, "EventExtra needs a string-literal name and a known type-name string literal");
+        }
+        const initial = this.lowerExpr(initArg, extraType, { kind: "proc" });
+        if (initial.k !== "const") {
+          fail("GC103", initArg, "EventExtra's initial value must be a literal");
+        }
+        values.push({ name: extraName!, type: extraType!, default: { type: extraType!, data: initial.data as never } } as IREventValue);
       }
       const eventIdx = this.events.length;
       this.events.push({ name, id: externalId, values });
@@ -901,7 +935,7 @@ class ModuleParser {
       if (eventId === undefined) {
         fail("GC124", sendArgs[0], "rt.Send's first argument must be a numeric literal or `Events.<name>`");
       }
-      const args = sendArgs.length >= 2 ? this.lowerEventPayload(sendArgs[1], ctx) : this.eventDefaultArgs(eventId);
+      const args = sendArgs.length >= 2 ? this.lowerEventPayload(sendArgs[1], eventId, ctx) : this.eventDefaultArgs(eventId);
       return { stmt: { k: "emitEvent", eventId, args }, consumed: 1 };
     }
     const stopProp = asAttrCall(inner, "rt", "StopPropagation");
@@ -927,12 +961,13 @@ class ModuleParser {
     fail("GC110", stmt, "unrecognized call statement (unknown callee)");
   }
 
-  private lowerEventPayload(node: CsNode, ctx: Ctx): IRExpr[] {
+  private lowerEventPayload(node: CsNode, eventId: number | undefined, ctx: Ctx): IRExpr[] {
     const creation = objectCreationOf(node);
-    if (!creation || creation.typeName !== "EventPayload" || creation.args.length !== 4) {
-      fail("GC124", node, "rt.Send's payload argument must be `new EventPayload(bool, int, float, float)`");
+    // `new EventPayload(bool, int, float, float, <one arg per custom value>)`.
+    const types: IRType[] = ["bool", "int", "float", "float", ...(eventId === undefined ? [] : eventExtraValues(this.events[eventId]).map((v) => v.type))];
+    if (!creation || creation.typeName !== "EventPayload" || creation.args.length !== types.length) {
+      fail("GC124", node, "rt.Send's payload argument must be `new EventPayload(bool, int, float, float)` plus one argument per custom event value");
     }
-    const types: IRType[] = ["bool", "int", "float", "float"];
     return creation.args.map((a, k) => this.lowerExpr(a, types[k], ctx));
   }
 
@@ -1305,7 +1340,8 @@ class ModuleParser {
       { k: "const", type: "bool", data: [Boolean(boolDefault?.default.data[0] ?? false)] },
       { k: "const", type: "int", data: [Math.trunc(Number(intDefault?.default.data[0] ?? 0))] },
       { k: "const", type: "float", data: [Number(floatDefault?.default.data[0] ?? 0)] },
-      { k: "const", type: "float", data: [Number(duration?.default.data[0] ?? 0)] }
+      { k: "const", type: "float", data: [Number(duration?.default.data[0] ?? 0)] },
+      ...eventExtraValues(e).map((v): IRExpr => ({ k: "const", type: v.type, data: [...v.default.data] }) as IRExpr)
     ];
   }
 
@@ -1534,6 +1570,30 @@ class ModuleParser {
     }
 
     const node = unwrap(rawNode);
+
+    // Custom event value socket read (payload slot 4+): `payload.Extra<Suffix>(k)`
+    // in a receive handler, or `rt.EventPayloadOf(<event>).Extra<Suffix>(k)`
+    // cross-handler (see emit-cs's paramAccess / event/receive#payload).
+    if (isType(node, "InvocationExpression")) {
+      const callee = memberAccessOfAny(node.Expression as CsNode);
+      if (callee && /^Extra(Bool|Int|Float|Ref|Vec)$/.test(callee.name)) {
+        const k = readNumberLiteral(callArgs(node)[0]) ?? 0;
+        const recv = unwrap(callee.target);
+        const payloadOfCall = asAttrCall(recv, "rt", "EventPayloadOf");
+        if (payloadOfCall) {
+          const eventIndex = this.readEventIndex(callArgs(payloadOfCall)[0]) ?? 0;
+          const extra = eventExtraValues(this.events[eventIndex])[k];
+          if (extra) {
+            return { k: "intrinsic", op: "event/receive#payload", config: { eventIndex, field: extra.name }, args: [], type: extra.type };
+          }
+        } else if (isType(recv, "IdentifierName") && recv.Identifier === "payload" && ctx.kind === "handler" && ctx.handlerKind === "receive") {
+          const extra = eventExtraValues(ctx.eventRef === undefined ? undefined : this.events[ctx.eventRef])[k];
+          if (extra) {
+            return { k: "param", name: extra.name, type: extra.type };
+          }
+        }
+      }
+    }
 
     const num = readNumberLiteral(node);
     if (num !== undefined) {

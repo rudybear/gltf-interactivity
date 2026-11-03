@@ -7,7 +7,7 @@
 // (from @gltfi/runtime-lib) is the minimal surface both the interpreter (via
 // interp-adapter.ts) and the compiled engine satisfy — this file has no
 // knowledge of graph nodes, IR, or generated code at all.
-import type { Value, ValueType } from "@gltfi/kernel";
+import { mat4Compose, mat4Mul, type Value, type ValueType } from "@gltfi/kernel";
 export { CONFORMANCE_ACTIVE_CAMERA } from "@gltfi/kernel";
 import type { EngineInteractive, EngineLike } from "@gltfi/runtime-lib";
 
@@ -162,14 +162,24 @@ export function judgeTest(makeEngine: () => EngineLike, testJson: TestJson): Tes
 // own no-ray default is NaN-per-component specifically to distinguish "no
 // gesture happened" from "one did", so a synthesized gesture must supply a
 // real one instead of relying on that default).
-export function judgeInteractionTest(makeEngine: () => EngineInteractive, testJson: TestJson): TestResult {
-  const point: [number, number, number] = [0, 0, 0];
+//
+// `options.nodeWorldPosition` (the target node's world-space position, see
+// worldPositionOfNode below) makes the synthesized gesture land ON the target
+// node: the corpus's eventOnSelect test asserts "selectionPoint on target
+// cube", so a fixed origin point no longer passes. Without it the point is
+// the world origin.
+export function judgeInteractionTest(
+  makeEngine: () => EngineInteractive,
+  testJson: TestJson,
+  options: { nodeWorldPosition?: (nodeIndex: number) => [number, number, number] } = {}
+): TestResult {
   const rayOrigin: [number, number, number] = [0, 0, 5];
   return runJudge(makeEngine, testJson, (engine, test) => {
     for (const interaction of test.requiredInteractions ?? []) {
       if (interaction.expectation !== "mustFire") {
         continue;
       }
+      const point: [number, number, number] = options.nodeWorldPosition?.(interaction.targetNodeId) ?? [0, 0, 0];
       if (interaction.type === "select") {
         engine.fireSelect(interaction.targetNodeId, point, rayOrigin);
       } else if (interaction.type === "hover") {
@@ -180,4 +190,32 @@ export function judgeInteractionTest(makeEngine: () => EngineInteractive, testJs
       }
     }
   });
+}
+
+// World-space position (translation of the global matrix) of glTF node
+// `nodeIndex`, composed from the parent chain's local TRS/matrix. Used to aim
+// synthesized select/hover gestures at a node (judgeInteractionTest).
+export function worldPositionOfNode(gltf: { nodes?: Array<Record<string, unknown>> }, nodeIndex: number): [number, number, number] {
+  const nodes = gltf.nodes ?? [];
+  const parentOf = new Map<number, number>();
+  nodes.forEach((node, index) => {
+    for (const child of (node.children as number[] | undefined) ?? []) {
+      parentOf.set(child, index);
+    }
+  });
+  const local = (node: Record<string, unknown> | undefined): number[] => {
+    if (Array.isArray(node?.matrix) && node.matrix.length === 16) {
+      return (node.matrix as number[]).map(Number);
+    }
+    return mat4Compose(
+      (node?.translation as number[] | undefined) ?? [0, 0, 0],
+      (node?.rotation as number[] | undefined) ?? [0, 0, 0, 1],
+      (node?.scale as number[] | undefined) ?? [1, 1, 1]
+    );
+  };
+  let matrix = local(nodes[nodeIndex]);
+  for (let cursor = parentOf.get(nodeIndex); cursor !== undefined; cursor = parentOf.get(cursor)) {
+    matrix = mat4Mul(local(nodes[cursor]), matrix);
+  }
+  return [matrix[12], matrix[13], matrix[14]];
 }

@@ -55,6 +55,8 @@
 import {
   computeStateSlotDisplayNames,
   computeVariableDisplayNames,
+  eventExtraValues,
+  EVENT_STANDARD_VALUES,
   formatPointerTemplate,
   pointerTemplateParams,
   type IRExpr,
@@ -530,6 +532,12 @@ class Emitter {
       if (duration) {
         fields.push(`expectedDuration = ${floatLiteral(Number(duration.default.data[0] ?? 0))}`);
       }
+      // Custom value sockets beyond the four standard ones: payload slots 5+
+      // (1-based), an ordered list declared like variables.
+      const extras = eventExtraValues(e);
+      if (extras.length > 0) {
+        fields.push(`extras = { ${extras.map((v) => `{ name = ${luaStringLiteral(v.name)}, decl = ${varDeclCall(v.type, v.default.data)} }`).join(", ")} }`);
+      }
       return `{ name = "${e.name}", decl = { ${fields.join(", ")} } }`;
     });
     this.push(`local E = rt.events({ ${entries.join(", ")} })`);
@@ -539,7 +547,7 @@ class Emitter {
   // extraction as emitEvents' own field-by-field lookup above, reused by
   // emitEvent's "does this send's payload match the declared defaults"
   // check (see that method's doc comment).
-  private eventDefaultQuad(eventId: number): [boolean, number, number, number] {
+  private eventDefaultQuad(eventId: number): Array<boolean | number | string | Array<number | boolean | string>> {
     const e = this.module.events[eventId];
     const boolDefault = e?.values.find((v) => v.name === "boolParameter");
     const intDefault = e?.values.find((v) => v.name === "intParameter");
@@ -549,7 +557,9 @@ class Emitter {
       Boolean(boolDefault?.default.data[0] ?? false),
       Math.trunc(Number(intDefault?.default.data[0] ?? 0)),
       Number(floatDefault?.default.data[0] ?? 0),
-      Number(duration?.default.data[0] ?? 0)
+      Number(duration?.default.data[0] ?? 0),
+      // Extras: the scalar default (bool/int/float/ref) or the vector data.
+      ...eventExtraValues(e).map((v) => (v.default.data.length === 1 ? v.default.data[0] : [...v.default.data]))
     ];
   }
 
@@ -564,8 +574,12 @@ class Emitter {
       if (a.k !== "const") {
         return false;
       }
+      const def = defaults[i];
+      if (Array.isArray(def) || typeof def === "string") {
+        return JSON.stringify(a.data) === JSON.stringify(Array.isArray(def) ? def : [def]);
+      }
       const value = a.type === "bool" ? Boolean(a.data[0]) : Number(a.data[0]);
-      return value === defaults[i];
+      return Object.is(value, def);
     });
   }
 
@@ -801,8 +815,12 @@ class Emitter {
         return;
       }
       case "emitEvent": {
-        if (stmt.args.length !== 4) {
-          throw new EmitError("emitEvent expects exactly 4 payload args (bool,int,float,duration)", "event/send", this.originNodeId);
+        if (stmt.args.length !== EVENT_STANDARD_VALUES.length + eventExtraValues(this.module.events[stmt.eventId]).length) {
+          throw new EmitError(
+            "emitEvent expects 4 payload args (bool,int,float,duration) plus one per custom event value",
+            "event/send",
+            this.originNodeId
+          );
         }
         // externalId is never passed at the call site — see engine.lua's
         // rt.send doc comment. The payload table itself is omitted too when
@@ -1286,6 +1304,8 @@ class Emitter {
       if (name === "intParameter") return "payload[2]";
       if (name === "floatParameter") return "payload[3]";
       if (name === "expectedDuration") return "payload[4]";
+      const extraIndex = eventExtraValues(this.module.events[ctx.eventRef]).findIndex((v) => v.name === name);
+      if (extraIndex >= 0) return `payload[${EVENT_STANDARD_VALUES.length + extraIndex + 1}]`;
     }
     throw new EmitError(`param("${name}") not supported for handler kind "${ctx.kind}"`, "param", this.originNodeId);
   }
@@ -1334,7 +1354,11 @@ class Emitter {
       const eventIndex = expr.config.eventIndex as number;
       const field = expr.config.field as string;
       // 1-based: Lua's eventPayload tuple, unlike TS's 0-based array.
-      const fieldIndex = { boolParameter: 1, intParameter: 2, floatParameter: 3, expectedDuration: 4 }[field];
+      const standardIndex = (EVENT_STANDARD_VALUES as readonly string[]).indexOf(field);
+      const fieldIndex =
+        standardIndex >= 0
+          ? standardIndex + 1
+          : EVENT_STANDARD_VALUES.length + 1 + eventExtraValues(this.module.events[eventIndex]).findIndex((v) => v.name === field);
       return `rt.eventPayload(${this.eventArgCode(eventIndex)})[${fieldIndex}]`;
     }
     if (expr.op === "event/onTick#time") {
