@@ -129,8 +129,11 @@ describe("EventBus with interpreter runtimes", () => {
 
   it("skips targets whose socket types are incompatible", () => {
     const g = receiverGraph();
+    // Receiver listens for "pub".n as float (sender sends int); its own
+    // variable is float too so the receiver graph stays spec-valid.
     g.types.push({ signature: "float" } as never);
     (g.events[0].values as Record<string, { type: number; value: number[] }>).n = { type: 2, value: [0] };
+    (g.variables[0] as { type: number }).type = 2;
     const bus = new EventBus();
     const a = mk(senderGraph());
     const b = mk(g);
