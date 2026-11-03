@@ -256,3 +256,15 @@ The math items (`clamp`, `max`, `pow`, `saturate`, `round`, `min`) behave correc
 runtime for free because JS `Math.*` already follows the corpus's IEEE edge cases; the other
 languages need explicit NaN/infinity/signed-zero handling in `m.*` (compare with `math.ts` /
 the spec's per-op tables).
+
+## 10. GDScript port status (packages/runtime-gd)
+
+Done in `packages/runtime-gd/src/gd/`:
+
+- Section 1: `pointer.gd:_default_raw` is NaN-filled for float types (matrices not identity).
+- Section 3: `m.gd:isInf` drops the NaN clause. `math/pow`: `numeric.gd:safePow` returns 1 for `b == 0` before the NaN check. `math/saturate(NaN)` is NaN. `min`/`max` use `Numeric.fmin/fmax` (NaN propagation + signed zero). `toInt32` now goes through `fmod(x, 2^32)` because GDScript `int(float)` saturates past 2^63 (`floatToInt(1e20)`).
+- Section 4: `engine.gd:_is_valid_interpolation` (mirrors `isValidInterpolation`) for var/ptr interpolate; `scheduler.gd` variable-interp phase writes the exact target on `t >= 1` or NaN (duration 0), skips `t <= 0`.
+- Section 6a-6d: `pointer.gd` `is_read_only_pointer` / `property_accepts_signature` / `can_write_pointer` (used by `ptr_set`; `ptr_interp_prepare` checks read-only), `asset/extensions/<x>/enabled` invalid unless used+supported, `meshes/{}/weights` invalid, activeCamera table (`_read_active_camera_pointer`); the engine takes an optional `active_camera` dict and `harness.gd` hands every engine the `CONFORMANCE_ACTIVE_CAMERA` values.
+- Animation (user bug report #3/#4): `animation.gd` ports `decodeAccessor` (all component types, normalized, byteStride, sparse, missing bufferView), CUBICSPLINE Hermite, per-document cache (`host["_animCache"]`) and binary-search keyframes with a last-index fast path. Tests: `packages/runtime-gd/test/animation_test.gd` (+ vitest wrapper `animation.test.ts`, skipped without godot).
+
+Open: `Extras/Float_Precision` (`conf:gd` is 157/158). Godot's script parser cannot read the emitted literals `9007199254740991.0` (comes out as 2^53-2), `5e-324` (denormals flush to 0), and `-0.0` as a call argument / unary-neg of `0.0` loses the sign (constant folding). This needs an `emit-gd` change (and a matching `parse-gd` change so the roundtrip stays green): emit `m.f64FromBits(<signed int64 bit pattern>)` (already provided by `m.gd`/`numeric.gd`) for negative zero (including `-0.0` produced by unary neg of literal `0.0`), denormals and literals with >= 16 significant digits.

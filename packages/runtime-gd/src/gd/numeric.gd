@@ -24,7 +24,9 @@ extends RefCounted
 static func toInt32(x: float) -> int:
 	if is_nan(x) or is_inf(x):
 		return 0
-	var n := int(x)  # GDScript int(float) truncates toward zero, like Python's math.trunc.
+	# int(float) saturates past 2^63 in GDScript; fmod is exact and keeps the sign,
+	# and trunc(fmod(x, 2^32)) == fmod(trunc(x), 2^32) (ECMAScript ToInt32).
+	var n := int(fmod(x, 4294967296.0))
 	return int(((n & 0xFFFFFFFF) ^ 0x80000000) - 0x80000000)
 
 
@@ -35,12 +37,16 @@ static func int32Wrap(n: int) -> int:
 static func fmin(a: float, b: float) -> float:
 	if is_nan(a) or is_nan(b):
 		return NAN
+	if a == 0.0 and b == 0.0:
+		return a if 1.0 / a < 0.0 else b  # Math.min(0, -0) is -0
 	return a if a < b else b
 
 
 static func fmax(a: float, b: float) -> float:
 	if is_nan(a) or is_nan(b):
 		return NAN
+	if a == 0.0 and b == 0.0:
+		return a if 1.0 / a > 0.0 else b  # Math.max(-0, 0) is 0
 	return a if a > b else b
 
 
@@ -73,10 +79,10 @@ static func _isOddInt(x: float) -> bool:
 # Ports numeric.py's safe_pow branch-for-branch (not just the one probed
 # `abs(base)==1, infinite exponent` divergence) — see m.gd's header note.
 static func safePow(a: float, b: float) -> float:
+	if b == 0.0:
+		return 1.0  # pow(NaN, 0) == 1 (spec / JS Math.pow)
 	if is_nan(a) or is_nan(b):
 		return NAN
-	if b == 0.0:
-		return 1.0
 	var a_neg_zero: bool = a == 0.0 and signf(a) < 0.0
 	if a == 0.0:
 		if b < 0.0:
@@ -96,3 +102,13 @@ static func safePow(a: float, b: float) -> float:
 	if a < 0.0 and not _isIntValued(b):
 		return NAN
 	return pow(a, b)
+
+
+# Exact IEEE-754 double from its raw bit pattern (signed int64 holds all 64
+# bits). Godot's script/float parser mis-reads some literals (2^53-1 comes out
+# as 2^53-2, 5e-324 and other denormals flush to 0); this is the exact path.
+static func f64FromBits(bits: int) -> float:
+	var buf := PackedByteArray()
+	buf.resize(8)
+	buf.encode_s64(0, bits)
+	return buf.decode_double(0)

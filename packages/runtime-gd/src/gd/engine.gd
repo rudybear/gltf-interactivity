@@ -70,7 +70,7 @@ var _accessor_host: Dictionary
 var _scheduler: RefCounted
 
 
-func _init(gltf = null, glb_bin = null, seed: float = _DEFAULT_SEED, on_pointer_set: Callable = Callable()) -> void:
+func _init(gltf = null, glb_bin = null, seed: float = _DEFAULT_SEED, on_pointer_set: Callable = Callable(), active_camera = null) -> void:
 	_anim_ref_regex = RegEx.new()
 	_anim_ref_regex.compile("^/animations/(\\d+)$")
 	_gltf = gltf
@@ -83,8 +83,11 @@ func _init(gltf = null, glb_bin = null, seed: float = _DEFAULT_SEED, on_pointer_
 		"isDelayActive": is_delay_active,
 		"isAnimationPlaying": is_animation_playing,
 		"getAnimationPlayhead": get_animation_playhead,
-		"activeCameraPosition": null,
-		"activeCameraRotation": null,
+		# active_camera: optional {"position": [3], "rotation": [4],
+		# "projection": {"type": "perspective"|"orthographic", ...}}.
+		"activeCameraPosition": (active_camera["position"].duplicate() if active_camera is Dictionary else null),
+		"activeCameraRotation": (active_camera["rotation"].duplicate() if active_camera is Dictionary else null),
+		"activeCameraProjection": (active_camera.get("projection") if active_camera is Dictionary else null),
 		"onPointerSet": (_on_pointer_set if _on_pointer_set.is_valid() else null),
 		# Spec pointer/set step 5 (see pointer.gd's ptr_set): killing any
 		# in-flight pointer/interpolate targeting the same effective
@@ -166,6 +169,21 @@ func _kill_pointer_interp(pointer: String) -> void:
 
 static func _finite_num(x) -> bool:
 	return (typeof(x) == TYPE_FLOAT or typeof(x) == TYPE_INT) and not is_nan(x) and not is_inf(x)
+
+
+# Mirrors kernel/src/scheduler.ts isValidInterpolation (spec variable/interpolate,
+# pointer/interpolate): finite non-negative duration (0 allowed), finite p1/p2,
+# X components within [0, 1].
+static func _is_valid_interpolation(duration: float, p1: Array, p2: Array) -> bool:
+	if not _finite_num(duration) or duration < 0.0:
+		return false
+	for p in [p1, p2]:
+		if not _finite_arr(p):
+			return false
+		var x: float = p[0] if p.size() > 0 else 0.0
+		if x < 0.0 or x > 1.0:
+			return false
+	return true
 
 
 static func _finite_arr(arr: Array) -> bool:
@@ -519,8 +537,7 @@ func cancel_delay_slot(slot: Dictionary) -> void:
 func var_interp(var_id: int, value, duration: float, p1: Array, p2: Array, use_slerp: bool, done: Callable = Callable()) -> Dictionary:
 	var t: String = var_types[var_id] if var_id < var_types.size() else "float"
 	var end_kernel: Dictionary = _raw_to_kernel_value(t, value)
-	var is_valid: bool = _finite_num(duration) and duration > 0.0 and _is_finite_raw(value) and _finite_arr(p1) and _finite_arr(p2)
-	if not is_valid:
+	if not _is_valid_interpolation(duration, p1, p2):
 		return {"ok": false}
 	var start_kernel: Dictionary = _raw_to_kernel_value(t, var_raw[var_id])
 	_scheduler.add_variable_interp({
@@ -565,12 +582,10 @@ func ptr_interp(pointer: String, args_or_type, type_or_value, value_or_duration 
 	var prep = Pointer.ptr_interp_prepare(_pointer_host, pointer, args, t)
 	if prep == null:
 		return {"ok": false}
-	if not _finite_num(duration) or duration < 0.0:
+	if not _is_valid_interpolation(duration, p1, p2):
 		return {"ok": false}
 	var p10: float = p1[0] if p1.size() > 0 else 0.0
 	var p20: float = p2[0] if p2.size() > 0 else 0.0
-	if not _finite_arr(p1) or not _finite_arr(p2) or p10 < 0.0 or p10 > 1.0 or p20 < 0.0 or p20 > 1.0:
-		return {"ok": false}
 	var target: Array
 	if value is Array:
 		target = []

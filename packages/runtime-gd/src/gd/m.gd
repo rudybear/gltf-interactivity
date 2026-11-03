@@ -162,6 +162,10 @@ static func toInt32(x: float) -> int:
 	return Numeric.toInt32(x)
 
 
+static func f64FromBits(bits: int) -> float:
+	return Numeric.f64FromBits(bits)
+
+
 static func _int32Wrap(n: int) -> int:
 	return Numeric.int32Wrap(n)
 
@@ -253,7 +257,7 @@ static func negInt(a: int) -> int:
 
 
 static func saturate(a):
-	return _map1(a, func(x): return maxf(minf(x, 1.0), 0.0))
+	return _map1(a, func(x): return NAN if is_nan(x) else maxf(minf(x, 1.0), 0.0))
 
 
 static func add(a, b):
@@ -297,7 +301,7 @@ static func remInt(a: int, b: int) -> int:
 
 
 static func min_(a, b):
-	return _map2(a, b, func(x, y): return NAN if (is_nan(x) or is_nan(y)) else minf(x, y))
+	return _map2(a, b, func(x, y): return Numeric.fmin(x, y))
 
 
 static func minInt(a: int, b: int) -> int:
@@ -305,7 +309,7 @@ static func minInt(a: int, b: int) -> int:
 
 
 static func max_(a, b):
-	return _map2(a, b, func(x, y): return NAN if (is_nan(x) or is_nan(y)) else maxf(x, y))
+	return _map2(a, b, func(x, y): return Numeric.fmax(x, y))
 
 
 static func maxInt(a: int, b: int) -> int:
@@ -395,7 +399,7 @@ static func isNaN(a) -> bool:
 
 static func isInf(a) -> bool:
 	for x in _arr(a):
-		if is_nan(x) or is_inf(x):
+		if is_inf(x):
 			return true
 	return false
 

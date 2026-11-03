@@ -257,7 +257,19 @@ func advance(delta: float) -> void:
 	var kept_variable_interps := []
 	for idx in range(n):
 		var interp = original_variable_interps[idx]
-		var t: float = minf(1.0, (time - interp["startTime"]) / interp["duration"])
+		# Spec variable/interpolate tick: t <= 0 skips; NaN (duration 0 at the
+		# start instant) or t >= 1 writes the exact target, removes, fires done.
+		var raw_t: float = (time - interp["startTime"]) / interp["duration"]
+		if raw_t <= 0.0:
+			kept_variable_interps.append(interp)
+			continue
+		if is_nan(raw_t) or raw_t >= 1.0:
+			var end_v: Dictionary = interp["endValue"]
+			effects["setVariable"].call(interp["variableIndex"], {"type": end_v["type"], "data": (end_v["data"].duplicate() if end_v["data"] is Array else end_v["data"])})
+			if interp.get("doneCont") != null:
+				effects["fireFlow"].call(interp["doneCont"])
+			continue
+		var t: float = raw_t
 		var ease: float = Kmath.cubicBezierEase(t, interp["p1"], interp["p2"])
 		if interp["useSlerp"] and interp["startValue"]["type"] == "float4" and interp["endValue"]["type"] == "float4":
 			var q: Array = Kmath.quatSlerp(_value_to_number_array(interp["startValue"]), _value_to_number_array(interp["endValue"]), ease)
@@ -269,11 +281,7 @@ func advance(delta: float) -> void:
 			for i2 in range(start_arr.size()):
 				out.append(start_arr[i2] + (end_arr[i2] - start_arr[i2]) * ease)
 			effects["setVariable"].call(interp["variableIndex"], {"type": interp["endValue"]["type"], "data": out})
-		if t >= 1.0:
-			if interp.get("doneCont") != null:
-				effects["fireFlow"].call(interp["doneCont"])
-		else:
-			kept_variable_interps.append(interp)
+		kept_variable_interps.append(interp)
 	_variable_interps = kept_variable_interps
 
 	# Phase 4: due delays. Two passes before any flow fires.

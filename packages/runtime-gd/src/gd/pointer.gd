@@ -203,17 +203,9 @@ static func _resolve_weights_length(gltf, node_index, mesh_index) -> Dictionary:
 		if mesh.get("weights") is Array:
 			return {"value": mesh["weights"].size(), "isValid": true}
 		return {"value": target_count, "isValid": true}
-	if mesh_index != null:
-		var meshes2 = (gltf if gltf is Dictionary else {}).get("meshes", []) if gltf != null else []
-		if not (meshes2 is Array):
-			meshes2 = []
-		var mesh2 = meshes2[mesh_index] if mesh_index >= 0 and mesh_index < meshes2.size() else null
-		if not mesh2:
-			return {"value": 0, "isValid": false}
-		var target_count2 = _get_mesh_target_count(mesh2)
-		if mesh2.get("weights") is Array:
-			return {"value": mesh2["weights"].size(), "isValid": true}
-		return {"value": target_count2, "isValid": true}
+	# `/meshes/{}/weights` is not an Object Model pointer for this extension
+	# (only `/nodes/{}/weights`, resolved through the node's mesh), so
+	# `meshes/{}/weights.length` is invalid.
 	return {"value": 0, "isValid": false}
 
 
@@ -290,22 +282,8 @@ static func _resolve_pointer_value(gltf, resolved: String) -> Dictionary:
 				else:
 					return {"value": null, "isValid": false}
 			elif mesh_index != null:
-				var mesh2 = meshes_top[mesh_index] if meshes_top != null and mesh_index >= 0 and mesh_index < meshes_top.size() else null
-				if not mesh2:
-					return {"value": null, "isValid": false}
-				var target_count2 = _get_mesh_target_count(mesh2)
-				if mesh2.get("weights") is Array:
-					current = mesh2["weights"]
-					weights_handled = true
-				elif target_count2 > 0:
-					var arr2 := []
-					for _k in range(target_count2):
-						arr2.append(0.5)
-					current = arr2
-					weights_handled = true
-				else:
-					current = [0.0]
-					weights_handled = true
+				# `/meshes/{}/weights/N` is not a pointer of this extension: invalid.
+				return {"value": null, "isValid": false}
 
 		if not weights_handled:
 			if token.is_valid_int() and current is Array:
@@ -531,16 +509,79 @@ static func _value_matches_type(value, t: String) -> bool:
 	return false
 
 
+# Mirrors kernel value.ts defaultValue(): float types are all-NaN (spec
+# "Custom Variable Types"), matrices are NOT identity.
 static func _default_raw(t: String):
-	var defaults := {
-		"bool": false, "int": 0, "float": 0,
-		"float2": [0.0, 0.0], "float3": [0.0, 0.0, 0.0], "float4": [0.0, 0.0, 0.0, 0.0],
-		"float2x2": [1.0, 0.0, 0.0, 1.0],
-		"float3x3": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
-		"float4x4": [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-		"ref": "",
-	}
-	return defaults.get(t)
+	match t:
+		"bool": return false
+		"int": return 0
+		"float": return NAN
+		"float2": return [NAN, NAN]
+		"float3": return [NAN, NAN, NAN]
+		"float4": return [NAN, NAN, NAN, NAN]
+		"float2x2": return _nan_array(4)
+		"float3x3": return _nan_array(9)
+		"float4x4": return _nan_array(16)
+		"ref": return ""
+	return null
+
+
+static func _nan_array(n: int) -> Array:
+	var out := []
+	for _i in range(n):
+		out.append(NAN)
+	return out
+
+
+# --- pointer/set + pointer/interpolate target validation (mirrors
+# kernel/src/pointer-write.ts; spec pointer/set step 4) ---
+
+static func is_read_only_pointer(resolved: String) -> bool:
+	if resolved.contains("/extensions/KHR_interactivity/"):
+		return true
+	var toks := []
+	for tk in resolved.split("/"):
+		if tk != "":
+			toks.append(tk)
+	var last: String = toks[toks.size() - 1] if toks.size() > 0 else ""
+	return last.ends_with(".length") or last == "globalMatrix"
+
+
+static func property_accepts_signature(current, sig: String) -> bool:
+	if typeof(current) == TYPE_BOOL:
+		return sig == "bool"
+	if _is_number(current):
+		return sig == "int" or sig == "float"
+	if current is Array:
+		match current.size():
+			2: return sig == "float2"
+			3: return sig == "float3"
+			4: return sig == "float4" or sig == "float2x2"
+			9: return sig == "float3x3"
+			16: return sig == "float4x4"
+		return false
+	return false
+
+
+const _OPTIONAL_PARENT_TOKENS := ["pbrMetallicRoughness", "weights", "translation", "rotation", "scale", "extras"]
+
+
+static func can_write_pointer(gltf, resolved: String, sig: String) -> bool:
+	if is_read_only_pointer(resolved):
+		return false
+	var raw := []
+	for tk in resolved.split("/"):
+		if tk != "":
+			raw.append(tk)
+	for k in range(1, raw.size()):
+		var prefix := "/" + "/".join(raw.slice(0, k))
+		var optional: bool = _OPTIONAL_PARENT_TOKENS.has(raw[k - 1]) or raw[k - 1] == "extensions" or (k >= 2 and raw[k - 2] == "extensions")
+		if not _resolve_pointer_value(gltf, prefix)["isValid"] and not optional:
+			return false
+	var current = _resolve_pointer_value(gltf, resolved)
+	if current["isValid"] and not property_accepts_signature(current["value"], sig):
+		return false
+	return true
 
 
 # Extensions this runtime implements; used by the asset/extensions/{name}/
@@ -559,17 +600,38 @@ const _RUNTIME_LIMITS := {
 const _ANIM_PROPS := {"isPlaying": true, "minTime": true, "maxTime": true, "playhead": true, "virtualPlayhead": true}
 
 
-static func _resolve_virtual_pointer(host: Dictionary, resolved: String, t: String):
-	if resolved == "/extensions/KHR_interactivity/activeCamera/position":
-		if t != "float3":
-			return {"value": _default_raw(t), "isValid": false}
+# Mirrors kernel/src/active-camera.ts readActiveCameraPointer. Returns null when
+# `resolved` is not an activeCamera pointer.
+static func _read_active_camera_pointer(host: Dictionary, resolved: String):
+	var prefix := "/extensions/KHR_interactivity/activeCamera/"
+	if not resolved.begins_with(prefix):
+		return null
+	var path := resolved.substr(prefix.length())
+	if path == "position":
 		var pos = host.get("activeCameraPosition")
-		return {"value": pos if pos else [NAN, NAN, NAN], "isValid": true}
-	if resolved == "/extensions/KHR_interactivity/activeCamera/rotation":
-		if t != "float4":
-			return {"value": _default_raw(t), "isValid": false}
+		return {"type": "float3", "value": (pos.duplicate() if pos else [NAN, NAN, NAN])}
+	if path == "rotation":
 		var rot = host.get("activeCameraRotation")
-		return {"value": rot if rot else [NAN, NAN, NAN, NAN], "isValid": true}
+		return {"type": "float4", "value": (rot.duplicate() if rot else [NAN, NAN, NAN, NAN])}
+	var parts := path.split("/")
+	if parts.size() != 2 or (parts[0] != "perspective" and parts[0] != "orthographic"):
+		return null
+	var allowed := ["aspectRatio", "yfov", "znear", "zfar"] if parts[0] == "perspective" else ["xmag", "ymag", "znear", "zfar"]
+	if not allowed.has(parts[1]):
+		return null
+	var proj = host.get("activeCameraProjection")
+	if not (proj is Dictionary) or proj.get("type") != parts[0]:
+		return {"type": "float", "value": NAN}
+	return {"type": "float", "value": float(proj[parts[1]])}
+
+
+static func _resolve_virtual_pointer(host: Dictionary, resolved: String, t: String):
+	var cam = _read_active_camera_pointer(host, resolved)
+	if cam != null:
+		# Always valid (NaN components when no camera / other projection kind).
+		if t != cam["type"]:
+			return {"value": _default_raw(t), "isValid": false}
+		return {"value": cam["value"], "isValid": true}
 	if resolved == "/extensions/KHR_interactivity/asset/majorVersion" or resolved == "/extensions/KHR_interactivity/asset/minorVersion":
 		if t != "int":
 			return {"value": _default_raw(t), "isValid": false}
@@ -586,7 +648,11 @@ static func _resolve_virtual_pointer(host: Dictionary, resolved: String, t: Stri
 		var used = (gltf_doc.get("extensionsUsed") if gltf_doc is Dictionary else null)
 		var is_used = used is Array and used.has(name)
 		var enabled = _SUPPORTED_EXTENSIONS.has(name) and (name == "KHR_interactivity" or is_used)
-		return {"value": enabled, "isValid": true}
+		# Spec "Asset Capabilities": the virtual object only exists for
+		# used+supported extensions; otherwise the pointer does not resolve.
+		if not enabled:
+			return {"value": _default_raw(t), "isValid": false}
+		return {"value": true, "isValid": true}
 
 	var limit_re := RegEx.new()
 	limit_re.compile("^/extensions/KHR_interactivity/limits/([^/]+)$")
@@ -685,6 +751,9 @@ static func ptr_set(host: Dictionary, pointer: String, args: Dictionary, t: Stri
 	var resolved = _build_effective_pointer(pointer, args)
 	if resolved == null:
 		return false
+	# Spec pointer/set step 4 (kernel pointer-write.ts canWritePointer).
+	if not can_write_pointer(host["gltf"], resolved, t):
+		return false
 	var ok = _set_pointer_value(host["gltf"], resolved, value)
 	if ok:
 		# Spec pointer/set step 5: kill any in-flight pointer/interpolate
@@ -726,7 +795,7 @@ static func ptr_interp_prepare(host: Dictionary, pointer: String, args: Dictiona
 	if resolved == null:
 		return null
 	var result = _resolve_pointer_value(host.get("gltf"), resolved)
-	if not result["isValid"] or not _value_matches_type(result["value"], t):
+	if not result["isValid"] or not _value_matches_type(result["value"], t) or is_read_only_pointer(resolved):
 		return null
 	var value = result["value"]
 	var start_value := []
