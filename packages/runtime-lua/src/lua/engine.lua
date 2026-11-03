@@ -120,8 +120,9 @@ function CreateEngine(setup)
       getAnimationPlayhead = function(index)
         return animationPlayheads[index] or { playhead = 0, virtualPlayhead = 0 }
       end,
-      activeCameraPosition = nil,
-      activeCameraRotation = nil,
+      activeCameraPosition = options.activeCamera and options.activeCamera.position or nil,
+      activeCameraRotation = options.activeCamera and options.activeCamera.rotation or nil,
+      activeCameraProjection = options.activeCamera and options.activeCamera.projection or nil,
       onPointerSet = options.onPointerSet,
       -- Spec pointer/set step 5 (see pointer.lua's ptr_ptrSet): killing any
       -- in-flight pointer/interpolate targeting the same effective pointer.
@@ -300,6 +301,31 @@ function CreateEngine(setup)
     function rt.waitAllState() return { activated = {} } end
     function rt.throttleState() return { remaining = (0/0) } end
     function rt.delayState() return { lastId = -1.0, lastRef = "", ids = {} } end
+    -- Mirrors engine.ts defaultEventPayload: [bool, int, float, expectedDuration,
+    -- ...extras in declaration order] (extras at slots 5+k, 1-based; each is
+    -- the extra socket's initial value or type-default).
+    local function defaultEventPayload(decl)
+      local b, i, f, d = false, 0.0, 0.0, 0.0
+      if decl then
+        if decl.defaultBool ~= nil then b = decl.defaultBool end
+        if decl.defaultInt ~= nil then i = decl.defaultInt end
+        if decl.defaultFloat ~= nil then f = decl.defaultFloat end
+        if decl.expectedDuration ~= nil then d = decl.expectedDuration end
+      end
+      local payload = { b, i, f, d }
+      if decl and decl.extras then
+        for k, extra in ipairs(decl.extras) do
+          local init = extra.decl and extra.decl.initial
+          if type(init) == "table" then
+            local copy = {}
+            for j = 1, #init do copy[j] = init[j] end
+            init = copy
+          end
+          payload[4 + k] = init
+        end
+      end
+      return payload
+    end
     function rt.onStart(fn) onStartHandlers[#onStartHandlers + 1] = fn end
     function rt.onTick(fn) onTickHandlers[#onTickHandlers + 1] = fn end
     function rt.onReceive(eventIndex, fn)
@@ -341,14 +367,7 @@ function CreateEngine(setup)
       elseif type(thirdArg) == "table" then
         payload = thirdArg
       else
-        local b, i, f, d = false, 0.0, 0.0, 0.0
-        if decl then
-          if decl.defaultBool ~= nil then b = decl.defaultBool end
-          if decl.defaultInt ~= nil then i = decl.defaultInt end
-          if decl.defaultFloat ~= nil then f = decl.defaultFloat end
-          if decl.expectedDuration ~= nil then d = decl.expectedDuration end
-        end
-        payload = { b, i, f, d }
+        payload = defaultEventPayload(decl)
       end
       local externalId = decl and decl.externalId
       sentEvents[#sentEvents + 1] = { eventIndex = eventIndex, externalId = externalId, payload = payload }
@@ -382,14 +401,7 @@ function CreateEngine(setup)
       local sent = lastPayloadByIndex[eventIndex]
       if sent then return sent end
       local decl = eventDecls[eventIndex + 1]
-      local b, i, f, d = false, 0, 0, 0
-      if decl then
-        if decl.defaultBool ~= nil then b = decl.defaultBool end
-        if decl.defaultInt ~= nil then i = decl.defaultInt end
-        if decl.defaultFloat ~= nil then f = decl.defaultFloat end
-        if decl.expectedDuration ~= nil then d = decl.expectedDuration end
-      end
-      return { b, i, f, d }
+      return defaultEventPayload(decl)
     end
     function rt.tickTime()
       if scheduler.tickCount == 0 then return 0 end
@@ -472,7 +484,13 @@ function CreateEngine(setup)
       local t = varTypes[varId + 1]
       if t == nil then t = "float" end
       local endKernel = engine_rawToKernelValue(t, value)
-      local isValid = engine_finiteNum(duration) and duration > 0 and engine_isFiniteRaw(value) and engine_finiteArr(p1) and engine_finiteArr(p2)
+      -- Mirrors kernel isValidInterpolation(): duration finite and >= 0, p1/p2
+      -- components finite with the X components in [0, 1]. A non-finite
+      -- target value is NOT an error.
+      local p10 = p1[1] or 0
+      local p20 = p2[1] or 0
+      local isValid = engine_finiteNum(duration) and duration >= 0 and engine_finiteArr(p1) and engine_finiteArr(p2)
+        and p10 >= 0 and p10 <= 1 and p20 >= 0 and p20 <= 1
       if not isValid then return { ok = false } end
       local startKernel = engine_rawToKernelValue(t, varRaw[varId + 1])
       scheduler.addVariableInterp({

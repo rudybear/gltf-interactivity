@@ -205,13 +205,8 @@ local function ptr_resolveWeightsLength(gltf, nodeIndex, meshIndex)
     if type(mesh.weights) == "table" then return #mesh.weights, true end
     return targetCount, true
   end
-  if meshIndex ~= nil then
-    local mesh = gltf.meshes[meshIndex + 1]
-    if not mesh then return 0, false end
-    local targetCount = ptr_getMeshTargetCount(mesh)
-    if type(mesh.weights) == "table" then return #mesh.weights, true end
-    return targetCount, true
-  end
+  -- `/meshes/{}/weights` is not an Object Model pointer for this extension
+  -- (only `/nodes/{}/weights`, resolved through the node's mesh).
   return 0, false
 end
 
@@ -277,21 +272,8 @@ local function ptr_resolvePointerValue(gltf, resolved)
             return nil, false
           end
         elseif meshIndex ~= nil then
-          local mesh = gltf.meshes[meshIndex + 1]
-          if not mesh then return nil, false end
-          local targetCount = ptr_getMeshTargetCount(mesh)
-          if type(mesh.weights) == "table" then
-            current = mesh.weights
-            weightsHandled = true
-          elseif targetCount > 0 then
-            local w = {}
-            for k = 1, targetCount do w[k] = 0.5 end
-            current = w
-            weightsHandled = true
-          else
-            current = { 0 }
-            weightsHandled = true
-          end
+          -- `/meshes/{}/weights/N` is not a pointer of this extension: invalid.
+          return nil, false
         end
       end
 
@@ -531,17 +513,67 @@ local function ptr_valueMatchesType(value, t)
   return false
 end
 
+-- Type-default raw value (spec "Custom Variable Types": NaN for every float
+-- component, false, 0, null reference). Mirrors kernel value.ts defaultValue.
 local function ptr_defaultRaw(t)
+  local nan = 0 / 0
   if t == "bool" then return false end
-  if t == "int" or t == "float" then return 0 end
-  if t == "float2" then return { 0, 0 } end
-  if t == "float3" then return { 0, 0, 0 } end
-  if t == "float4" then return { 0, 0, 0, 0 } end
-  if t == "float2x2" then return { 1, 0, 0, 1 } end
-  if t == "float3x3" then return { 1, 0, 0, 0, 1, 0, 0, 0, 1 } end
-  if t == "float4x4" then return { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 } end
+  if t == "int" then return 0 end
+  if t == "float" then return nan end
+  if t == "float2" then return { nan, nan } end
+  if t == "float3" then return { nan, nan, nan } end
+  if t == "float4" then return { nan, nan, nan, nan } end
+  local n = ({ float2x2 = 4, float3x3 = 9, float4x4 = 16 })[t]
+  if n then
+    local out = {}
+    for i = 1, n do out[i] = nan end
+    return out
+  end
   if t == "ref" then return "" end
   return nil
+end
+
+-- Mirrors kernel pointer-write.ts (isReadOnlyPointer / propertyAcceptsSignature
+-- / canWritePointer): spec pointer/set + pointer/interpolate step 4.
+local function ptr_isReadOnlyPointer(resolved)
+  if resolved:find("/extensions/KHR_interactivity/", 1, true) then return true end
+  local last = ""
+  for tok in resolved:gmatch("[^/]+") do last = tok end
+  return last:match("%.length$") ~= nil or last == "globalMatrix"
+end
+
+local function ptr_propertyAcceptsSignature(current, sig)
+  if type(current) == "boolean" then return sig == "bool" end
+  if type(current) == "number" then return sig == "int" or sig == "float" end
+  if type(current) == "table" then
+    local n = #current
+    if n == 2 then return sig == "float2" end
+    if n == 3 then return sig == "float3" end
+    if n == 4 then return sig == "float4" or sig == "float2x2" end
+    if n == 9 then return sig == "float3x3" end
+    if n == 16 then return sig == "float4x4" end
+  end
+  return false
+end
+
+local PTR_OPTIONAL_PARENT = {
+  pbrMetallicRoughness = true, weights = true, translation = true, rotation = true, scale = true, extras = true
+}
+
+local function ptr_canWritePointer(gltf, resolved, sig)
+  if ptr_isReadOnlyPointer(resolved) then return false end
+  local raw = {}
+  for tok in resolved:gmatch("[^/]+") do raw[#raw + 1] = tok end
+  for k = 1, #raw - 1 do
+    local prefix = "/" .. table.concat(raw, "/", 1, k)
+    local parent = raw[k]
+    local optional = PTR_OPTIONAL_PARENT[parent] or parent == "extensions" or raw[k - 1] == "extensions"
+    local _, isValid = ptr_resolvePointerValue(gltf, prefix)
+    if not isValid and not optional then return false end
+  end
+  local cur, curValid = ptr_resolvePointerValue(gltf, resolved)
+  if curValid and not ptr_propertyAcceptsSignature(cur, sig) then return false end
+  return true
 end
 
 -- Extensions this runtime implements; used by the asset/extensions/{name}/
@@ -565,13 +597,41 @@ local PTR_ANIM_PROPS = { isPlaying = true, minTime = true, maxTime = true, playh
 -- from a matched-but-invalid result (whose value is always a real
 -- defaultRaw(t), never nil).
 local function ptr_resolveVirtualPointer(host, resolved, t)
-  if resolved == "/extensions/KHR_interactivity/activeCamera/position" then
-    if t ~= "float3" then return ptr_defaultRaw(t), false end
-    return host.activeCameraPosition or { 0 / 0, 0 / 0, 0 / 0 }, true
-  end
-  if resolved == "/extensions/KHR_interactivity/activeCamera/rotation" then
-    if t ~= "float4" then return ptr_defaultRaw(t), false end
-    return host.activeCameraRotation or { 0 / 0, 0 / 0, 0 / 0, 0 / 0 }, true
+  -- Spec "Active Camera State" (kernel active-camera.ts): always valid,
+  -- read-only, NaN where unavailable.
+  local camPath = resolved:match("^/extensions/KHR_interactivity/activeCamera/(.+)$")
+  if camPath then
+    local nan = 0 / 0
+    local ctype, cvalue
+    if camPath == "position" then
+      ctype = "float3"
+      cvalue = host.activeCameraPosition or { nan, nan, nan }
+    elseif camPath == "rotation" then
+      ctype = "float4"
+      cvalue = host.activeCameraRotation or { nan, nan, nan, nan }
+    else
+      local kind, prop = camPath:match("^(%a+)/(%w+)$")
+      local allowed
+      if kind == "perspective" then
+        allowed = { aspectRatio = true, yfov = true, znear = true, zfar = true }
+      elseif kind == "orthographic" then
+        allowed = { xmag = true, ymag = true, znear = true, zfar = true }
+      end
+      if allowed and allowed[prop] then
+        ctype = "float"
+        local proj = host.activeCameraProjection
+        if proj and proj.type == kind then cvalue = proj[prop] else cvalue = nan end
+      end
+    end
+    if ctype then
+      if t ~= ctype then return ptr_defaultRaw(t), false end
+      if type(cvalue) == "table" then
+        local copy = {}
+        for i = 1, #cvalue do copy[i] = cvalue[i] end
+        cvalue = copy
+      end
+      return cvalue, true
+    end
   end
   if resolved == "/extensions/KHR_interactivity/asset/majorVersion" or resolved == "/extensions/KHR_interactivity/asset/minorVersion" then
     if t ~= "int" then return ptr_defaultRaw(t), false end
@@ -592,7 +652,9 @@ local function ptr_resolveVirtualPointer(host, resolved, t)
     if PTR_SUPPORTED_EXTENSIONS[extName] and (extName == "KHR_interactivity" or isUsed) then
       enabled = true
     end
-    return enabled, true
+    -- Spec "Asset Capabilities": only used+supported extensions exist.
+    if not enabled then return ptr_defaultRaw(t), false end
+    return true, true
   end
   local limitName = resolved:match("^/extensions/KHR_interactivity/limits/([^/]+)$")
   if limitName then
@@ -688,6 +750,8 @@ function ptr_ptrSet(host, pointer, args, t, value)
   end
   local resolved = ptr_buildEffectivePointer(pointer, args)
   if resolved == nil then return false end
+  -- Spec pointer/set step 4 (kernel pointer-write.ts canWritePointer).
+  if not ptr_canWritePointer(host.gltf, resolved, t) then return false end
   local ok = ptr_setPointerValue(host.gltf, resolved, value)
   if ok then
     -- Spec pointer/set step 5: kill any in-flight pointer/interpolate
@@ -730,7 +794,7 @@ function ptr_ptrInterpPrepare(host, pointer, args, t)
   local resolved = ptr_buildEffectivePointer(pointer, args)
   if resolved == nil then return nil end
   local value, isValid = ptr_resolvePointerValue(host.gltf, resolved)
-  if not isValid or not ptr_valueMatchesType(value, t) then return nil end
+  if not isValid or not ptr_valueMatchesType(value, t) or ptr_isReadOnlyPointer(resolved) then return nil end
   local startValue
   if type(value) == "table" then
     startValue = {}
