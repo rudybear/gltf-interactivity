@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - Inter-asset communication: new `EventBus` (also `isPublicEventId`, `joinEventBus`, `InteractivityRuntime.joinEventBus(bus)`). Runtimes joined to one bus forward custom events with a public id (any id not starting with `_`) to every other joined runtime that has an `event/receive` for the same id and compatible value sockets (same-tick, FIFO, join order, `ref` values forwarded verbatim). Passes the corpus `InterGlb/` tests (`pnpm conf:interglb`). Runtimes that never join a bus are unchanged.
 - **Load-time validation (spec "Validation").** `resolveGraph`, `createRuntime` and `new InteractivityRuntime(graph, gltf, binary?, options?)` now throw `InteractivityValidationError` (exported; `diagnostics[]` each carry `code`, `message`, `section`, `path`, `nodeIndex`, `outcome`) for an invalid graph or extension instead of running it. `resolveGraph` validates the whole extension (empty/missing `graphs`, bad `graph` index, an invalid default graph all reject the extension, so a valid sibling graph does not run either); `InteractivityRuntime` validates the whole extension when `graph` is one of `gltf.extensions.KHR_interactivity.graphs`, otherwise just the graph. Pass `{ validate: false }` (`createRuntime` options / `InteractivityRuntime` 4th argument) to run unvalidated, e.g. in-progress graphs. Also exported: `validateExtension`, `validateGraphObject`. Validation is the same code as `@gltfi/verify`'s `validateGraph` (`@gltfi/kernel` is inlined). The Khronos `invalid/` corpus is rejected 187/187 (`pnpm conf:invalid`).

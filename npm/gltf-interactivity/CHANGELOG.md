@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - `gltf-interactivity/runtime` re-exports the new inter-asset `EventBus` / `joinEventBus` from `@gltfi/runtime`; `pnpm conf:interglb` covers the corpus `InterGlb/` tests.
 - **Load-time validation and rejection** (spec "Validation"): the full Extension Object / Graph Object / Variable / Event / Declaration / Node / Inline Value validation algorithm (plus per-operation socket presence/type matching, configuration validity and pointer templates) is implemented once, in `@gltfi/kernel`, and used everywhere:

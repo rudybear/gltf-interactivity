@@ -1,6 +1,6 @@
 {
   "name": "@gltfi/runtime",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Reference interpreter for glTF KHR_interactivity behavior graphs (browser-safe, zero dependencies).",
   "keywords": [
     "gltf",

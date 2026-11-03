@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - `engine.setActiveCamera(position, rotation, projection?)`: per-tick host feed for the `activeCamera/*` pointers on compiled engines, same signature and semantics as the interpreter's `InteractivityRuntime.setActiveCamera` (inputs copied; pointers read NaN for absent parts).
 - `createEngine` options `eventBus` / `eventBusName` and `engine.leaveEventBus()`: compiled engines can join an `EventBus` (from `@gltfi/kernel` / `@gltfi/runtime`) and exchange public custom events (ids not starting with `_`) with other engines, compiled or interpreted. No effect without `eventBus`.
