@@ -243,8 +243,9 @@ function nativeOpInfo(op: string, overload: ResolvedOverload): NativeOp | null {
       return t === "bool" ? { kind: "binary", csOp: "||", prec: PREC_OR } : null;
     case "math/not":
       return t === "bool" ? { kind: "unary", csOp: "!", prec: PREC_UNARY } : null;
-    case "math/xor":
-      return t === "bool" ? { kind: "binary", csOp: "!=", prec: PREC_EQ } : null;
+    // math/xor is deliberately NOT native-substituted: `a != b` parses back as
+    // not(eq(a, b)), a different IR shape, so bool xor keeps its explicit
+    // m.xor(a, b) call form (round-trip IR identity + correct semantics).
     default:
       return null;
   }

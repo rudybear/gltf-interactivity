@@ -1352,6 +1352,21 @@ class ModuleParser {
   // (args-less form — see emit-lua's pointerCall) and, defensively, whenever
   // there's genuinely nothing left to look up; only fail on a MISSING table
   // literal when the template actually still has params to resolve.
+  // `[name]` template params take an int; `{name}` params take a REF (a
+  // node/material/... reference such as `rt.ptrGet(.., "ref")`'s result, not
+  // an integer index). Feeding the wrong kind used to lower silently and the
+  // pointer then never resolved at runtime (the write was dropped with no
+  // diagnostic), so reject it here.
+  private checkPointerArgType(arg: IRExpr, p: { name: string; kind: "int" | "ref" }, at: Expression | undefined): void {
+    const t = this.typeOfExpr(arg);
+    if (p.kind === "ref" && (t !== "ref" || (arg.k === "const" && typeof arg.data[0] !== "string"))) {
+      fail("GL131", at, `pointer template param "{${p.name}}" is a reference (ref) slot but was given a ${t} expression; use "[${p.name}]" for integer indices (e.g. "/nodes/[${p.name}]/...")`);
+    }
+    if (p.kind === "int" && t === "ref") {
+      fail("GL131", at, `pointer template param "[${p.name}]" is an integer index but was given a ref expression; use "{${p.name}}" for references`);
+    }
+  }
+
   private lowerPointerArgs(objExpr: Expression | undefined, template: PtrTemplate, ctx: Ctx): IRExpr[] {
     const params = pointerTemplateParams(template);
     if (params.length === 0) {
@@ -1365,7 +1380,9 @@ class ModuleParser {
       if (!init) {
         fail("GL125", objExpr, `pointer args table missing param "${p.name}"`);
       }
-      return this.lowerExpr(init, p.kind === "int" ? "int" : "ref", ctx);
+      const lowered = this.lowerExpr(init, p.kind === "int" ? "int" : "ref", ctx);
+      this.checkPointerArgType(lowered, p, init);
+      return lowered;
     });
   }
 
@@ -1873,13 +1890,22 @@ class ModuleParser {
     if (operator === "+") return this.buildBinaryOp("math/add", "float", left, right, ctx);
     if (operator === "-") return this.buildBinaryOp("math/sub", "float", left, right, ctx);
     if (operator === "*") return this.buildBinaryOp("math/mul", "float", left, right, ctx);
-    if (operator === "~=") return this.buildBinaryOp("math/xor", "bool", left, right, ctx);
-    if (operator === "==") return this.buildBinaryOp("math/eq", this.inferScalarKind(left, right, ctx, ["bool", "float"]), left, right, ctx);
+    if (operator === "~=") return this.buildNotEq(this.buildBinaryOp("math/eq", this.inferScalarKind(left, right, ctx, ["bool", "int", "float"]), left, right, ctx));
+    if (operator === "==") return this.buildBinaryOp("math/eq", this.inferScalarKind(left, right, ctx, ["bool", "int", "float"]), left, right, ctx);
     if (operator === "<") return this.buildBinaryOp("math/lt", "float", left, right, ctx);
     if (operator === "<=") return this.buildBinaryOp("math/le", "float", left, right, ctx);
     if (operator === ">") return this.buildBinaryOp("math/gt", "float", left, right, ctx);
     if (operator === ">=") return this.buildBinaryOp("math/ge", "float", left, right, ctx);
     return undefined;
+  }
+
+  // `a != b` lowers to `math/not(math/eq(a, b))`: operand type is inferred
+  // exactly as for `==`. (It must NOT be bool `math/xor`, which coerces both
+  // operands to bool: `mode !== 3` would compute `mode xor true`.)
+  private buildNotEq(eq: IRExpr): IRExpr {
+    const overload = resolveOverload("math/not", { a: "bool" });
+    if (!overload) throw new Error("could not resolve native bool not overload");
+    return { k: "op", op: "math/not", overload, args: [eq] };
   }
 
   private buildBinaryOp(op: string, kind: IRType, leftNode: Expression, rightNode: Expression, ctx: Ctx): IRExpr {

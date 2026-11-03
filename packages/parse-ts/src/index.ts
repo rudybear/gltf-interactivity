@@ -1445,6 +1445,21 @@ class ModuleParser {
   // (args-less form — see emit-ts's pointerCall) and, defensively, whenever
   // there's genuinely nothing left to look up; only fail on a MISSING
   // object literal when the template actually still has params to resolve.
+  // `[name]` template params take an int; `{name}` params take a REF (a
+  // node/material/... reference such as `rt.ptrGet(.., "ref")`'s result, not
+  // an integer index). Feeding the wrong kind used to lower silently and the
+  // pointer then never resolved at runtime (the write was dropped with no
+  // diagnostic), so reject it here.
+  private checkPointerArgType(arg: IRExpr, p: { name: string; kind: "int" | "ref" }, at: Node | undefined): void {
+    const t = this.typeOfExpr(arg);
+    if (p.kind === "ref" && (t !== "ref" || (arg.k === "const" && typeof arg.data[0] !== "string"))) {
+      fail("GI131", at, `pointer template param "{${p.name}}" is a reference (ref) slot but was given a ${t} expression; use "[${p.name}]" for integer indices (e.g. "/nodes/[${p.name}]/...")`);
+    }
+    if (p.kind === "int" && t === "ref") {
+      fail("GI131", at, `pointer template param "[${p.name}]" is an integer index but was given a ref expression; use "{${p.name}}" for references`);
+    }
+  }
+
   private lowerPointerArgs(objExpr: Node | undefined, template: PtrTemplate, ctx: Ctx): IRExpr[] {
     const params = pointerTemplateParams(template);
     if (params.length === 0) {
@@ -1458,7 +1473,9 @@ class ModuleParser {
       if (!init) {
         fail("GI125", objExpr, `pointer args object missing param "${p.name}"`);
       }
-      return this.lowerExpr(init, p.kind === "int" ? "int" : "ref", ctx);
+      const lowered = this.lowerExpr(init, p.kind === "int" ? "int" : "ref", ctx);
+      this.checkPointerArgType(lowered, p, init);
+      return lowered;
     });
   }
 
@@ -2219,7 +2236,9 @@ class ModuleParser {
     if (opKind === SyntaxKind.SlashToken) return this.buildBinaryOp("math/div", "float", leftNode, rightNode, ctx);
     if (opKind === SyntaxKind.AmpersandAmpersandToken) return this.buildBinaryOp("math/and", "bool", leftNode, rightNode, ctx);
     if (opKind === SyntaxKind.BarBarToken) return this.buildBinaryOp("math/or", "bool", leftNode, rightNode, ctx);
-    if (opKind === SyntaxKind.ExclamationEqualsEqualsToken) return this.buildBinaryOp("math/xor", "bool", leftNode, rightNode, ctx);
+    if (opKind === SyntaxKind.ExclamationEqualsEqualsToken) {
+      return this.buildNotEq(this.buildBinaryOp("math/eq", this.inferScalarKind(leftNode, rightNode, ctx, ["bool", "int", "float"]), leftNode, rightNode, ctx));
+    }
     if (opKind === SyntaxKind.EqualsEqualsEqualsToken) {
       return this.buildBinaryOp("math/eq", this.inferScalarKind(leftNode, rightNode, ctx, ["bool", "int", "float"]), leftNode, rightNode, ctx);
     }
@@ -2246,6 +2265,15 @@ class ModuleParser {
       if (opKind === SyntaxKind.MinusToken) return this.buildBinaryOp("math/sub", "int", inner.getLeft(), inner.getRight(), ctx);
     }
     fail("GI160", inner, "unrecognized `(...) | 0`-wrapped expression (expected int add/sub/neg)");
+  }
+
+  // `a != b` lowers to `math/not(math/eq(a, b))`: operand type is inferred
+  // exactly as for `==`. (It must NOT be bool `math/xor`, which coerces both
+  // operands to bool: `mode !== 3` would compute `mode xor true`.)
+  private buildNotEq(eq: IRExpr): IRExpr {
+    const overload = resolveOverload("math/not", { a: "bool" });
+    if (!overload) throw new Error("could not resolve native bool not overload");
+    return { k: "op", op: "math/not", overload, args: [eq] };
   }
 
   private buildBinaryOp(op: string, kind: IRType, leftNode: Node, rightNode: Node, ctx: Ctx): IRExpr {
