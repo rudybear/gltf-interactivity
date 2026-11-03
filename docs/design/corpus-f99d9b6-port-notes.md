@@ -256,3 +256,29 @@ The math items (`clamp`, `max`, `pow`, `saturate`, `round`, `min`) behave correc
 runtime for free because JS `Math.*` already follows the corpus's IEEE edge cases; the other
 languages need explicit NaN/infinity/signed-zero handling in `m.*` (compare with `math.ts` /
 the spec's per-op tables).
+
+## 10. C# runtime status (phase 2, `packages/runtime-cs/src/cs/`): done
+
+`pnpm conf:cs` 158/158, `pnpm conf:roundtrip-cs` 158/158. Items 1-6 above and the
+animation fixes are ported:
+
+- Section 1: `Pointer.DefaultRaw` returns NaN-filled floats/vectors/matrices.
+- Section 3: `M.IsInf` (scalar and array) no longer treats NaN as infinite.
+- Section 4: `Engine.IsValidInterpolation` (duration finite and >= 0, p1/p2 finite, X in [0,1]; target value may
+  be non-finite) is shared by `VarInterp`/`PtrInterp`; `Scheduler` variable phase follows the kernel tick
+  (`t <= 0` skip, NaN or `t >= 1` writes the exact target, removes and fires done).
+- Section 5: `EventExtra`, `DeclareEvent(..., params EventExtra[])`, `EventPayload(b, i, f, d, params object[])` with
+  `ExtraBool/Int/Float/Ref/Vec(k)`; `Send` without payload and `EventPayloadOf` for never-sent events use the declared initial values.
+- Section 6: `IsReadOnlyPointer` / `PropertyAcceptsSignature` / `CanWritePointer` in `Pointer.cs` (called by `PtrSet`;
+  `PtrInterpPrepare` rejects read-only); `asset/extensions/<x>/enabled` invalid unless used+supported;
+  `meshes/{}/weights[.length]` invalid on read; activeCamera via `ReadActiveCameraPointer` +
+  `PointerHost.ActiveCameraProjection`; `Engine.SetActiveCamera` / `SetConformanceActiveCamera` (called by `Harness.cs`).
+  Non-leaf JSON nodes now resolve as "exists" (needed by the container check).
+- Extras/Float_Precision: `Numeric.SafeRound` uses the exact fractional part (not `floor(x + 0.5)`) and keeps -0;
+  `math/pow`: `pow(x, +-0) == 1` before the NaN check (`pow(NaN, 0) == 1`), `pow(-Inf, odd<0) == -0`.
+- `Engine._onPointerSetHook` (never assigned warning) became the public `Engine.OnPointerSetHook` property, the C# analog
+  of `EngineOptions.onPointerSet`.
+- Animation (`Animation.cs`): full `DecodeAccessor` (all six component types, normalized, byteStride, sparse, missing
+  bufferView), per-document `ConditionalWeakTable` cache of decoded accessors and channel plans, binary-search keyframes
+  with last-key fast path, CUBICSPLINE Hermite (rotations re-normalized); `ApplyAnimationAt` also returns `SkippedChannels`.
+  Tests: `packages/runtime-cs/test/animation.test.ts` (via the test-only `anim_sample` harness command).

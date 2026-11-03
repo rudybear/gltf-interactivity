@@ -407,6 +407,46 @@ internal sealed class Harness
 
     private static JsonObject CmdPing(JsonObject req) => new() { ["ok"] = true };
 
+    // "anim_sample" -- test-only: drives Animation.ApplyAnimationAt directly
+    // against a gltf + bin without compiling a module.
+    //   {"cmd":"anim_sample","gltf":<json>,"bin_b64":<str|null>,
+    //    "steps":[{"animation":0,"ts":[0.5,...],"invalidate":false,"swap_bin":false}]}
+    // Each step samples every t in order (fresh view of the SAME gltf object,
+    // like the engine) and reports the node array after its last sample plus
+    // the skipped-channel count; the response also carries the cumulative
+    // accessor decode / cache-hit counters.
+    private static JsonObject CmdAnimSample(JsonObject req)
+    {
+        var gltf = req["gltf"]!.DeepClone();
+        var binB64 = req.TryGetPropertyValue("bin_b64", out var b) ? (string?)b : null;
+        var bin = string.IsNullOrEmpty(binB64) ? null : Convert.FromBase64String(binB64);
+        var results = new JsonArray();
+        foreach (var stepNode in (JsonArray)req["steps"]!)
+        {
+            var step = (JsonObject)stepNode!;
+            if (step.TryGetPropertyValue("invalidate", out var inv) && inv != null && (bool)inv)
+            {
+                Animation.InvalidateAnimationCache(gltf);
+            }
+            if (step.TryGetPropertyValue("swap_bin", out var sw) && sw != null && (bool)sw && bin != null)
+            {
+                bin = (byte[])bin.Clone();
+            }
+            var animation = (int)step["animation"]!;
+            int skipped = -1;
+            bool exists = false;
+            foreach (var tNode in (JsonArray)step["ts"]!)
+            {
+                var r = Animation.ApplyAnimationAt(gltf, bin, animation, (double)tNode!, null);
+                exists = r != null;
+                skipped = r?.SkippedChannels ?? -1;
+            }
+            results.Add(new JsonObject { ["exists"] = exists, ["skipped"] = skipped, ["nodes"] = gltf["nodes"]?.DeepClone() });
+        }
+        var (decodes, hits) = Animation.GetAnimationCacheStats(gltf, bin);
+        return new JsonObject { ["ok"] = true, ["results"] = results, ["decodes"] = decodes, ["hits"] = hits };
+    }
+
     // -----------------------------------------------------------------
     // "ast" -- see this file's header comment for the full rationale.
     // -----------------------------------------------------------------
@@ -612,6 +652,7 @@ internal sealed class Harness
             "eval_m" => CmdEvalM(req),
             "ast" => CmdAst(req),
             "ping" => CmdPing(req),
+            "anim_sample" => CmdAnimSample(req),
             _ => new JsonObject { ["ok"] = false, ["error"] = $"unknown command '{cmd}'" }
         };
     }
