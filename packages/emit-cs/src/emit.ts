@@ -1502,7 +1502,11 @@ class Emitter {
       const selCode = this.emitExpr(selection);
       const dfltCode = this.emitExpr(dflt);
       const valuesCode = caseArgs.map((a) => this.emitExpr(a));
-      return `M.SwitchCase(${selCode}, new int[] { ${cases.join(", ")} }, new[] { ${valuesCode.join(", ")} }, ${dfltCode})`;
+      // An empty `new[] { }` has no element type for C# to infer (CS0826), which
+      // is exactly the default-configuration switch (no `cases`): spell the
+      // element type out in that case.
+      const valuesArray = valuesCode.length === 0 ? `new ${VAR_ACCESSOR[expr.type].csType}[] { }` : `new[] { ${valuesCode.join(", ")} }`;
+      return `M.SwitchCase(${selCode}, new int[] { ${cases.join(", ")} }, ${valuesArray}, ${dfltCode})`;
     }
     if (expr.op === "event/receive#payload") {
       const eventIndex = expr.config.eventIndex as number;

@@ -6,25 +6,25 @@ Related projects: [gltf-interactivity-vscode](https://github.com/rudybear/gltf-i
 
 ## Status
 
-All core conformance gates pass against the official Khronos test assets (145 tests / 647 sub-tests):
+Conformance gates against the official Khronos test assets (corpus pinned at `f99d9b6`, 158 tests; the TypeScript gates and every roundtrip gate pass, the four non-TS *compiled* runtimes are mid-port, see `docs/design/corpus-f99d9b6-port-notes.md`):
 
 | Gate | Pipeline | Status |
 |------|----------|--------|
-| V1 Interpreter | graph → interpreter | **145/145** |
-| V2 Compiled (TS) | graph → TypeScript → execute | **145/145** |
-| V3 Roundtrip (TS) | graph → TypeScript → parse → graph′ → interpreter | **145/145** |
-| V2 Compiled (Lua) | graph → Lua → execute (wasmoon) | **145/145** |
-| V3 Roundtrip (Lua) | graph → Lua → parse → graph′ → interpreter | **145/145** |
-| V2 Compiled (Python) | graph → typed Python → execute (CPython) | **145/145** |
-| V3 Roundtrip (Python) | graph → Python → parse → graph′ → interpreter | **145/145** |
-| V2 Compiled (C#) | graph → typed C# → execute (Roslyn/dotnet) | **145/145** |
-| V3 Roundtrip (C#) | graph → C# → parse → graph′ → interpreter | **145/145** |
-| V2 Compiled (GDScript) | graph → GDScript → execute (`godot --headless`) | **145/145** |
-| V3 Roundtrip (GDScript) | graph → GDScript → parse → graph′ → interpreter | **145/145** |
+| V1 Interpreter | graph → interpreter | **158/158** |
+| V2 Compiled (TS) | graph → TypeScript → execute | **158/158** |
+| V3 Roundtrip (TS) | graph → TypeScript → parse → graph′ → interpreter | **158/158** |
+| V2 Compiled (Lua) | graph → Lua → execute (wasmoon) | **145/158** (runtime port pending) |
+| V3 Roundtrip (Lua) | graph → Lua → parse → graph′ → interpreter | **158/158** |
+| V2 Compiled (Python) | graph → typed Python → execute (CPython) | **148/158** (runtime port pending) |
+| V3 Roundtrip (Python) | graph → Python → parse → graph′ → interpreter | **158/158** |
+| V2 Compiled (C#) | graph → typed C# → execute (Roslyn/dotnet) | **147/158** (runtime port pending) |
+| V3 Roundtrip (C#) | graph → C# → parse → graph′ → interpreter | **158/158** |
+| V2 Compiled (GDScript) | graph → GDScript → execute (`godot --headless`) | **147/158** (runtime port pending) |
+| V3 Roundtrip (GDScript) | graph → GDScript → parse → graph′ → interpreter | **158/158** |
 
 The WebGPU viewer (`pnpm dev`) hosts both engines — `?engine=interpreter` (default) or `?engine=compiled` — with click-select and hover bubbling. `pnpm smoke` runs a headless render check (needs a real GPU; software WebGPU in sandboxes can't sustain the swap-chain). All five language backends — TypeScript (`emit-ts`/`parse-ts`/`runtime-lib`), Lua (`emit-lua`/`parse-lua`/`runtime-lua`, executed via wasmoon), typed Python (`emit-py`/`parse-py`/`runtime-py`, executed via CPython), typed C# (`emit-cs`/`parse-cs`/`runtime-cs`, compiled and executed via Roslyn/`dotnet`), and GDScript (`emit-gd`/`parse-gd`/`runtime-gd`, executed via a real `godot --headless` subprocess) — share one IR, one op registry, and one op-naming convention; cross-parser tests assert all five frontends produce identical IR. GDScript is the one backend with no language-native parser to reuse (Godot 4.3 exposes no public GDScript AST API), so `@gltfi/parse-gd` is a small hand-rolled, zero-dependency tokenizer/recursive-descent parser over exactly the subset `emit-gd` emits — see that package's own header for the (brief) `tree-sitter-gdscript` evaluation that led to this design, and `docs/diagnostics.md`'s `GG1xx` section for its diagnostic codes.
 
-The V3 roundtrip gate above is execution equivalence (interpreter judges the re-imported/re-exported graph against the same oracle); `@gltfi/verify`'s `equivalentGraphs` additionally reports *structural* equivalence between the original and round-tripped graph as an informational signal (not a gate — see that package's header) — currently **131/145 EQUIV** after canonicalizing the three cosmetic divergence classes documented there (type-table ordering, flow/sequence nesting shape, int/float literal ambiguity); the remaining 14 are explained (cross-handler value materialization duplicating handler roots, or generic-`T` literal round-trip ambiguity) rather than left as unexplained noise.
+The V3 roundtrip gate above is execution equivalence (interpreter judges the re-imported/re-exported graph against the same oracle); `@gltfi/verify`'s `equivalentGraphs` additionally reports *structural* equivalence between the original and round-tripped graph as an informational signal (not a gate — see that package's header) — currently **134/158 EQUIV** after canonicalizing the three cosmetic divergence classes documented there (type-table ordering, flow/sequence nesting shape, int/float literal ambiguity); the remaining 24 are explained (cross-handler value materialization duplicating handler roots, or generic-`T` literal round-trip ambiguity) rather than left as unexplained noise.
 
 A differential fuzzer (`pnpm fuzz`) generates small random graphs from a safe op pool and runs each one through both the interpreter and the compiled path, diffing final variable state — see "Fuzzing" below.
 

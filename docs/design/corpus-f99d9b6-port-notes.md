@@ -218,3 +218,41 @@ and `runtime-lib/src/pointer.ts`; the decision helpers are shared in the kernel.
   payload tuples may be longer than four entries.
 - `normalizeGraph()` returns declarations with `op: ""` + `unsupportedOp` for
   unsupported ones (the original name is kept in `unsupportedOp`).
+
+## 9. Phase-2 target list: `conf:lua|py|cs|gd` after phase 1 (TS side green)
+
+Measured on the phase-1 tree (`pnpm conf:<lang>`), expected failures only:
+
+- **Lua 145/158**: `Extras/Float_Precision` (`round(0.49999999999999994)` must be 0 -- use
+  `trunc`-based half-away-from-zero, not `floor(x + 0.5)`; `min(0, -0)` must return `-0`, i.e.
+  NaN/zero-sign aware min/max), `pointer/AssetCapabilities_GetTests`, `pointer/activeCamera`,
+  `pointer/get_light_type_pointers`, `pointer/get_set_morphtargets`, `pointer/interpolate`,
+  `pointer/set_edge_cases`, `variable/interpolate` (X in [0,1], duration 0), `math/clamp` and
+  `math/max` (NaN must propagate: `max(1, NaN) == NaN`, `clamp(NaN, 0, 1) == NaN`), `math/isInf`
+  (section 3), `math/mul` (the Lua runtime multiplies `Lua number`s; check int operands are Lua
+  integers), `math/pow` (`pow(1, Infinity)` and `pow(-1, Infinity)` are NaN per the spec's pow
+  table; `pow(NaN, 0) == 1`). `event/activation_order_and_onTick` passes only because the Lua
+  runtime ignores extras; implement section 5 properly.
+- **Python 148/158**: `Extras/Float_Precision` (`round(0.49999999999999994) == 0`: Python's
+  `round` is banker's rounding and `floor(x+0.5)` is wrong -- use `copysign(floor(abs(x)+0.5))`
+  only after correcting the 0.49999999999999994 case, e.g. via `math.trunc(x + copysign(0.5, x))`
+  guarded by the exact-half test), the six `pointer/*` tests above, `variable/interpolate`,
+  `math/isInf`, `math/pow` (`pow(NaN, 0) == 1`: Python raises/returns nan -- special-case).
+- **C# 147/158**: `Extras/Float_Precision` (same `round` issue), `event/activation_order_and_onTick`
+  (compiled module does not build: `EventExtra`, 5-arg `EventPayload`, `payload.ExtraInt(k)` are
+  missing in `Engine.cs` -- section 5), the six `pointer/*` tests, `variable/interpolate`,
+  `math/isInf` (`M.cs:IsInf`), `math/pow` (`pow(NaN, 0) == 1`). `math/switch` was an emitter bug
+  (empty `new[] { }` array, CS0826) fixed in `emit-cs` during phase 1.
+- **GDScript 147/158**: `Extras/Float_Precision` (float-literal precision: `(2^53-1) - (2^53-2)`
+  yields 0 and `5e-324 > 0` is false -- the emitted `9007199254740991.0` / `5e-324` literals are
+  not read exactly by Godot's script parser; consider emitting such literals through
+  `float("...")`/string parsing or a hex/exponent split), the six `pointer/*` tests,
+  `variable/interpolate`, `math/isInf`, `math/pow`, `math/saturate` (`saturate(NaN)` must be NaN).
+  Godot also logs `Unicode parsing error` noise from a test string; harmless.
+
+The six `pointer/*` tests are `AssetCapabilities_GetTests`, `activeCamera`,
+`get_light_type_pointers`, `get_set_morphtargets`, `interpolate`, `set_edge_cases`: sections 6a-6d.
+The math items (`clamp`, `max`, `pow`, `saturate`, `round`, `min`) behave correctly in the TS
+runtime for free because JS `Math.*` already follows the corpus's IEEE edge cases; the other
+languages need explicit NaN/infinity/signed-zero handling in `m.*` (compare with `math.ts` /
+the spec's per-op tables).

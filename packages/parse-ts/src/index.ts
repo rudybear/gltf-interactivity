@@ -207,7 +207,9 @@ function stringLiteralValue(node: Node | undefined): string | undefined {
 
 function readNumber(node: Node): number | undefined {
   if (Node.isNumericLiteral(node)) {
-    return node.getLiteralValue();
+    // Not getLiteralValue(): ts-morph returns 5 for the denormal `5e-324`
+    // (corpus Extras/Float_Precision); Number() on the source text is exact.
+    return Number(node.getText().replace(/_/g, ""));
   }
   if (Node.isPrefixUnaryExpression(node) && node.getOperatorToken() === SyntaxKind.MinusToken) {
     const v = readNumber(node.getOperand());
@@ -2645,10 +2647,10 @@ class ModuleParser {
 
 function tryLiteralNumber(expr: Node): number | undefined {
   if (Node.isNumericLiteral(expr)) {
-    return expr.getLiteralValue();
+    return Number(expr.getText().replace(/_/g, "")); // see readNumber: getLiteralValue() mangles denormals
   }
   if (Node.isPrefixUnaryExpression(expr) && expr.getOperatorToken() === SyntaxKind.MinusToken && Node.isNumericLiteral(expr.getOperand())) {
-    return -(expr.getOperand() as import("ts-morph").NumericLiteral).getLiteralValue();
+    return -Number((expr.getOperand() as import("ts-morph").NumericLiteral).getText().replace(/_/g, ""));
   }
   if (Node.isIdentifier(expr) && (expr.getText() === "NaN" || expr.getText() === "Infinity")) {
     return expr.getText() === "NaN" ? NaN : Infinity;
