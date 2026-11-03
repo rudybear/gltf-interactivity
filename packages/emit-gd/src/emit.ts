@@ -290,7 +290,89 @@ function exprPrec(expr: IRExpr): number {
 // Literal formatting.
 // ---------------------------------------------------------------------------
 
-function gdFloatLiteral(x: number): string {
+// Godot's GDScript tokenizer converts a float literal with a Tcl-derived
+// `strtod` (String::to_float / built_in_strtod), NOT a correctly-rounded one.
+// Empirically verified (godot 4.3 headless, ~6300 probe literals, 0
+// mismatches against this model): the mantissa digits (at most 18) are folded
+// into `1e9 * frac1 + frac2` (two <=9-digit integer chunks, each exact, one
+// double multiply-add), then the decimal exponent (`e` part plus the position
+// of the decimal point) is applied by ONE multiply/divide by a power of ten
+// built from the table 1e1,1e2,1e4,...,1e256 (so powers above 1e22 are
+// themselves inexact, and 1e256*1e64... can overflow to Infinity, which makes
+// a divisor-by-huge flush denormals and tiny normals to 0). The result is
+// exact only when that single rounding happens to land on the right double,
+// which is false for many 16-17 digit literals AND for plenty of <=15 digit
+// ones with a large exponent (e.g. 2.60464476415712e-297 -> 0). A leading `-`
+// is a separate unary minus, and Godot constant-folds `-0.0` to +0.0.
+// Rather than guess from digit counts, simulate that parse on the exact text
+// we would print and only fall back to `m.f64FromBits(<int64>)` (an exact
+// IEEE-754 bit reconstruction) when the simulation does not give x back.
+const GD_POW10 = [1e1, 1e2, 1e4, 1e8, 1e16, 1e32, 1e64, 1e128, 1e256];
+
+/** What Godot's tokenizer yields for the (non-negative, finite) literal text `s`. */
+export function simulateGodotFloatParse(s: string): number {
+  const m = /^([0-9]*)\.?([0-9]*)(?:[eE]([+-]?[0-9]+))?$/.exec(s);
+  if (!m) {
+    return Number.NaN;
+  }
+  const ip = m[1] ?? "";
+  const fp = m[2] ?? "";
+  let digits = ip + fp;
+  const decPt = ip.length;
+  let mant = digits.length;
+  let fracExp: number;
+  if (mant > 18) {
+    fracExp = decPt - 18;
+    mant = 18;
+  } else {
+    fracExp = decPt - mant;
+  }
+  digits = digits.slice(0, mant);
+  if (mant === 0) {
+    return 0;
+  }
+  const n1 = Math.max(0, mant - 9);
+  const frac1 = n1 > 0 ? Number(digits.slice(0, n1)) : 0;
+  const frac2 = Number(digits.slice(n1));
+  let fraction = 1e9 * frac1 + frac2;
+  let exp = Number(m[3] ?? "0") + fracExp;
+  const expNeg = exp < 0;
+  exp = Math.min(Math.abs(exp), 511);
+  let dbl = 1;
+  for (let i = 0; exp !== 0; exp >>= 1, i += 1) {
+    if (exp & 1) {
+      dbl *= GD_POW10[i] as number;
+    }
+  }
+  fraction = expNeg ? (dbl === Infinity ? 0 : fraction / dbl) : fraction * dbl;
+  return fraction;
+}
+
+function gdFloatBitsLiteral(x: number): string {
+  const dv = new DataView(new ArrayBuffer(8));
+  dv.setFloat64(0, x);
+  return `m.f64FromBits(${dv.getBigInt64(0)})`;
+}
+
+/** The plain decimal literal text printed for finite `x` (sign included). */
+function plainFloatText(x: number): string {
+  const s = String(x);
+  return /[.eE]/.test(s) ? s : `${s}.0`;
+}
+
+/**
+ * True when Godot reads the plain literal for finite `x` back as exactly `x`.
+ * The simulated text is the PRINTED text: a trailing `.0` counts as a mantissa
+ * digit in Godot's chunking (`9007199254740991.0` is a 17-digit mantissa).
+ */
+function godotRoundTrips(x: number): boolean {
+  if (Object.is(x, -0)) {
+    return false;
+  }
+  return Object.is(simulateGodotFloatParse(plainFloatText(Math.abs(x))), Math.abs(x));
+}
+
+export function gdFloatLiteral(x: number): string {
   if (Number.isNaN(x)) {
     return "NAN";
   }
@@ -300,8 +382,7 @@ function gdFloatLiteral(x: number): string {
   if (x === -Infinity) {
     return "-INF";
   }
-  const s = Object.is(x, -0) ? "-0" : String(x); // String(-0) is "0": keep the sign (1 / -0 = -Infinity)
-  return /[.eE]/.test(s) ? s : `${s}.0`;
+  return godotRoundTrips(x) ? plainFloatText(x) : gdFloatBitsLiteral(x);
 }
 
 function gdIntLiteral(x: number): string {
@@ -1526,6 +1607,9 @@ class Emitter {
       // Avoid a `- -x` token-merge ambiguity — purely a readability nicety
       // here (GDScript has no decrement operator either), same guard as
       // every other backend's identical unary-neg check.
+      if (native.gdOp === "-" && operand === "0.0") {
+        return gdFloatBitsLiteral(-0); // Godot constant-folds `-0.0` to +0.0
+      }
       return operand.startsWith("-") ? `- ${operand}` : `${native.gdOp}${operand}`;
     }
     const [a, b] = expr.args;
