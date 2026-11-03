@@ -33,7 +33,7 @@ import re
 from . import animation as anim
 from . import pointer as ptr
 from .numeric import safe_trunc
-from .scheduler import create_scheduler
+from .scheduler import create_scheduler, is_valid_interpolation
 from .state import do_n_advance, multi_gate_advance, throttle_advance, wait_all_advance
 
 _DEFAULT_SEED = 123456789
@@ -137,7 +137,7 @@ class _VarStore:
 
 
 class Engine:
-    def __init__(self, setup, gltf=None, glb_bin=None, seed: float = _DEFAULT_SEED, on_pointer_set=None):
+    def __init__(self, setup, gltf=None, glb_bin=None, seed: float = _DEFAULT_SEED, on_pointer_set=None, active_camera=None):
         self._var_types: list = []
         self._var_raw: list = []
         self._event_decls: list = []
@@ -162,8 +162,11 @@ class Engine:
             "getAnimationPlayhead": lambda index: self._animation_playheads.get(
                 index, {"playhead": 0.0, "virtualPlayhead": 0.0}
             ),
-            "activeCameraPosition": None,
-            "activeCameraRotation": None,
+            # Host-fed active camera (dict with position/rotation/projection);
+            # absent => the activeCamera pointers read NaN.
+            "activeCameraPosition": list(active_camera["position"]) if active_camera else None,
+            "activeCameraRotation": list(active_camera["rotation"]) if active_camera else None,
+            "activeCameraProjection": (active_camera.get("projection") if active_camera else None),
             "onPointerSet": self._on_pointer_set,
             # Spec pointer/set step 5 (see pointer.py's ptr_set): killing any
             # in-flight pointer/interpolate targeting the same effective
@@ -493,10 +496,7 @@ class Engine:
     def var_interp(self, var_id: int, value, duration: float, p1: list, p2: list, use_slerp: bool, done=None) -> dict:
         t = self._var_types[var_id] if var_id < len(self._var_types) else "float"
         end_kernel = _raw_to_kernel_value(t, value)
-        is_valid = (
-            _finite_num(duration) and duration > 0 and _is_finite_raw(value) and _finite_arr(p1) and _finite_arr(p2)
-        )
-        if not is_valid:
+        if not is_valid_interpolation(duration, p1, p2):
             return {"ok": False}
         start_kernel = _raw_to_kernel_value(t, self._var_raw[var_id])
         self._scheduler.add_variable_interp({
@@ -525,12 +525,10 @@ class Engine:
         prep = ptr.ptr_interp_prepare(self._pointer_host, pointer, args, t)
         if not prep:
             return {"ok": False}
-        if not _finite_num(duration) or duration < 0:
+        if not is_valid_interpolation(duration, p1, p2):
             return {"ok": False}
         p10 = p1[0] if len(p1) > 0 else 0
         p20 = p2[0] if len(p2) > 0 else 0
-        if not _finite_arr(p1) or not _finite_arr(p2) or p10 < 0 or p10 > 1 or p20 < 0 or p20 > 1:
-            return {"ok": False}
         if isinstance(value, list):
             target = [float(x) for x in value]
         else:
@@ -640,7 +638,7 @@ class Engine:
 
 
 def create_engine(setup):
-    def factory(gltf=None, glb_bin=None, seed: float = _DEFAULT_SEED, on_pointer_set=None) -> Engine:
-        return Engine(setup, gltf=gltf, glb_bin=glb_bin, seed=seed, on_pointer_set=on_pointer_set)
+    def factory(gltf=None, glb_bin=None, seed: float = _DEFAULT_SEED, on_pointer_set=None, active_camera=None) -> Engine:
+        return Engine(setup, gltf=gltf, glb_bin=glb_bin, seed=seed, on_pointer_set=on_pointer_set, active_camera=active_camera)
 
     return factory

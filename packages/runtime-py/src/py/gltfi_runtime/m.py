@@ -311,7 +311,7 @@ def isNaN(a) -> bool:
 
 
 def isInf(a) -> bool:
-    return any((x != x) or math.isinf(x) for x in _arr(a))
+    return any(math.isinf(x) for x in _arr(a))
 
 
 def select(condition: bool, a, b):

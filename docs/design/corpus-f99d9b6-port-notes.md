@@ -295,3 +295,26 @@ animation fixes are ported:
 - [x] 6a-6d pointer writability/type match, `asset/extensions/<n>/enabled`, `meshes/{}/weights` invalid, activeCamera (engine option `activeCamera`; `run-compiled-lua.ts` harness passes the conformance camera)
 - [x] math NaN/-0 semantics: `jsmin`/`jsmax` (min/max/clamp/saturate/smoothStep), `Math.round` half-up on the float magnitude (0.49999999999999994 -> 0, -0.3 -> -0), `jspow` (`pow(1, +-Inf)`, `pow(x, NaN)`)
 - [x] animation: full accessor decode, Hermite CUBICSPLINE, per-document cache (`animation.lua`)
+
+## 12. Python runtime status (done)
+
+`pnpm conf:py` 158/158 and `pnpm conf:roundtrip-py` 158/158. Python items done
+(`packages/runtime-py/src/py/gltfi_runtime/`):
+
+- Section 1: `pointer._default_raw` returns NaN float defaults.
+- Section 3: `m.isInf` no longer treats NaN as infinite.
+- Section 4: `scheduler.is_valid_interpolation` (shared by `engine.var_interp` /
+  `ptr_interp`) and the variable-interp tick (duration 0 completes on the next
+  tick).
+- Section 6a-6d: `pointer._can_write_pointer` / `_is_read_only_pointer` in
+  `ptr_set` and `ptr_interp_prepare`; `asset/extensions/<n>/enabled` invalid
+  unless used+supported; `meshes/{}/weights` invalid; activeCamera pointer
+  table (`Engine(active_camera=...)`, `harness.py` hands the conformance camera).
+- Section 9 Python list: `Extras/Float_Precision` (`numeric.safe_round` compares
+  the fraction instead of `floor(|x| + 0.5)`), `math/pow` (`pow(NaN, 0) == 1`
+  checked before the NaN guard).
+- Animation (user bug #3/#4): `animation.py` ports kernel `decodeAccessor`
+  (all component types, normalized, byteStride, sparse, missing bufferView),
+  Hermite CUBICSPLINE, per-document cache, binary search with last-key fast
+  path. Tests: `packages/runtime-py/test/test_animation.py` (run by vitest via
+  `animation.test.ts`).

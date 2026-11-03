@@ -163,15 +163,7 @@ def _resolve_weights_length(gltf, node_index, mesh_index) -> dict:
         if isinstance(mesh.get("weights"), list):
             return {"value": len(mesh["weights"]), "isValid": True}
         return {"value": target_count, "isValid": True}
-    if mesh_index is not None:
-        meshes = (gltf or {}).get("meshes") or []
-        mesh = meshes[mesh_index] if 0 <= mesh_index < len(meshes) else None
-        if not mesh:
-            return {"value": 0, "isValid": False}
-        target_count = _get_mesh_target_count(mesh)
-        if isinstance(mesh.get("weights"), list):
-            return {"value": len(mesh["weights"]), "isValid": True}
-        return {"value": target_count, "isValid": True}
+    # `meshes/{}/weights.length` is not a pointer of this extension: invalid.
     return {"value": 0, "isValid": False}
 
 
@@ -241,19 +233,8 @@ def _resolve_pointer_value(gltf, resolved: str) -> dict:
                 else:
                     return {"value": None, "isValid": False}
             elif mesh_index is not None:
-                mesh = meshes_top[mesh_index] if meshes_top and 0 <= mesh_index < len(meshes_top) else None
-                if not mesh:
-                    return {"value": None, "isValid": False}
-                target_count = _get_mesh_target_count(mesh)
-                if isinstance(mesh.get("weights"), list):
-                    current = mesh["weights"]
-                    weights_handled = True
-                elif target_count > 0:
-                    current = [0.5] * target_count
-                    weights_handled = True
-                else:
-                    current = [0.0]
-                    weights_handled = True
+                # `/meshes/{}/weights/N` is not a pointer of this extension.
+                return {"value": None, "isValid": False}
 
         if not weights_handled:
             if token.lstrip("-").isdigit() and isinstance(current, list):
@@ -465,15 +446,69 @@ def _value_matches_type(value, t: str) -> bool:
     return False
 
 
+_NAN = float("nan")
+
+
+# Type-default raw value (spec "Custom Variable Types": NaN for every float
+# component, false, 0, null reference). Mirrors kernel defaultValue().
 def _default_raw(t: str):
     return {
-        "bool": False, "int": 0, "float": 0,
-        "float2": [0.0, 0.0], "float3": [0.0, 0.0, 0.0], "float4": [0.0, 0.0, 0.0, 0.0],
-        "float2x2": [1.0, 0.0, 0.0, 1.0],
-        "float3x3": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
-        "float4x4": [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+        "bool": False, "int": 0, "float": _NAN,
+        "float2": [_NAN] * 2, "float3": [_NAN] * 3, "float4": [_NAN] * 4,
+        "float2x2": [_NAN] * 4, "float3x3": [_NAN] * 9, "float4x4": [_NAN] * 16,
         "ref": "",
     }.get(t)
+
+
+# --- pointer/set validation (mirror of kernel pointer-write.ts) ---
+def _is_read_only_pointer(resolved: str) -> bool:
+    if "/extensions/KHR_interactivity/" in resolved:
+        return True
+    tokens = [x for x in resolved.split("/") if x]
+    last = tokens[-1] if tokens else ""
+    return last.endswith(".length") or last == "globalMatrix"
+
+
+def _property_accepts_signature(current, signature: str) -> bool:
+    if isinstance(current, bool):
+        return signature == "bool"
+    if isinstance(current, (int, float)):
+        return signature in ("int", "float")
+    if isinstance(current, list):
+        n = len(current)
+        if n == 2:
+            return signature == "float2"
+        if n == 3:
+            return signature == "float3"
+        if n == 4:
+            return signature in ("float4", "float2x2")
+        if n == 9:
+            return signature == "float3x3"
+        if n == 16:
+            return signature == "float4x4"
+    return False
+
+
+_OPTIONAL_PARENT_TOKENS = {"pbrMetallicRoughness", "weights", "translation", "rotation", "scale", "extras"}
+
+
+def _can_write_pointer(gltf, resolved: str, signature: str) -> bool:
+    if _is_read_only_pointer(resolved):
+        return False
+    raw = [x for x in resolved.split("/") if x]
+    for k in range(1, len(raw)):
+        prefix = "/" + "/".join(raw[:k])
+        optional = (
+            raw[k - 1] in _OPTIONAL_PARENT_TOKENS
+            or raw[k - 1] == "extensions"
+            or (k >= 2 and raw[k - 2] == "extensions")
+        )
+        if not _resolve_pointer_value(gltf, prefix)["isValid"] and not optional:
+            return False
+    current = _resolve_pointer_value(gltf, resolved)
+    if current["isValid"] and not _property_accepts_signature(current["value"], signature):
+        return False
+    return True
 
 
 # Extensions this runtime implements; used by the asset/extensions/{name}/
@@ -496,15 +531,41 @@ _LIMIT_RE = re.compile(r"^/extensions/KHR_interactivity/limits/([^/]+)$")
 _ANIM_RE = re.compile(r"^/animations/(\d+)/extensions/KHR_interactivity/(.+)$")
 
 
+_CAMERA_PREFIX = "/extensions/KHR_interactivity/activeCamera/"
+_CAMERA_PROJ_RE = re.compile(r"^(perspective|orthographic)/(\w+)$")
+
+
+# Mirror of kernel readActiveCameraPointer: returns (type, flat value list) or None.
+def _read_active_camera_pointer(host, resolved: str):
+    if not resolved.startswith(_CAMERA_PREFIX):
+        return None
+    path = resolved[len(_CAMERA_PREFIX):]
+    if path == "position":
+        pos = host.get("activeCameraPosition")
+        return "float3", list(pos) if pos else [_NAN] * 3
+    if path == "rotation":
+        rot = host.get("activeCameraRotation")
+        return "float4", list(rot) if rot else [_NAN] * 4
+    m = _CAMERA_PROJ_RE.match(path)
+    if not m:
+        return None
+    kind, prop = m.group(1), m.group(2)
+    allowed = ["aspectRatio", "yfov", "znear", "zfar"] if kind == "perspective" else ["xmag", "ymag", "znear", "zfar"]
+    if prop not in allowed:
+        return None
+    projection = host.get("activeCameraProjection")
+    if not projection or projection.get("type") != kind:
+        return "float", [_NAN]
+    return "float", [projection[prop]]
+
+
 def _resolve_virtual_pointer(host, resolved: str, t: str):
-    if resolved == "/extensions/KHR_interactivity/activeCamera/position":
-        if t != "float3":
+    camera = _read_active_camera_pointer(host, resolved)
+    if camera is not None:
+        # Always valid (NaN components when no camera / other projection kind).
+        if t != camera[0]:
             return {"value": _default_raw(t), "isValid": False}
-        return {"value": host.get("activeCameraPosition") or [float("nan")] * 3, "isValid": True}
-    if resolved == "/extensions/KHR_interactivity/activeCamera/rotation":
-        if t != "float4":
-            return {"value": _default_raw(t), "isValid": False}
-        return {"value": host.get("activeCameraRotation") or [float("nan")] * 4, "isValid": True}
+        return {"value": camera[1][0] if camera[0] == "float" else camera[1], "isValid": True}
     if resolved in ("/extensions/KHR_interactivity/asset/majorVersion", "/extensions/KHR_interactivity/asset/minorVersion"):
         if t != "int":
             return {"value": _default_raw(t), "isValid": False}
@@ -517,7 +578,11 @@ def _resolve_virtual_pointer(host, resolved: str, t: str):
         used = (host.get("gltf") or {}).get("extensionsUsed")
         is_used = isinstance(used, list) and name in used
         enabled = bool(name in _SUPPORTED_EXTENSIONS and (name == "KHR_interactivity" or is_used))
-        return {"value": enabled, "isValid": True}
+        # Spec "Asset Capabilities": the pointer only exists for used+supported
+        # extensions; otherwise it does not resolve.
+        if not enabled:
+            return {"value": _default_raw(t), "isValid": False}
+        return {"value": True, "isValid": True}
     m = _LIMIT_RE.match(resolved)
     if m:
         limit = _RUNTIME_LIMITS.get(m.group(1))
@@ -603,6 +668,9 @@ def ptr_set(host: dict, pointer: str, args: dict, t: str, value) -> bool:
     resolved = _build_effective_pointer(pointer, args)
     if resolved is None:
         return False
+    # Spec pointer/set step 4 (kernel pointer-write.ts canWritePointer).
+    if not _can_write_pointer(host["gltf"], resolved, t):
+        return False
     ok = _set_pointer_value(host["gltf"], resolved, value)
     if ok:
         # Spec pointer/set step 5: kill any in-flight pointer/interpolate
@@ -644,7 +712,7 @@ def ptr_interp_prepare(host: dict, pointer: str, args: dict, t: str):
     if resolved is None:
         return None
     result = _resolve_pointer_value(host.get("gltf"), resolved)
-    if not result["isValid"] or not _value_matches_type(result["value"], t):
+    if not result["isValid"] or not _value_matches_type(result["value"], t) or _is_read_only_pointer(resolved):
         return None
     value = result["value"]
     start_value = [float(x) for x in value] if isinstance(value, list) else [float(value)]

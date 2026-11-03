@@ -156,6 +156,15 @@ def ast_to_dict(node):
     return node
 
 
+# Mirror of kernel CONFORMANCE_ACTIVE_CAMERA: the corpus test
+# pointer/activeCamera assumes the viewer renders with an active camera.
+CONFORMANCE_ACTIVE_CAMERA = {
+    "position": [0.0, 1.0, 5.0],
+    "rotation": [0.0, 0.0, 0.0, 1.0],
+    "projection": {"type": "perspective", "aspectRatio": 16 / 9, "yfov": 0.8, "znear": 0.1, "zfar": 100.0},
+}
+
+
 class Harness:
     def __init__(self):
         self._factory = None
@@ -175,13 +184,13 @@ class Harness:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         self._factory = rt_pkg.create_engine(module.build)
-        self._engine = self._factory(gltf=self._gltf, glb_bin=self._bin, seed=123456789.0)
+        self._engine = self._factory(gltf=self._gltf, glb_bin=self._bin, seed=123456789.0, active_camera=CONFORMANCE_ACTIVE_CAMERA)
         return {"ok": True, "time": enc_num(self._engine.time)}
 
     def cmd_reset(self, req):
         if self._factory is None:
             raise RuntimeError("reset called before load")
-        self._engine = self._factory(gltf=self._gltf, glb_bin=self._bin, seed=123456789.0)
+        self._engine = self._factory(gltf=self._gltf, glb_bin=self._bin, seed=123456789.0, active_camera=CONFORMANCE_ACTIVE_CAMERA)
         return {"ok": True, "time": enc_num(self._engine.time)}
 
     def cmd_start(self, req):
