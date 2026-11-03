@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { applyAnimationAt } from "../../kernel/src/index.js";
-import { CSPROJ_PATH, HARNESS_DLL_PATH, hashCsSources, needsBuild, writeBuildMarker } from "../src/index.js";
+import { ensureHarnessBuilt, HARNESS_DLL_PATH } from "../src/index.js";
 import { BinBuilder, binView, cubicRotationFixture, cubicTranslationFixture } from "../../kernel/test/animation-fixtures.js";
 
 type Fixture = { gltf: any; bin: Uint8Array };
@@ -77,10 +77,7 @@ describe.runIf(dotnetBin !== null)("GltfiRuntime.Animation parity with the TS ke
   let harness: AsyncHarness;
 
   beforeAll(() => {
-    if (needsBuild()) {
-      execFileSync(dotnetBin!, ["build", CSPROJ_PATH, "-c", "Release"], { stdio: "inherit" });
-      writeBuildMarker(hashCsSources());
-    }
+    ensureHarnessBuilt(dotnetBin!);
     harness = new AsyncHarness(dotnetBin!);
   });
 

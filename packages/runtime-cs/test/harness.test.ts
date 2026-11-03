@@ -22,7 +22,7 @@ import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from "node:c
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { CSPROJ_PATH, HARNESS_DLL_PATH, hashCsSources, needsBuild, writeBuildMarker } from "../src/index.js";
+import { ensureHarnessBuilt, HARNESS_DLL_PATH } from "../src/index.js";
 
 type Resp = Record<string, unknown>;
 
@@ -113,10 +113,7 @@ describe.runIf(dotnetBin !== null)("GltfiRuntime.M numeric-semantics parity (via
   let harness: AsyncHarness;
 
   beforeAll(() => {
-    if (needsBuild()) {
-      execFileSync(dotnetBin!, ["build", CSPROJ_PATH, "-c", "Release"], { stdio: "inherit" });
-      writeBuildMarker(hashCsSources());
-    }
+    ensureHarnessBuilt(dotnetBin!);
     harness = new AsyncHarness(dotnetBin!);
   });
 
@@ -230,10 +227,7 @@ describe.runIf(dotnetBin !== null)("GltfiRuntime.Engine end-to-end smoke test", 
   let harness: AsyncHarness;
 
   beforeAll(() => {
-    if (needsBuild()) {
-      execFileSync(dotnetBin!, ["build", CSPROJ_PATH, "-c", "Release"], { stdio: "inherit" });
-      writeBuildMarker(hashCsSources());
-    }
+    ensureHarnessBuilt(dotnetBin!);
     harness = new AsyncHarness(dotnetBin!);
   });
 

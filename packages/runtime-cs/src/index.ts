@@ -109,13 +109,59 @@ export function findDotnetBin(): string {
 // Builds GltfiRuntime.csproj (which also produces the Harness.cs/Program.cs
 // executable) in Release configuration, once, iff the source tree's
 // fingerprint changed since the last successful build.
+// Cross-process build lock. vitest runs test files in parallel workers, and
+// on a fresh checkout (CI) every worker that touches the C# harness sees
+// needsBuild() and would start its own `dotnet build` of the same project —
+// concurrent builds race on obj/ and bin/ (MSB4018 "GenerateDepsFile task
+// failed unexpectedly"). mkdir is atomic, so the lock is a directory; a lock
+// older than BUILD_LOCK_STALE_MS (a crashed builder) is broken.
+const BUILD_LOCK_DIR: string = path.join(CS_SRC_DIR, "obj", ".gltfi-build.lock");
+const BUILD_LOCK_STALE_MS = 10 * 60 * 1000;
+const BUILD_LOCK_POLL_MS = 250;
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function acquireBuildLock(): void {
+  fs.mkdirSync(path.dirname(BUILD_LOCK_DIR), { recursive: true });
+  for (;;) {
+    try {
+      fs.mkdirSync(BUILD_LOCK_DIR);
+      return;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw err;
+      }
+    }
+    try {
+      if (Date.now() - fs.statSync(BUILD_LOCK_DIR).mtimeMs > BUILD_LOCK_STALE_MS) {
+        fs.rmSync(BUILD_LOCK_DIR, { recursive: true, force: true });
+        continue;
+      }
+    } catch {
+      continue; // released between mkdir and stat
+    }
+    sleepSync(BUILD_LOCK_POLL_MS);
+  }
+}
+
 export function ensureHarnessBuilt(dotnetBin: string): void {
   if (!needsBuild()) {
     return;
   }
-  console.error("gltfi-harness-cs: source changed (or no prior build) -- running `dotnet build -c Release`...");
-  execFileSync(dotnetBin, ["build", CSPROJ_PATH, "-c", "Release"], { stdio: "inherit" });
-  writeBuildMarker(hashCsSources());
+  acquireBuildLock();
+  try {
+    // Another process may have finished the build while we waited.
+    if (!needsBuild()) {
+      return;
+    }
+    console.error("gltfi-harness-cs: source changed (or no prior build) -- running `dotnet build -c Release`...");
+    execFileSync(dotnetBin, ["build", CSPROJ_PATH, "-c", "Release"], { stdio: "inherit" });
+    writeBuildMarker(hashCsSources());
+  } finally {
+    fs.rmSync(BUILD_LOCK_DIR, { recursive: true, force: true });
+  }
 }
 
 // Generic, synchronous FIFO-backed session with ONE persistent `dotnet
