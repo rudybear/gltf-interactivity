@@ -59,24 +59,29 @@ export function langFromPath(file: string): LangId | undefined {
   return undefined;
 }
 
-export async function loadLang(id: LangId): Promise<LangModule> {
+// `needParse: false` (extract) skips loading the language's parser, so emitting TS/Lua
+// works without the optional peers `ts-morph` / `luaparse`; `parseModule` then throws.
+export async function loadLang(id: LangId, needParse = true): Promise<LangModule> {
+  const noParse = (): never => {
+    throw new Error("parser not loaded (loadLang called with needParse=false)");
+  };
   switch (id) {
     case "ts": {
-      const [emit, parse] = await Promise.all([import("@gltfi/emit-ts"), import("@gltfi/parse-ts")]);
+      const [emit, parse] = await Promise.all([import("@gltfi/emit-ts"), needParse ? import("@gltfi/parse-ts") : undefined]);
       return {
         id,
         ext: LANG_EXTENSIONS.ts,
         emitModule: (module) => emit.emitModule(module, { flavor: "ts" }),
-        parseModule: (code) => parse.parseModule(code)
+        parseModule: (code) => (parse ? parse.parseModule(code) : noParse())
       };
     }
     case "lua": {
-      const [emit, parse] = await Promise.all([import("@gltfi/emit-lua"), import("@gltfi/parse-lua")]);
+      const [emit, parse] = await Promise.all([import("@gltfi/emit-lua"), needParse ? import("@gltfi/parse-lua") : undefined]);
       return {
         id,
         ext: LANG_EXTENSIONS.lua,
         emitModule: (module) => emit.emitModuleLua(module),
-        parseModule: (code) => parse.parseModuleLua(code)
+        parseModule: (code) => (parse ? parse.parseModuleLua(code) : noParse())
       };
     }
     case "py": {

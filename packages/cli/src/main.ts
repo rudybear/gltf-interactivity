@@ -9,7 +9,6 @@ import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { checkModule, exportGraph, importGraph, type Graph as IrGraph, type IRModule } from "@gltfi/ir";
 import { emitModule, EmitError } from "@gltfi/emit-ts";
-import { parseModule } from "@gltfi/parse-ts";
 import { compareDeclarations, equivalentGraphs, validateGraph, type VGraph } from "@gltfi/verify";
 import { parseContainer, spliceGraph, writeContainer, writeGlb, type Container, type GltfJson, type SpliceReport } from "@gltfi/gltf";
 import { createRuntime, type Graph as RuntimeGraph } from "@gltfi/runtime";
@@ -81,6 +80,7 @@ async function cmdCompile(argv: string[]): Promise<void> {
   if (!inPath) fail("compile: missing <in.ts>");
 
   const code = fs.readFileSync(inPath, "utf8");
+  const { parseModule } = await import("@gltfi/parse-ts");
   const { module, diagnostics: parseDiags } = parseModule(code);
   printDiagnostics(parseDiags);
   if (parseDiags.some((d) => d.severity === "error")) {
@@ -187,7 +187,7 @@ async function cmdExtract(argv: string[]): Promise<void> {
     fail("extract: aborting — module did not pass import/checkModule (see errors above)");
   }
 
-  const lang = await loadLang(langId);
+  const lang = await loadLang(langId, false);
   const explicitOut = flags["-o"] !== undefined;
   const outPath = (flags["-o"] as string | undefined) ?? deriveOutPath(inPath, lang.ext);
   if (fs.existsSync(outPath) && !explicitOut && !flags["--force"]) {
@@ -415,6 +415,8 @@ async function cmdRoundtrip(argv: string[]): Promise<void> {
     return;
   }
 
+  // Loaded outside the try below so a missing optional peer (ts-morph) reaches main()'s friendly handler.
+  const { parseModule } = await import("@gltfi/parse-ts");
   let exported: { graph: unknown; ok: boolean };
   try {
     const { code } = emitModule(module);
@@ -559,7 +561,12 @@ async function main() {
       console.error(`gltfi: ${err.message}`);
       process.exitCode = 1;
     } else {
-      throw err;
+      // ts-morph / luaparse are optional peer dependencies of the npm package.
+      const e = err as { code?: string; message?: string };
+      const peer = e?.code === "ERR_MODULE_NOT_FOUND" ? /['"]?(ts-morph|luaparse)['"]?/.exec(e.message ?? "")?.[1] : undefined;
+      if (!peer) throw err;
+      console.error(`gltfi: this command needs the optional peer dependency \`${peer}\` — run \`npm i ${peer}\``);
+      process.exitCode = 1;
     }
   }
 }

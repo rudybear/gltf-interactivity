@@ -1,6 +1,6 @@
 {
   "name": "@gltfi/runtime",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Reference interpreter for glTF KHR_interactivity behavior graphs (browser-safe, zero dependencies).",
   "keywords": [
     "gltf",
@@ -41,7 +41,8 @@
   "files": [
     "dist",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "node ../../scripts/build-npm-runtime.mjs",

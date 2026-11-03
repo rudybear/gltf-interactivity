@@ -3,7 +3,7 @@
 //
 //   gltf-interactivity   the `gltfi` CLI + tooling libraries (ir, gltf, verify,
 //                        runtime, emit-*, parse-*), esbuild-bundled with code
-//                        splitting. Only ts-morph / luaparse stay external.
+//                        splitting. ts-morph / luaparse are optional peers; @gltfi/runtime is a dependency (both external).
 //   @gltfi/runtime-lib   the dependency-free runtime compiled engines import
 //                        (kernel inlined).
 //   @gltfi/runtime       the reference interpreter + host for browser viewers
@@ -96,6 +96,7 @@ function stageCommon(name) {
   const tpl = path.join(repo, "npm", name);
   fs.copyFileSync(path.join(tpl, "package.json"), path.join(stage, "package.json"));
   fs.copyFileSync(path.join(tpl, "README.md"), path.join(stage, "README.md"));
+  fs.copyFileSync(path.join(tpl, "CHANGELOG.md"), path.join(stage, "CHANGELOG.md"));
   fs.copyFileSync(path.join(repo, "LICENSE"), path.join(stage, "LICENSE"));
   return stage;
 }
@@ -114,9 +115,7 @@ async function packTooling() {
     cli: path.join(pk("cli"), "dist/main.js"),
     ir: path.join(pk("ir"), "dist/index.js"),
     gltf: path.join(pk("gltf"), "dist/index.js"),
-    verify: path.join(pk("verify"), "dist/index.js"),
-    runtime: path.join(pk("runtime"), "dist/index.js"),
-    "runtime-node": path.join(pk("runtime"), "dist/node.js")
+    verify: path.join(pk("verify"), "dist/index.js")
   };
   for (const l of ["ts", "lua", "py", "cs", "gd"]) {
     entryDefs[`emit-${l}`] = path.join(pk(`emit-${l}`), "dist/index.js");
@@ -132,7 +131,17 @@ async function packTooling() {
   );
   entryDefs.index = rootEntry;
 
+  // The interpreter is NOT bundled: "./runtime" and "./runtime/node" are thin
+  // re-exports of the real dependency @gltfi/runtime, and every other entry
+  // (CLI, conformance interp-adapter) imports it externally too, so there is
+  // exactly one interpreter implementation.
   const external = ["typescript", "ts-morph", "luaparse", "wasmoon"];
+  const runtimeExternal = {
+    name: "gltfi-runtime-external",
+    setup(b) {
+      b.onResolve({ filter: /^@gltfi\/runtime(\/node)?$/ }, (a) => ({ path: a.path, external: true }));
+    }
+  };
   const result = await build({
     entryPoints: entryDefs,
     outdir: path.join(stage, "dist"),
@@ -145,32 +154,50 @@ async function packTooling() {
     sourcemap: false,
     metafile: true,
     external,
+    plugins: [runtimeExternal],
     logLevel: "warning"
   });
   fs.rmSync(rootEntry);
+  fs.writeFileSync(path.join(stage, "dist/runtime.js"), 'export * from "@gltfi/runtime";\n');
+  fs.writeFileSync(path.join(stage, "dist/runtime-node.js"), 'export * from "@gltfi/runtime/node";\n');
 
   // Which externals does the final bundle really import? (node builtins are fine)
   const used = new Set();
   const wasmoonReach = [];
+  const importedBy = {}; // external pkg -> output files importing it
   for (const [file, meta] of Object.entries(result.metafile.outputs)) {
     for (const imp of meta.imports) {
       if (!imp.external || isBuiltin(imp.path)) continue;
-      used.add(pkgNameOf(imp.path));
-      if (pkgNameOf(imp.path) === "wasmoon") wasmoonReach.push(file);
+      const n = pkgNameOf(imp.path);
+      used.add(n);
+      (importedBy[n] ??= []).push(path.basename(file));
+      if (n === "wasmoon") wasmoonReach.push(file);
     }
   }
   if (used.has("wasmoon")) die(`wasmoon is reachable from the bundle: ${wasmoonReach.join(", ")}`);
-  const versions = {
+  if (used.has("typescript")) die(`bundle imports "typescript" directly (${importedBy.typescript.join(", ")}); treat it like ts-morph (optional peer) first`);
+  // One interpreter: no workspace runtime source may be inlined.
+  const inlinedRuntime = Object.keys(result.metafile.inputs).filter((i) => /packages\/runtime\/(src|dist)\//.test(i));
+  if (inlinedRuntime.length) die(`packages/runtime is inlined into the bundle: ${inlinedRuntime.slice(0, 3).join(", ")}`);
+  // Static reachability: only the parse-ts / parse-lua entries may import the optional peers
+  // (a shared chunk or the CLI entry importing them would load them at module evaluation).
+  const OPTIONAL_PEERS = ["ts-morph", "luaparse"];
+  const allowedImporter = { "ts-morph": /^parse-ts\.js$/, luaparse: /^parse-lua\.js$/ };
+  for (const peer of OPTIONAL_PEERS) {
+    for (const f of importedBy[peer] ?? []) {
+      if (!allowedImporter[peer].test(f)) die(`optional peer ${peer} is imported by ${f}; only its parse-* entry may (shared chunk leak)`);
+    }
+  }
+  const peerVersions = {
     "ts-morph": readJson(path.join(pk("parse-ts"), "package.json")).dependencies["ts-morph"],
     luaparse: readJson(path.join(pk("parse-lua"), "package.json")).dependencies.luaparse
   };
-  const deps = {};
-  for (const name of [...used].sort()) {
-    if (!versions[name]) die(`bundle imports external "${name}" with no known version (add it to pack-npm.mjs)`);
-    deps[name] = versions[name];
-  }
-  manifest.dependencies = deps;
-  console.log(`gltf-interactivity: external deps actually imported: ${JSON.stringify(deps)}`);
+  for (const name of used) if (name !== "@gltfi/runtime" && !peerVersions[name]) die(`bundle imports external "${name}" with no known version (add it to pack-npm.mjs)`);
+  const runtimeVersion = readJson(path.join(repo, "npm/runtime/package.json")).version;
+  manifest.dependencies = { "@gltfi/runtime": `^${runtimeVersion}` };
+  manifest.peerDependencies = Object.fromEntries(OPTIONAL_PEERS.map((n) => [n, peerVersions[n]]));
+  manifest.peerDependenciesMeta = Object.fromEntries(OPTIONAL_PEERS.map((n) => [n, { optional: true }]));
+  console.log(`gltf-interactivity: external imports: ${JSON.stringify(importedBy)}`);
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
 
   // The CLI keeps its shebang (esbuild preserves a leading one); make it executable.
@@ -196,6 +223,9 @@ async function packTooling() {
   const typePkgs = ["ir", "gltf", "verify", "runtime", "kernel", "emit-ts", "emit-lua", "emit-py", "emit-cs", "emit-gd", "parse-ts", "parse-lua", "parse-py", "parse-cs", "parse-gd"];
   const copied = copyTypes(stage, typePkgs);
   console.log(`  types copied for: ${[...copied].sort().join(", ")}`);
+  // "./runtime" types re-export the dependency's own types.
+  fs.writeFileSync(path.join(stage, "types/runtime/index.d.ts"), 'export * from "@gltfi/runtime";\n');
+  fs.writeFileSync(path.join(stage, "types/runtime/node.d.ts"), 'export * from "@gltfi/runtime/node";\n');
   fs.writeFileSync(
     path.join(stage, "types/index.d.ts"),
     ["ir", "gltf", "verify"].map((p) => `export * from "./${p}/index.js";`).join("\n") + "\n"
