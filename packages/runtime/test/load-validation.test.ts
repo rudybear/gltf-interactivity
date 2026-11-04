@@ -31,6 +31,23 @@ describe("load-time validation", () => {
     expect(createRuntime(valid(), {}).variables[0].data[0]).toBe(0);
   });
 
+  it("GV165 on a pointer template parameter of the wrong int/ref type explains the fix", () => {
+    const g: any = {
+      types: [{ signature: "int" }, { signature: "float" }],
+      declarations: [{ op: "event/onStart" }, { op: "pointer/set" }],
+      nodes: [
+        { declaration: 0, flows: { out: { node: 1 } } },
+        {
+          declaration: 1,
+          configuration: { pointer: { value: ["/nodes/{nodeIndex}/translation"] }, type: { value: [1] } },
+          values: { nodeIndex: { type: 0, value: [0] }, value: { type: 1, value: [1] } }
+        }
+      ]
+    };
+    expect(() => new InteractivityRuntime(g, {})).toThrow(InteractivityValidationError);
+    expect(() => new InteractivityRuntime(g, {})).toThrow(/is ref \(\{nodeIndex\} in the pointer template\) but its inline value is int; int template parameters are written \[nodeIndex\]/);
+  });
+
   it("createRuntime / InteractivityRuntime reject an invalid graph with diagnostics", () => {
     for (const make of [() => createRuntime(invalid(), {}), () => new InteractivityRuntime(invalid(), {})]) {
       let err: unknown;

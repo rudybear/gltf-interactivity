@@ -344,6 +344,24 @@ describe("variable/* and pointer/* operations", () => {
     expect(codes(validateGraphObject(get("/nodes/[]/x", {})))).toContain("GV161");
     expect(codes(validateGraphObject(get("/x", {}, 99)))).toContain("GV157");
   });
+  it("pointer ops: GV165 explains int/ref template parameter mix-ups (inline vs connected)", () => {
+    const msgs = (g: any) => validateGraphObject(g).diagnostics.filter((d) => d.code === "GV165").map((d) => d.message);
+    const mk = (op: string, pointer: string, extra: any, values: any) =>
+      varGraph(op, { pointer: { value: [pointer] }, type: { value: [0] }, ...extra }, values);
+    expect(msgs(mk("pointer/set", "/nodes/{nodeIndex}/x", {}, { nodeIndex: { type: 1, value: [0] }, value: { type: 0, value: [1] } }))).toEqual([
+      `node 1 ("pointer/set"): input "nodeIndex" is ref ({nodeIndex} in the pointer template) but its inline value is int; int template parameters are written [nodeIndex]`
+    ]);
+    // connected ref (pointer/get of type ref, node 1) into an int [n] slot (node 2)
+    const g = varGraph("pointer/get", { pointer: { value: ["/nodes/0/x"] }, type: { value: [5] } }, {});
+    g.types.push({ signature: "ref" });
+    g.nodes.push({ declaration: 1, configuration: { pointer: { value: ["/nodes/[n]/x"] }, type: { value: [0] } }, values: { n: { node: 1 } } });
+    expect(msgs(g)).toEqual([
+      `node 2 ("pointer/get"): input "n" is int ([n] in the pointer template) but its connected value is ref; ref template parameters are written {n}`
+    ]);
+    expect(msgs(mk("pointer/get", "/nodes/[n]/x", {}, { n: { type: 0, value: [1] } }))).toEqual([
+      `node 1 ("pointer/get"): input "n" has type "float", expected "int" ([n] in the pointer template)`
+    ]);
+  });
 });
 
 describe("parsePointerTemplateStrict / parseLogMessage", () => {

@@ -606,6 +606,8 @@ function validateGraphInto(graph: unknown, c: Collector): void {
         // we know referenced nodes' outputs.
         const given: SockTypes = {};
         const givenKnown: Record<string, boolean> = {};
+        // Where each given socket's value comes from (diagnostics only).
+        const givenSrc: Record<string, "inline" | "connected"> = {};
         let valuesShapeOk = true;
         if (has(n, "values")) {
           if (!isNonEmptyObj(n.values)) {
@@ -679,6 +681,7 @@ function validateGraphInto(graph: unknown, c: Collector): void {
                 }
                 given[sock] = (srcType ?? explicit) as TypeSig | undefined;
                 givenKnown[sock] = true;
+                givenSrc[sock] = "connected";
               } else {
                 if (!isJsonIndex(v.type)) {
                   c.assert("GV150", S_NODE, `node ${ni} value "${sock}" \`type\` is missing or not a JSON index`, `${vp}.type`, ni);
@@ -708,6 +711,7 @@ function validateGraphInto(graph: unknown, c: Collector): void {
                 }
                 given[sock] = sig as TypeSig | undefined;
                 givenKnown[sock] = true;
+                givenSrc[sock] = "inline";
               }
             }
           }
@@ -759,6 +763,8 @@ function validateGraphInto(graph: unknown, c: Collector): void {
         // --- required sockets ---------------------------------------------
         // `required`: socket id -> required concrete type, or "any".
         let required: Record<string, TypeSig | "any"> | null = {};
+        // pointer/* template parameter id -> its template kind (GV165 hints only).
+        const ptrParamKind: Record<string, "int" | "ref"> = {};
         let outputs: SockTypes | null = null;
         let ok = true;
 
@@ -893,6 +899,7 @@ function validateGraphInto(graph: unknown, c: Collector): void {
                   good = false;
                 }
                 req[prm.id] = prm.kind === "int" ? "int" : "ref";
+                ptrParamKind[prm.id] = prm.kind === "int" ? "int" : "ref";
               }
               const T = (ts ?? undefined) as TypeSig | undefined;
               if (op === "pointer/interpolate") {
@@ -1062,7 +1069,18 @@ function validateGraphInto(graph: unknown, c: Collector): void {
             }
             const got = given[sid];
             if (want !== "any" && got !== undefined && got !== want) {
-              nodeErr("GV165", S_VALUES, `input "${sid}" has type "${got}", expected "${want}"`);
+              const tk = ptrParamKind[sid];
+              if (tk === undefined) {
+                nodeErr("GV165", S_VALUES, `input "${sid}" has type "${got}", expected "${want}"`);
+              } else {
+                const tmpl = tk === "int" ? `[${sid}]` : `{${sid}}`;
+                if ((got === "int" || got === "ref") && (want === "int" || want === "ref")) {
+                  const fix = got === "int" ? `int template parameters are written [${sid}]` : `ref template parameters are written {${sid}}`;
+                  nodeErr("GV165", S_VALUES, `input "${sid}" is ${want} (${tmpl} in the pointer template) but its ${givenSrc[sid] ?? "inline"} value is ${got}; ${fix}`);
+                } else {
+                  nodeErr("GV165", S_VALUES, `input "${sid}" has type "${got}", expected "${want}" (${tmpl} in the pointer template)`);
+                }
+              }
               good = false;
             }
           }

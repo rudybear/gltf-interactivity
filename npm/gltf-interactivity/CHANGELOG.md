@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- Validation: clearer message when a pointer template parameter's value has the wrong type ([x] = int, {x} = ref), naming inline vs connected source.
+
 ## 0.4.0
 
 - `gltf-interactivity/runtime` re-exports the new inter-asset `EventBus` / `joinEventBus` from `@gltfi/runtime`; `pnpm conf:interglb` covers the corpus `InterGlb/` tests.

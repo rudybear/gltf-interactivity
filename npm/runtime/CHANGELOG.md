@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Validation: clearer message when a pointer template parameter's value has the wrong type ([x] = int, {x} = ref), naming inline vs connected source.
+
 ## 0.2.0
 
 - Inter-asset communication: new `EventBus` (also `isPublicEventId`, `joinEventBus`, `InteractivityRuntime.joinEventBus(bus)`). Runtimes joined to one bus forward custom events with a public id (any id not starting with `_`) to every other joined runtime that has an `event/receive` for the same id and compatible value sockets (same-tick, FIFO, join order, `ref` values forwarded verbatim). Passes the corpus `InterGlb/` tests (`pnpm conf:interglb`). Runtimes that never join a bus are unchanged.

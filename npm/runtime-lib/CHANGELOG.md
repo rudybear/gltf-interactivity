@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Validation: clearer message when a pointer template parameter's value has the wrong type ([x] = int, {x} = ref), naming inline vs connected source.
+
 ## 0.2.0
 
 - `engine.setActiveCamera(position, rotation, projection?)`: per-tick host feed for the `activeCamera/*` pointers on compiled engines, same signature and semantics as the interpreter's `InteractivityRuntime.setActiveCamera` (inputs copied; pointers read NaN for absent parts).
