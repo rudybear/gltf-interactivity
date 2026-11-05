@@ -1,6 +1,6 @@
 {
   "name": "gltf-interactivity",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "KHR_interactivity glTF graph <-> code transpiler: decompile graphs to TypeScript/Lua/Python/C#/GDScript, compile them back, verify, and run them.",
   "keywords": [
     "gltf",

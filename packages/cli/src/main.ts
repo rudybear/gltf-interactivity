@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import { checkModule, exportGraph, importGraph, type Graph as IrGraph, type IRModule } from "@gltfi/ir";
 import { emitModule, EmitError } from "@gltfi/emit-ts";
 import { compareDeclarations, equivalentGraphs, validateGraph, type VGraph } from "@gltfi/verify";
-import { parseContainer, spliceGraph, writeContainer, writeGlb, type Container, type GltfJson, type SpliceReport } from "@gltfi/gltf";
+import { extensionsNeededByGraph, parseContainer, spliceGraph, writeContainer, writeGlb, type Container, type GltfJson, type SpliceReport } from "@gltfi/gltf";
 import { createRuntime, type Graph as RuntimeGraph } from "@gltfi/runtime";
 import { langFromPath, loadLang, LANG_IDS, type LangEmitResult, type LangId } from "./lang.js";
 import {
@@ -133,14 +133,14 @@ async function cmdCompile(argv: string[]): Promise<void> {
     }
 
     outJson.extensions = { ...(outJson.extensions ?? {}), KHR_interactivity: mergedExt };
-    outJson.extensionsUsed = Array.from(new Set([...(outJson.extensionsUsed ?? []), "KHR_interactivity"]));
+    outJson.extensionsUsed = Array.from(new Set([...(outJson.extensionsUsed ?? []), ...extensionsNeededByGraph(graph)]));
     console.error(
       "gltfi compile --merge-into: full-document re-stringify (floats reformat, unknown GLB chunks dropped, only graphs[0] is written) — prefer `gltfi apply` for byte-preserving, id-stable edits to an existing asset."
     );
   } else {
     outJson = {
       asset: { version: "2.0", generator: "gltfi compile" },
-      extensionsUsed: ["KHR_interactivity"],
+      extensionsUsed: extensionsNeededByGraph(graph),
       extensions: { KHR_interactivity: { graphs: [graph] } }
     };
   }

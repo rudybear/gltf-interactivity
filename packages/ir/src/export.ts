@@ -217,7 +217,15 @@ class Exporter {
       types: nonEmpty(this.typeOrder.map((t) => ({ signature: t }))),
       variables: nonEmpty(variables),
       events: nonEmpty([...events, ...loopEvents]),
-      declarations: nonEmpty(this.declOrder.map((op) => ({ op }))),
+      // Ops owned by another extension (KHR_node_selectability / _hoverability)
+      // must name it in `extension` (spec; validator GV127). Same registry the
+      // validator and importGraph's isSupportedDeclaration consult.
+      declarations: nonEmpty(
+        this.declOrder.map((op) => {
+          const extension = getOpSpec(op)?.extension;
+          return extension !== undefined ? { op, extension } : { op };
+        })
+      ),
       nodes: nonEmpty(nodes)
     };
     for (const key of Object.keys(graph) as Array<keyof GraphJson>) {

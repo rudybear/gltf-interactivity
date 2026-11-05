@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2
+
+- Fix: `exportGraph` now writes `extension` on declarations of extension-owned ops (`event/onSelect` -> KHR_node_selectability, `event/onHoverIn`/`event/onHoverOut` -> KHR_node_hoverability), so compiled scripts using `rt.onSelect`/`rt.onHoverIn`/`rt.onHoverOut` no longer trip validator warning GV127; the glTF container writer (`spliceGraph`, `gltfi compile`) adds those extensions to `extensionsUsed`.
+- Fix: `InteractivityValidationError.message` is now assigned explicitly (own property) so it survives ES5 down-leveling; prefer `diagnostics` (`code`, `message`, `path`, `nodeIndex`) over parsing `message` to show reasons.
+
 ## 0.2.1
 
 - Validation: clearer message when a pointer template parameter's value has the wrong type ([x] = int, {x} = ref), naming inline vs connected source.

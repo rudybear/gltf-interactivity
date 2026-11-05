@@ -1165,10 +1165,12 @@ export class InteractivityValidationError extends Error {
   constructor(diagnostics: ValidationDiagnostic[], scope: "extension" | "graph" = "graph") {
     const errors = diagnostics.filter((d) => d.severity === "error");
     const first = errors[0];
-    super(
+    const summary =
       `Invalid KHR_interactivity ${scope}: ${errors.length} error${errors.length === 1 ? "" : "s"}` +
-        (first ? ` (first: ${first.code} ${first.message} [${first.section}])` : "")
-    );
+      (first ? ` (first: ${first.code} ${first.message} [${first.section}])` : "");
+    super(summary);
+    // Explicit own assignment: some ES5 down-levelers lose super(message).
+    this.message = summary;
     this.name = "InteractivityValidationError";
     this.diagnostics = diagnostics;
     this.scope = scope;

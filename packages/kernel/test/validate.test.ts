@@ -441,6 +441,14 @@ describe("validateExtension", () => {
 });
 
 describe("InteractivityValidationError and assert helpers", () => {
+  it("sets `message` as a non-empty own property (survives ES5 down-leveling)", () => {
+    const e = new InteractivityValidationError([{ severity: "error", code: "GV126", message: "boom", section: "s", outcome: "rejectGraph" } as never]);
+    expect(Object.prototype.hasOwnProperty.call(e, "message")).toBe(true);
+    expect(e.message.length).toBeGreaterThan(0);
+    expect(e.message).toContain("GV126");
+    expect(new InteractivityValidationError([]).message).toContain("0 errors");
+  });
+
   it("carries diagnostics with spec sections and a scope", () => {
     const g = validGraph();
     g.declarations.push({ op: "math/nope" });

@@ -387,8 +387,9 @@ export function spliceGraph(container: Container, graphIndex: number, newGraphJs
   if (span) {
     const replacement = JSON.stringify(newGraphJson);
     const edits: JsonEdit[] = [{ start: span.start, end: span.end, replacement }];
-    if (!hasInteractivityExtensionsUsed(container.json)) {
-      const euEdit = buildExtensionsUsedAppendEdit(container.jsonText);
+    const missing = missingExtensionsUsed(container.json, newGraphJson);
+    if (missing.length > 0) {
+      const euEdit = buildExtensionsUsedAppendEdit(container.jsonText, missing);
       if (euEdit) {
         edits.push(euEdit);
       }
@@ -418,18 +419,37 @@ function locateJsonSpanSafe(text: string, path: (string | number)[]): JsonSpan |
   }
 }
 
-function hasInteractivityExtensionsUsed(json: any): boolean {
-  return Array.isArray(json?.extensionsUsed) && json.extensionsUsed.includes("KHR_interactivity");
+// Extensions a graph needs listed in `extensionsUsed`: KHR_interactivity plus
+// every `extension` named by one of its declarations (e.g. the
+// KHR_node_selectability / KHR_node_hoverability event ops).
+export function extensionsNeededByGraph(graphJson: unknown): string[] {
+  const out = ["KHR_interactivity"];
+  const decls = (graphJson as { declarations?: unknown } | null | undefined)?.declarations;
+  if (Array.isArray(decls)) {
+    for (const d of decls) {
+      const ext = (d as { extension?: unknown } | null)?.extension;
+      if (typeof ext === "string" && ext !== "" && !out.includes(ext)) {
+        out.push(ext);
+      }
+    }
+  }
+  return out;
 }
 
-function buildExtensionsUsedAppendEdit(text: string): JsonEdit | null {
+function missingExtensionsUsed(json: any, graphJson: unknown): string[] {
+  const used: unknown[] = Array.isArray(json?.extensionsUsed) ? json.extensionsUsed : [];
+  return extensionsNeededByGraph(graphJson).filter((e) => !used.includes(e));
+}
+
+function buildExtensionsUsedAppendEdit(text: string, names: string[]): JsonEdit | null {
+  const items = names.map((n) => JSON.stringify(n)).join(",");
   const arraySpan = locateJsonSpanSafe(text, ["extensionsUsed"]);
   if (arraySpan) {
     const arrText = text.slice(arraySpan.start, arraySpan.end);
     if (/^\[\s*\]$/.test(arrText)) {
-      return { start: arraySpan.start + 1, end: arraySpan.start + 1, replacement: '"KHR_interactivity"' };
+      return { start: arraySpan.start + 1, end: arraySpan.start + 1, replacement: items };
     }
-    return { start: arraySpan.end - 1, end: arraySpan.end - 1, replacement: ',"KHR_interactivity"' };
+    return { start: arraySpan.end - 1, end: arraySpan.end - 1, replacement: "," + items };
   }
 
   const rootSpan = locateJsonSpanSafe(text, []);
@@ -438,9 +458,9 @@ function buildExtensionsUsedAppendEdit(text: string): JsonEdit | null {
   }
   const rootText = text.slice(rootSpan.start, rootSpan.end);
   if (/^\{\s*\}$/.test(rootText)) {
-    return { start: rootSpan.start + 1, end: rootSpan.start + 1, replacement: '"extensionsUsed":["KHR_interactivity"]' };
+    return { start: rootSpan.start + 1, end: rootSpan.start + 1, replacement: `"extensionsUsed":[${items}]` };
   }
-  return { start: rootSpan.end - 1, end: rootSpan.end - 1, replacement: ',"extensionsUsed":["KHR_interactivity"]' };
+  return { start: rootSpan.end - 1, end: rootSpan.end - 1, replacement: `,"extensionsUsed":[${items}]` };
 }
 
 function deepCloneJson(json: any): any {
@@ -458,8 +478,10 @@ function ensureGraphSlot(json: any, graphIndex: number, newGraphJson: unknown): 
     khr.graph = graphIndex;
   }
   json.extensionsUsed = Array.isArray(json.extensionsUsed) ? json.extensionsUsed : [];
-  if (!json.extensionsUsed.includes("KHR_interactivity")) {
-    json.extensionsUsed.push("KHR_interactivity");
+  for (const e of extensionsNeededByGraph(newGraphJson)) {
+    if (!json.extensionsUsed.includes(e)) {
+      json.extensionsUsed.push(e);
+    }
   }
 }
 

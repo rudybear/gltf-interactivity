@@ -46,6 +46,8 @@ try {
 }
 ```
 
+`e.message` is only a one-line summary (error count plus the first error); to display reasons, use `e.diagnostics` (each has `code`, `message`, `path`, `nodeIndex`) rather than parsing `message`.
+
 To run an unvalidated, in-progress graph anyway, pass `{ validate: false }` (4th constructor argument / `createRuntime` option). `validateExtension(ext)` and `validateGraphObject(graph)` return the diagnostics without throwing.
 
 The runtime never mutates the glTF JSON or graph you pass in (it works on its own deep copy), and a graph must omit empty `types` / `variables` / `events` / `declarations` / `nodes` arrays (the spec forbids `[]`).
